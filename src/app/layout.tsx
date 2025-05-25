@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from '@/lib/contexts/AuthContext';
-import ThemeRegistry from '@/components/theme/ThemeRegistry'; // Using alias again
-// import ThemeRegistry from '../components/theme/ThemeRegistry'; // Corrected temporary relative import
+// import { AuthProvider } from '@/lib/contexts/AuthContext'; // No longer directly used here
+// import ThemeRegistry from '@/components/theme/ThemeRegistry'; // No longer directly used here
+import AppProviders from '@/components/providers/AppProviders'; // Added
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,11 +32,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeRegistry>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </ThemeRegistry>
+        <AppProviders> {/* Changed to AppProviders */}
+          {children}
+        </AppProviders> {/* Changed to AppProviders */}
       </body>
     </html>
   );

@@ -113,7 +113,7 @@ tmp/
 temp/
 
 # Supabase
-.supabase/
+.supabase/.temp/
 
 # Database
 *.db

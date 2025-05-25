@@ -27,6 +27,7 @@ CREATE TABLE contacts (
   company TEXT,
   role TEXT,
   relationship_context TEXT,
+  linkedin_url TEXT NULL,
   tags TEXT[],
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL

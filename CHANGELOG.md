@@ -5,9 +5,16 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - 2024-05-25
 
 ### Added
+- Initial database schema setup via Supabase migrations:
+  - `contacts` table with columns: id, user_id, name, email, company, title, linkedin_url, location, notes, created_at, updated_at.
+  - `artifacts` table with columns: id, contact_id, user_id, type (enum), content, metadata, timestamp, created_at.
+  - `artifact_type_enum` for artifact types.
+  - Helper function `handle_updated_at` for automatic `updated_at` timestamp updates.
+  - RLS policies for data isolation on `contacts` and `artifacts` tables, scoped to `auth.uid()`.
+- Generated TypeScript types (`types_db.ts`) for the new database schema.
 - Initial project setup with Next.js 15, TypeScript, and Tailwind CSS
 - Project documentation structure (CHANGELOG, ROADMAP, README)
 - Supabase integration with client configuration
