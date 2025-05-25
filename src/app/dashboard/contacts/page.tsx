@@ -7,8 +7,10 @@ import {
   Button,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
+import Link from 'next/link';
 
 export default function ContactsPage(): React.JSX.Element {
+  console.log('[src/app/dashboard/contacts/page.tsx] Rendering');
   return (
     <Box>
       <Box
@@ -27,13 +29,15 @@ export default function ContactsPage(): React.JSX.Element {
             Manage your relationship network
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          size="large"
-        >
-          Add Contact
-        </Button>
+        <Link href="/dashboard/contacts/new" passHref>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            size="large"
+          >
+            Add Contact
+          </Button>
+        </Link>
       </Box>
 
       <Paper sx={{ p: 4 }}>
@@ -54,13 +58,15 @@ export default function ContactsPage(): React.JSX.Element {
           <Typography variant="body1" sx={{ mb: 3 }}>
             Start building your relationship network by adding your first contact
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            size="large"
-          >
-            Add Your First Contact
-          </Button>
+          <Link href="/dashboard/contacts/new" passHref>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              size="large"
+            >
+              Add Your First Contact
+            </Button>
+          </Link>
         </Box>
       </Paper>
     </Box>

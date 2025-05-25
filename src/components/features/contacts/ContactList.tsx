@@ -3,7 +3,8 @@
 import React from 'react';
 import { useContacts } from '@/lib/hooks/useContacts';
 import { ContactCard } from './ContactCard';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
+import Link from 'next/link';
 
 export const ContactList = () => {
   const { contacts, isLoadingContacts, contactsError } = useContacts();
@@ -26,9 +27,19 @@ export const ContactList = () => {
 
   if (!contacts || contacts.length === 0) {
     return (
-      <Typography variant="subtitle1" sx={{ mt: 2, textAlign: 'center' }}>
-        No contacts found. Add your first contact!
-      </Typography>
+      <Box sx={{ mt: 2, textAlign: 'center', p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          No contacts yet
+        </Typography>
+        <Typography variant="subtitle1" sx={{ mb: 2 }}>
+          Start building your relationship network by adding your first contact.
+        </Typography>
+        <Link href="/contacts/new" passHref>
+          <Button variant="contained" color="secondary">
+            + Add Your First Contact
+          </Button>
+        </Link>
+      </Box>
     );
   }
 

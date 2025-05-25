@@ -56,7 +56,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
-          linkedin_url: string | null
+          linkedin_url: string
           location: string | null
           name: string | null
           notes: string | null
@@ -69,7 +69,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
-          linkedin_url?: string | null
+          linkedin_url: string
           location?: string | null
           name?: string | null
           notes?: string | null
@@ -82,7 +82,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
-          linkedin_url?: string | null
+          linkedin_url?: string
           location?: string | null
           name?: string | null
           notes?: string | null
@@ -109,6 +109,7 @@ export type Database = {
         | "linkedin_post"
         | "file"
         | "other"
+        | "linkedin_profile"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -233,6 +234,7 @@ export const Constants = {
         "linkedin_post",
         "file",
         "other",
+        "linkedin_profile",
       ],
     },
   },

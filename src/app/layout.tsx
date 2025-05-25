@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-// import { AuthProvider } from '@/lib/contexts/AuthContext'; // No longer directly used here
-// import ThemeRegistry from '@/components/theme/ThemeRegistry'; // No longer directly used here
-import AppProviders from '@/components/providers/AppProviders'; // Added
 import "./globals.css";
+import AppProviders from "@/components/providers/AppProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,26 +13,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Theme creation is now in ThemeRegistry.tsx
-
 export const metadata: Metadata = {
-  title: "Relationship OS",
-  description: "Transform networking from overwhelming to systematic",
+  title: "Connection OS",
+  description: "Manage your professional network like never before.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
+interface RootLayoutProps {
   children: React.ReactNode;
-}>) {
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body
+      {/* 
+        The head tag is automatically managed by Next.js.
+        You can add global metadata here or in individual page components.
+        Refer to: https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts#head-metadata
+      */}
+      <body 
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning={true} // Added to handle browser extension DOM modifications
       >
-        <AppProviders> {/* Changed to AppProviders */}
-          {children}
-        </AppProviders> {/* Changed to AppProviders */}
+        <AppProviders>
+          {/* 
+            The DashboardLayout could be conditionally rendered here based on route 
+            or a higher-order component logic if not all pages use it.
+            For now, assuming it's global or handled by route groups.
+          */}
+          {children} 
+        </AppProviders>
       </body>
     </html>
   );

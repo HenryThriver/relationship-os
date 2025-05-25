@@ -23,12 +23,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authentication helpers and hooks
 - Row Level Security (RLS) policies for data isolation
 - Database setup documentation and SQL schema files
+- LinkedIn profile import feature:
+  - API route (`/api/linkedin/import`) to fetch profile data from RapidAPI.
+  - Frontend form (`LinkedInImportForm`) for URL input and data preview.
+  - Integration into "Add New Contact" page (`/dashboard/contacts/new`) to create contacts from LinkedIn profiles.
+  - Creates a `linkedin_profile` artifact with the raw API response.
+  - Updated `artifact_type_enum` to include `linkedin_profile`.
+  - Made `linkedin_url` on `contacts` table `NOT NULL`.
+  - Added `useArtifacts` hook for artifact creation.
+  - Placeholder page for individual contact details (`/dashboard/contacts/[id]`).
 
 ### Changed
+- Refined `RapidLinkedInProfile` TypeScript types based on actual API sample response.
+- Updated LinkedIn import flow on "Add New Contact" page (`/dashboard/contacts/new`):
+  - Improved data mapping from LinkedIn profile to contact fields.
+  - Ensured the originally submitted LinkedIn URL is used for the contact record.
+  - Added a confirmation step to review fetched data before saving.
+  - Ensured the full raw API response is stored in the `linkedin_profile` artifact's metadata.
+  - Improved UI/UX of the import form and review section (icon, placeholder, button text & layout).
+- Corrected linter errors related to hook usage and prop types in the LinkedIn import feature.
+- **Routing Correction**: Consolidated contacts functionality under `/dashboard/contacts/*`. Main contacts list is now at `/dashboard/contacts`, and new contact page is at `/dashboard/contacts/new`.
+- Addressed hydration errors by adding `suppressHydrationWarning` to root layout and guiding user to disable problematic browser extensions.
 
 ### Fixed
+- Resolved Supabase client connection issues by ensuring correct environment variable loading.
+- Resolved 500 error on LinkedIn import API route by ensuring RapidAPI environment variables are correctly loaded.
+- Addressed Next.js client component errors related to MUI theme functions.
+- Fixed various module resolution and path aliasing issues.
 
 ### Removed
+- Temporary `src/app/(dashboard)/contacts/page.tsx` (minimal placeholder, functionality moved).
+  (Note: The directory `src/app/(dashboard)/contacts/[id]` and `src/app/(dashboard)/contacts/new` and their contents should also be removed if they were not already deleted as part of the move to `/dashboard/contacts/*`)
+- Removed temporary debugging `console.log` from Supabase client.
 
 ## [0.2.0] - 2025-05-25
 
