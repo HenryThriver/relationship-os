@@ -113,6 +113,7 @@ tmp/
 temp/
 
 # Supabase
+# .supabase/ # Keep this commented or remove if you want to track migrations/config.toml
 .supabase/.temp/
 
 # Database
