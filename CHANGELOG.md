@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authentication helpers and hooks
 - Row Level Security (RLS) policies for data isolation
 - Database setup documentation and SQL schema files
+- LinkedIn profile import feature:
+  - API route (`/api/linkedin/import`) to fetch profile data from RapidAPI.
+  - Frontend form (`LinkedInImportForm`) for URL input and data preview.
+  - Integration into "Add New Contact" page (`/contacts/new`) to create contacts from LinkedIn profiles.
+  - Creates a `linkedin_profile` artifact with the raw API response.
+  - Updated `artifact_type_enum` to include `linkedin_profile`.
+  - Made `linkedin_url` on `contacts` table `NOT NULL`.
+  - Added `useArtifacts` hook for artifact creation.
 
 ### Changed
 

@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import type { Contact } from '@/types';
+import type { Database } from '@/lib/supabase/types_db';
 
 // Assuming your Supabase table is named 'contacts'
 const CONTACTS_TABLE = 'contacts';
+
+// Use the generated Insert type for creating contacts
+export type ContactInsert = Database['public']['Tables']['contacts']['Insert'];
 
 export const useContacts = () => {
   const queryClient = useQueryClient();
@@ -43,33 +47,39 @@ export const useContacts = () => {
     });
   };
   
-  // Create a new contact
-  const createContact = async (linkedinUrl: string): Promise<Contact> => {
-    // For now, we'll just use the LinkedIn URL.
-    // In the future, we can add parsing logic here or in a Supabase Edge Function.
-    const newContactPartial: Pick<Contact, 'linkedin_url'> = { linkedin_url: linkedinUrl };
-    
+  // Create a new contact - updated to accept ContactInsert type
+  const createContactDB = async (newContactData: ContactInsert): Promise<Contact> => {
+    if (!newContactData.user_id) {
+      throw new Error('User ID is required to create a contact.');
+    }
+    if (!newContactData.linkedin_url) {
+      throw new Error('LinkedIn URL is required to create a contact through this flow.');
+    }
+
     const { data, error } = await supabase
       .from(CONTACTS_TABLE)
-      .insert(newContactPartial as any) // Cast to any to avoid full Contact type requirement for insert
+      .insert(newContactData) 
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error creating contact:', error);
+      throw new Error(error.message);
+    }
     if (!data) throw new Error('Contact creation failed, no data returned.');
-    return data;
+    return data as Contact; // Cast to local Contact type if its structure is a subset or matches Row
   };
 
-  const createContactMutation = useMutation<Contact, Error, string>({
-    mutationFn: createContact,
+  const createContactMutation = useMutation<Contact, Error, ContactInsert>({
+    mutationFn: createContactDB,
     onSuccess: (newContact) => {
-      // Invalidate and refetch all contacts
       queryClient.invalidateQueries({ queryKey: [CONTACTS_TABLE] });
-      // Optionally, update the cache directly if preferred
-      // queryClient.setQueryData([CONTACTS_TABLE], (oldData: Contact[] | undefined) => [...(oldData || []), newContact]);
-      // Also update the specific contact query if it exists
       queryClient.setQueryData([CONTACTS_TABLE, newContact.id], newContact);
     },
+    onError: (error) => {
+      console.error('Mutation error creating contact:', error.message);
+      // Potentially show a user-facing error notification here
+    }
   });
 
   // Update an existing contact
