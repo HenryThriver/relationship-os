@@ -1,36 +1,33 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, CircularProgress, Alert, Paper, Card, CardContent, CardHeader } from '@mui/material';
-import type { LinkedInImportApiResponse, RapidLinkedInProfile } from '@/types/rapidapi';
+import { TextField, Button, Box, Typography, CircularProgress, Alert, Paper } from '@mui/material';
+import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import type { LinkedInImportApiResponse } from '@/types/rapidapi';
 
 interface LinkedInImportFormProps {
-  onProfileFetched: (profileData: RapidLinkedInProfile, rawResponse: any) => void; // Callback with fetched data
-  // We might want to pass an initial contactId if we are adding a LinkedIn profile to an existing contact
+  onProfileFetched: (response: LinkedInImportApiResponse) => void;
 }
 
-export const LinkedInImportForm = ({ onProfileFetched }: LinkedInImportFormProps) => {
+export const LinkedInImportForm = ({ onProfileFetched }: LinkedInImportFormProps): React.ReactElement => {
   const [linkedinUrl, setLinkedinUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [fetchedProfile, setFetchedProfile] = useState<RapidLinkedInProfile | null>(null);
-  const [rawApiResponse, setRawApiResponse] = useState<any>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    console.log('[LinkedInImportForm] handleSubmit triggered');
     event.preventDefault();
-    setError(null);
-    setFetchedProfile(null);
-    setRawApiResponse(null);
     setIsLoading(true);
+    setError(null);
 
     if (!linkedinUrl.trim()) {
-      setError('LinkedIn URL cannot be empty.');
+      setError('LinkedIn Profile URL cannot be empty.');
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('/api/linkedin/import', {
+      const res = await fetch('/api/linkedin/import', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,77 +35,58 @@ export const LinkedInImportForm = ({ onProfileFetched }: LinkedInImportFormProps
         body: JSON.stringify({ linkedinUrl }),
       });
 
-      const result = await response.json() as LinkedInImportApiResponse;
+      const responseData: LinkedInImportApiResponse = await res.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to import LinkedIn profile.');
-      }
-      
-      if (result.data) {
-        setFetchedProfile(result.data);
-        setRawApiResponse(result.rawResponse);
-        // Call the callback to lift the state up if needed for further processing/saving
-        onProfileFetched(result.data, result.rawResponse);
+      if (!res.ok || !responseData.success) {
+        setError(responseData.error || 'Failed to import LinkedIn profile. Status: ' + res.status);
+        onProfileFetched(responseData); 
       } else {
-        throw new Error('No profile data received from API.');
+        onProfileFetched(responseData);
       }
-
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
-      console.error('LinkedIn Import Error:', err);
+    } catch (e: any) {
+      console.error('LinkedIn Import Form Error:', e);
+      setError(e.message || 'An unexpected error occurred while fetching the profile.');
+      onProfileFetched({
+        success: false,
+        error: e.message || 'An unexpected error occurred during fetch operation.',
+        inputLinkedinUrl: linkedinUrl, 
+      });
     }
     setIsLoading(false);
   };
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 }, mt: 2 }}>
-      <Typography variant="h6" gutterBottom>
+    <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
+      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
         Import LinkedIn Profile
       </Typography>
-      <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-        <TextField
-          label="LinkedIn Profile URL"
-          variant="outlined"
-          fullWidth
-          value={linkedinUrl}
-          onChange={(e) => setLinkedinUrl(e.target.value)}
-          required
-          disabled={isLoading}
-          sx={{ mb: 2 }}
-          placeholder="https://www.linkedin.com/in/yourprofile/"
-        />
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Button 
-          type="submit" 
-          variant="contained" 
-          color="primary" 
-          disabled={isLoading}
-          fullWidth
-          sx={{ mb: 2 }}
-        >
-          {isLoading ? <CircularProgress size={24} /> : 'Fetch Profile Data'}
-        </Button>
-      </Box>
-
-      {fetchedProfile && (
-        <Card sx={{ mt: 3 }}>
-          <CardHeader title="Fetched Profile Preview" />
-          <CardContent>
-            <Typography variant="subtitle1"><strong>Name:</strong> {fetchedProfile.full_name || `${fetchedProfile.first_name || ''} ${fetchedProfile.last_name || ''}`.trim() || 'N/A'}</Typography>
-            <Typography variant="subtitle1"><strong>Headline:</strong> {fetchedProfile.headline || 'N/A'}</Typography>
-            <Typography variant="subtitle1"><strong>Location:</strong> {fetchedProfile.location || 'N/A'}</Typography>
-            <Typography variant="body2" sx={{ mt: 1 }}><strong>Summary:</strong> {fetchedProfile.summary || 'N/A'}</Typography>
-            {/* Display more fields as needed for preview */}
-            <Typography variant="caption" display="block" sx={{mt:2}}>Poll Date: {new Date().toLocaleDateString()}</Typography>
-            {/* The "Save Contact" button would typically be here or outside this form,
-                and would use `fetchedProfile` and `rawApiResponse` to create the contact and artifact */}
-          </CardContent>
-        </Card>
+      <TextField
+        label="LinkedIn Profile URL"
+        variant="outlined"
+        fullWidth
+        value={linkedinUrl}
+        onChange={(e) => setLinkedinUrl(e.target.value)}
+        required
+        disabled={isLoading}
+        placeholder="https://www.linkedin.com/in/username/"
+        sx={{ mb: 2 }}
+      />
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
       )}
-    </Paper>
+      <Button 
+        type="submit" 
+        variant="contained" 
+        color="primary" 
+        disabled={isLoading}
+        fullWidth
+        startIcon={isLoading ? null : <LinkedInIcon />}
+        sx={{ mb: 2, py: 1.5 }}
+      >
+        {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Import Profile'}
+      </Button>
+    </Box>
   );
 }; 

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImpor
       } catch (e) { /* Ignore parsing error, use statusText */ }
       
       return NextResponse.json(
-        { success: false, error: `Failed to fetch data from LinkedIn API: ${apiError}` }, 
+        { success: false, error: `Failed to fetch data from LinkedIn API: ${apiError}`, rawResponse: responseText, inputLinkedinUrl: linkedinUrl }, 
         { status: response.status }
       );
     }
@@ -71,12 +71,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImpor
     // You might want to validate the structure of 'data' here against RapidLinkedInProfile type
     // or parts of it before returning.
 
-    return NextResponse.json({ success: true, data: data, rawResponse: data }, { status: 200 });
+    return NextResponse.json({ success: true, data: data, rawResponse: data, inputLinkedinUrl: linkedinUrl }, { status: 200 });
 
   } catch (error: any) {
     console.error('Error calling RapidAPI or processing response:', error);
+    // It's important to pass linkedinUrl here as well if the catch block is reached after it's defined.
+    // If the error occurs before linkedinUrl is extracted from the body, it will be undefined.
+    const requestBody = await req.json().catch(() => ({})); // Safely try to parse body again or default
+    const originalUrl = requestBody.linkedinUrl || (typeof linkedinUrl !== 'undefined' ? linkedinUrl : undefined);
     return NextResponse.json(
-      { success: false, error: error.message || 'An unexpected error occurred.' }, 
+      { success: false, error: error.message || 'An unexpected error occurred', inputLinkedinUrl: originalUrl }, 
       { status: 500 }
     );
   }
