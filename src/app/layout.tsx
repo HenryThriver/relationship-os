@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
 import { AuthProvider } from '@/lib/contexts/AuthContext';
+import ThemeRegistry from '@/components/theme/ThemeRegistry'; // Using alias again
+// import ThemeRegistry from '../components/theme/ThemeRegistry'; // Corrected temporary relative import
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,21 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Create MUI theme
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-  typography: {
-    fontFamily: 'var(--font-geist-sans)',
-  },
-});
+// Theme creation is now in ThemeRegistry.tsx
 
 export const metadata: Metadata = {
   title: "Relationship OS",
@@ -46,12 +32,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
+        <ThemeRegistry>
           <AuthProvider>
             {children}
           </AuthProvider>
-        </ThemeProvider>
+        </ThemeRegistry>
       </body>
     </html>
   );

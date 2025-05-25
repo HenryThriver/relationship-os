@@ -1,0 +1,139 @@
+# Connection OS Development Rules
+
+## Tech Stack
+- Next.js 14 with App Router and TypeScript
+- Supabase for database and auth
+- Material-UI (MUI) v5 for components
+- Tailwind CSS for custom styling
+- Zustand for client state management
+- TanStack Query for server state
+
+## Project Structure
+src/
+  app/                    # Next.js app router pages
+    (dashboard)/          # Dashboard layout group
+    globals.css
+    layout.tsx
+    page.tsx
+  components/
+    ui/                   # Reusable UI components
+    features/             # Feature-specific components
+  lib/
+    supabase/            # Supabase client and types
+    utils/               # Utility functions
+    hooks/               # Custom hooks
+    stores/              # Zustand stores
+  types/                 # TypeScript type definitions
+
+## Code Style Preferences
+
+### TypeScript
+- Use strict mode
+- Prefer `interface` over `type` for object shapes
+- Use `type` for unions and primitives
+- Always define return types for functions
+- Use proper generic constraints
+
+### React Patterns
+- Use functional components exclusively
+- Prefer custom hooks for logic extraction
+- Use React.memo() for expensive components
+- Always use proper dependency arrays in useEffect
+
+### Imports
+- Group imports: React, third-party, internal components, utilities
+- Use absolute imports with @ alias for src/
+- Prefer named exports over default exports (except for pages)
+
+### Component Structure
+interface ComponentProps {
+  // Props interface
+}
+
+export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
+  // Hooks at top
+  // Event handlers
+  // Render logic
+  
+  return (
+    // JSX
+  );
+};
+
+### MUI + Tailwind Integration
+- Use MUI components for structure (Box, Container, Typography)
+- Use Tailwind for spacing, sizing, and custom styles
+- Prefer MUI's sx prop over className when using MUI components
+- Use Tailwind classes for layout and spacing
+
+### Database Patterns
+- Use Supabase generated types
+- Create custom hooks for database operations
+- Always handle loading and error states
+- Use optimistic updates where appropriate
+
+### File Naming
+- Components: PascalCase (ContactCard.tsx)
+- Hooks: camelCase starting with 'use' (useContacts.ts)
+- Utilities: camelCase (formatDate.ts)
+- Pages: lowercase with hyphens (contact-details/page.tsx)
+
+### State Management
+- Use Zustand for client-side state that needs to persist across components
+- Use TanStack Query for server state and caching
+- Keep component state local when possible
+- Use proper TypeScript types for all stores
+
+### Error Handling
+- Always wrap API calls in try-catch
+- Use React Error Boundaries for component errors
+- Show user-friendly error messages
+- Log errors for debugging
+
+### Performance
+- Use React.memo for expensive renders
+- Implement proper loading states
+- Use Suspense boundaries where appropriate
+- Optimize images with Next.js Image component
+
+## Supabase Conventions
+- Use Row Level Security (RLS) for all tables
+- Create typed clients using generated types
+- Use real-time subscriptions sparingly
+- Prefer edge functions for complex server logic
+
+## Artifact System Patterns
+- All artifacts must have: timestamp, content, type, contact_id
+- Use discriminated unions for artifact types
+- Create specific interfaces for each artifact type
+- Always validate artifact data before storing
+
+## Loop Management Patterns
+- Loops are special artifacts with status tracking
+- Use enums for loop states: QUEUED, ACTIVE, PENDING, CLOSED
+- Include ownership tracking (whose turn it is)
+- Implement proper state transitions
+
+## Testing Preferences
+- Write unit tests for utilities and hooks
+- Use React Testing Library for component tests
+- Mock Supabase client in tests
+- Test user interactions, not implementation details
+
+## Comments & Documentation
+- Use JSDoc for exported functions
+- Explain business logic with inline comments
+- Document complex algorithms or data transformations
+- Keep comments up-to-date with code changes
+
+## Git Conventions
+- Use conventional commits: feat, fix, docs, style, refactor, test, chore
+- Keep commits small and focused
+- Write descriptive commit messages
+- Use feature branches for new functionality
+
+Remember: 
+- Always prioritize user experience and data privacy
+- Keep the artifact foundation as the core abstraction
+- Build iteratively - start simple and add complexity
+- Focus on the relationship intelligence workflow

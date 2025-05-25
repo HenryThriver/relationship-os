@@ -42,7 +42,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery('(max-width:900px)');
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen);
