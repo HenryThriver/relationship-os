@@ -11,6 +11,9 @@ export type Database = {
     Tables: {
       artifacts: {
         Row: {
+          ai_parsing_status: string | null
+          ai_processing_completed_at: string | null
+          ai_processing_started_at: string | null
           audio_file_path: string | null
           contact_id: string
           content: string
@@ -33,6 +36,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_parsing_status?: string | null
+          ai_processing_completed_at?: string | null
+          ai_processing_started_at?: string | null
           audio_file_path?: string | null
           contact_id: string
           content: string
@@ -55,6 +61,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_parsing_status?: string | null
+          ai_processing_completed_at?: string | null
+          ai_processing_started_at?: string | null
           audio_file_path?: string | null
           contact_id?: string
           content?: string
@@ -100,12 +109,82 @@ export type Database = {
           },
         ]
       }
+      contact_update_suggestions: {
+        Row: {
+          applied_at: string | null
+          artifact_id: string | null
+          confidence_scores: Json | null
+          contact_id: string | null
+          created_at: string | null
+          dismissed_at: string | null
+          field_paths: string[]
+          id: string
+          priority: string | null
+          reviewed_at: string | null
+          status: string | null
+          suggested_updates: Json
+          user_id: string | null
+          user_selections: Json | null
+          viewed_at: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          artifact_id?: string | null
+          confidence_scores?: Json | null
+          contact_id?: string | null
+          created_at?: string | null
+          dismissed_at?: string | null
+          field_paths: string[]
+          id?: string
+          priority?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          suggested_updates: Json
+          user_id?: string | null
+          user_selections?: Json | null
+          viewed_at?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          artifact_id?: string | null
+          confidence_scores?: Json | null
+          contact_id?: string | null
+          created_at?: string | null
+          dismissed_at?: string | null
+          field_paths?: string[]
+          id?: string
+          priority?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          suggested_updates?: Json
+          user_id?: string | null
+          user_selections?: Json | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_update_suggestions_artifact_id_fkey"
+            columns: ["artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_update_suggestions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           company: string | null
           connection_cadence_days: number | null
           created_at: string
           email: string | null
+          field_sources: Json | null
           id: string
           last_interaction_date: string | null
           linkedin_data: Json | null
@@ -125,6 +204,7 @@ export type Database = {
           connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
+          field_sources?: Json | null
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
@@ -144,6 +224,7 @@ export type Database = {
           connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
+          field_sources?: Json | null
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
@@ -212,7 +293,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_decrypted_secret: {
+        Args: { secret_name: string }
+        Returns: string
+      }
     }
     Enums: {
       artifact_type_enum:

@@ -1,16 +1,18 @@
 import type { Database } from '@/lib/supabase/types_db';
 
-// Moved from src/types/index.ts
-export type ArtifactTypeGlobal = Database['public']['Enums']['artifact_type_enum'] | 'pog' | 'ask' | 'voice_memo'; // Add 'pog', 'ask', 'voice_memo'
+// Define all known artifact type string literals for more robust typing
+export type ArtifactTypeEnum = Database['public']['Enums']['artifact_type_enum'];
+export type ExtendedArtifactType = 'pog' | 'ask'; // Types not in the DB enum, handled client-side
+export type ArtifactType = ArtifactTypeEnum | ExtendedArtifactType;
 
 export interface ArtifactGlobal {
   id: string;
-  contact_id: string; // Added, as it's essential for an artifact
-  user_id: string; // Added, for consistency and RLS
-  type: ArtifactTypeGlobal;
-  content: string; // For simple artifacts, or a summary for complex ones
-  metadata?: Record<string, any> | null; // For structured data of complex artifacts
-  timestamp: string; // ISO date string
+  contact_id: string;
+  user_id: string;
+  type: ArtifactType; // Use the more comprehensive ArtifactType
+  content: string; 
+  metadata?: Record<string, any> | null; 
+  timestamp: string; 
   created_at: string;
   updated_at: string;
 }
@@ -84,8 +86,43 @@ export interface VoiceMemoArtifact extends ArtifactGlobal {
   ai_parsing_status?: string | null;
   ai_processing_started_at?: string | null;
   ai_processing_completed_at?: string | null;
-  // content: string; // Inherited from ArtifactGlobal, can be used for a title/note
-  // metadata?: Record<string, any> | null; // Inherited from ArtifactGlobal
+}
+
+// --- Email Artifact --- NEW
+export interface EmailArtifactMetadata {
+  subject?: string;
+  from?: string | string[];
+  to?: string | string[];
+  cc?: string | string[];
+  date_received?: string; // ISO string
+  // content can be the email body summary, full body in a specific field if needed
+}
+export interface EmailArtifact extends ArtifactGlobal {
+  type: 'email';
+  metadata?: EmailArtifactMetadata | null; // Allow null for metadata
+}
+
+// --- Meeting Artifact --- NEW
+export interface MeetingArtifactMetadata {
+  title?: string;
+  attendees?: string[];
+  meeting_date?: string; // ISO string
+  location?: string;
+  // content can be meeting notes summary, full notes in a specific field if needed
+}
+export interface MeetingArtifact extends ArtifactGlobal {
+  type: 'meeting';
+  metadata?: MeetingArtifactMetadata | null; // Allow null for metadata
+}
+
+// --- Note Artifact --- NEW
+export interface NoteArtifactMetadata {
+  title?: string;
+  // content is the note itself
+}
+export interface NoteArtifact extends ArtifactGlobal {
+  type: 'note';
+  metadata?: NoteArtifactMetadata | null; // Allow null for metadata
 }
 
 // Discriminated union for more specific artifact handling
@@ -93,8 +130,10 @@ export type TypedArtifact =
   | LinkedInArtifact
   | POGArtifact
   | AskArtifact
-  | VoiceMemoArtifact // Added VoiceMemoArtifact
-  // Potentially add other specific artifact types here
+  | VoiceMemoArtifact
+  | EmailArtifact     // Added
+  | MeetingArtifact   // Added
+  | NoteArtifact      // Added
   | ArtifactGlobal; // Fallback for generic artifacts
 
 // It might be useful to have types for what's stored in the 'artifacts' table directly
