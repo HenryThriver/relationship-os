@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client'; // Assuming supabase client is here
-import type { Contact, ProfessionalContext, PersonalContext, LinkedInArtifactContent } from '@/types';
+import type { Contact, ProfessionalContext, PersonalContext, LinkedInArtifactContent, ConversationStarters } from '@/types';
+import type { Json } from '@/lib/supabase/types_db'; // Ensure Json is imported if not already
 
 // Placeholder for Supabase API functions. These would typically be in a separate file e.g., src/lib/supabase/contactsApi.ts
 // For demonstration, they are sketched here.
@@ -126,8 +127,11 @@ export const useContactProfile = (contactId: string | null) => {
       if (!contact) throw new Error('Contact data not available for adding conversation starter');
       if (!contactId) throw new Error('Contact ID not available');
 
+      // Cast personal_context (which is Json) to PersonalContext to access its properties
+      const personalCtx = contact.personal_context as PersonalContext | null | undefined;
+      
       // Conversation starters are always within PersonalContext
-      const currentStarters = contact.personal_context?.conversation_starters || {};
+      const currentStarters = personalCtx?.conversation_starters || { personal: [], professional: [] }; // Ensure proper default for ConversationStarters
       const specificTypeStarters = currentStarters[type] || [];
       
       const updates: Partial<PersonalContext> = {
@@ -137,6 +141,8 @@ export const useContactProfile = (contactId: string | null) => {
         }
       };
       
+      // updateContactContext expects Partial<PersonalContext>, which `updates` is.
+      // The actual DB field `personal_context` will be updated with this JSON data.
       return updateContactContext(contactId, 'personal_context', updates);
     },
     onSuccess: () => {

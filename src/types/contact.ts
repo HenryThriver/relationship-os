@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/supabase/types_db';
 import type { ArtifactGlobal, LinkedInArtifactContent } from './artifact'; // Assuming LinkedInArtifactContent is defined here
+import type { Json } from '@/lib/supabase/types_db'; // Import Json type
 
 // ----- Professional Context ----- 
 export interface ProfessionalAchievementItem {
@@ -65,12 +66,13 @@ export interface Contact extends Partial<Database['public']['Tables']['contacts'
   user_id: string;
   created_at: string;
   updated_at: string;
-  name: string; // Assuming name is not nullable
+  name: string | null; // Changed to string | null to match DB nullability
+  profile_photo_url?: string | null; // Explicitly adding, though Partial should cover it
   
-  // JSONB fields, strongly typed
-  professional_context?: ProfessionalContext | null;
-  personal_context?: PersonalContext | null;
-  linkedin_data?: LinkedInArtifactContent | null; // From LinkedInArtifactContent
+  // JSONB fields - use Json type for DB compatibility, cast to specific types when using
+  professional_context?: Json | null;
+  personal_context?: Json | null;
+  linkedin_data?: Json | null; 
 
   // Related data that might be joined or fetched separately
   artifacts?: ArtifactGlobal[] | null; 
