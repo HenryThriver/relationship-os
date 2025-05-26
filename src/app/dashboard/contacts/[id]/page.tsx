@@ -15,57 +15,59 @@ import { QuickAdd } from '@/components/features/contacts/QuickAdd';
 import { useContacts } from '@/lib/hooks/useContacts';
 // Import the global Contact type and other necessary types from @/types
 import type { 
-    Contact as GlobalContact, 
-    ArtifactGlobal, 
-    // ArtifactTypeGlobal, -- Not directly used, PageArtifact uses ArtifactGlobal's type
-    ExperienceItem, // Now imported from @/types
-    EducationItem,  // Now imported from @/types
-    FamilyMember,   // Now imported from @/types
-    GoalItem,       // Now imported from @/types
-    VentureItem     // Now imported from @/types
+    Contact, 
+    ArtifactGlobal,
+    // POGArtifactContent, // Not strictly needed here if we only access status via metadata as any
+    // AskArtifactContent  // Same as above
 } from '@/types';
+// Renamed to avoid potential conflicts, and ensure clarity of origin
+import type { ActionItemStatus as ActionQueuesActionItemStatus } from '@/components/features/contacts/ActionQueues';
 
 // Define a more specific Artifact type for this page, including 'status' for ActionQueues
-export interface PageArtifact extends ArtifactGlobal {
-  status?: ActionItemStatus; 
-}
+// export interface PageArtifact extends ArtifactGlobal { // REMOVE THIS
+//   status?: ActionItemStatus; 
+// }
 
 // Extend the global Contact type for this page-specific data structure
-export interface PageContact extends GlobalContact {
+// export interface PageContact extends GlobalContact { // REMOVE THIS (GlobalContact was the old Contact)
   // Fields that are not part of the core GlobalContact but are used by this page,
   // or fields that need a more specific type on this page.
-  next_meeting?: {
-    title: string;
-    dateTime: string;
-    location: string;
-    platform?: string;
-    agendaItems?: { id: string; text: string; type: 'celebrate' | 'open_thread' | 'new_thread' }[];
-  } | null;
-  userGoal?: string | null;       // For ContactHeader (page-specific UI concern)
-  connectCadence?: string | null; // For ContactHeader (page-specific UI concern)
-  
+//   next_meeting?: {
+//     title: string;
+//     dateTime: string;
+//     location: string;
+//     platform?: string;
+//     agendaItems?: { id:string; text: string; type: 'celebrate' | 'open_thread' | 'new_thread' }[];
+//   } | null;
+//   userGoal?: string | null;       // For ContactHeader (page-specific UI concern) -> move to personal_context.relationship_goal or similar if applicable
+//   connectCadence?: string | null; // For ContactHeader (page-specific UI concern) -> use contact.connection_cadence_days
+
   // Overwrite artifacts from GlobalContact to use PageArtifact for the status field
-  artifacts?: PageArtifact[] | null;
+//   artifacts?: PageArtifact[] | null; // Will use Contact.artifacts which is ArtifactGlobal[]
 
   // For ReciprocityDashboard (these are likely calculated or page-specific state)
-  reciprocityBalance?: number;
-  relationshipHealth?: number;
-  reciprocityStatus?: 'balanced' | 'over-giving' | 'under-giving' | 'neutral';
-  recentExchanges?: ExchangeItem[]; 
-  outstandingCommitments?: { id: string; text: string }[];
+  // These fields are not on the new Contact type. They might be derived or fetched separately.
+  // For now, assuming they will be handled by ReciprocityDashboard or a separate hook.
+//   reciprocityBalance?: number;
+//   relationshipHealth?: number;
+//   reciprocityStatus?: 'balanced' | 'over-giving' | 'under-giving' | 'neutral';
+//   recentExchanges?: ExchangeItem[]; 
+//   outstandingCommitments?: { id: string; text: string }[];
 
   // experience, education, about, personalInterests, professionalExpertise, conversationStarters, 
-  // familyMembers, hisGoals, currentVentures, keySkills are now inherited from GlobalContact.
-}
+  // familyMembers, hisGoals, currentVentures, keySkills are now inherited from GlobalContact. -> These are in professional_context / personal_context
+// }
 
 interface ContactProfilePageProps {}
 
 const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const params = useParams();
   const contactId = params.id as string;
-  const { getContactById } = useContacts();
+  // TODO: Replace useContacts().getContactById if a new hook like useContactProfile(contactId) is created
+  // For now, assuming getContactById will return data compatible with the new Contact structure or will be updated.
+  const { getContactById } = useContacts(); 
 
-  const [contact, setContact] = React.useState<PageContact | null>(null);
+  const [contact, setContact] = React.useState<Contact | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -74,7 +76,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       setIsLoading(true);
       getContactById(contactId)
         .then(data => {
-          setContact(data as PageContact | null); 
+          // Assuming data is compatible with the new Contact structure.
+          // If getContactById returns the old structure, a mapping function will be needed here.
+          setContact(data as Contact | null); 
           setIsLoading(false);
         })
         .catch(err => {
@@ -97,21 +101,30 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     return <Container sx={{ py: 4 }}><Alert severity="warning">Contact not found.</Alert></Container>;
   }
 
-  const pogs = contact.artifacts?.filter(art => art.type === 'pog').map(art => ({
-    id: art.id,
-    content: art.content,
-    timestamp: art.timestamp,
-    status: art.status || 'queued',
-    type: 'pog' as const,
-  })) || [];
+  interface ActionItemLike {
+    id: string;
+    content: string;
+    status: ActionQueuesActionItemStatus;
+    type: 'pog' | 'ask';
+  }
   
-  const asks = contact.artifacts?.filter(art => art.type === 'ask').map(art => ({
-    id: art.id,
-    content: art.content,
-    timestamp: art.timestamp,
-    status: art.status || 'queued',
-    type: 'ask' as const,
-  })) || [];
+  const pogs: ActionItemLike[] = contact.artifacts
+    ?.filter(art => art.type === 'pog')
+    .map((art: ArtifactGlobal): ActionItemLike => ({
+      id: art.id,
+      content: art.content, 
+      status: (art.metadata as any)?.status || 'queued', 
+      type: 'pog' as const,
+    })) || [];
+  
+  const asks: ActionItemLike[] = contact.artifacts
+    ?.filter(art => art.type === 'ask')
+    .map((art: ArtifactGlobal): ActionItemLike => ({
+      id: art.id,
+      content: art.content, 
+      status: (art.metadata as any)?.status || 'queued', 
+      type: 'ask' as const,
+    })) || [];
 
   const handleRecordNote = () => console.log('Record Note clicked');
   const handleSendPOG = () => console.log('Send POG clicked');
@@ -132,8 +145,10 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           location={contact.location}
           profilePhotoUrl={contact.profile_photo_url}
           relationshipScore={contact.relationship_score}
-          userGoal={contact.userGoal} 
-          connectCadence={contact.connectCadence}
+          // userGoal={contact.userGoal} -> Example: contact.personal_context?.relationship_goal
+          userGoal={contact.personal_context?.relationship_goal} 
+          // connectCadence={contact.connectCadence} -> Example: `Every ${contact.connection_cadence_days} days`
+          connectCadence={contact.connection_cadence_days ? `Connect every ${contact.connection_cadence_days} days` : undefined}
         onRecordNote={handleRecordNote}
         onSendPOG={handleSendPOG}
         onScheduleConnect={handleScheduleConnect}
@@ -142,7 +157,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
         <Box sx={{ flexGrow: 1, flexBasis: { md: '66%' }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <NextConnection meeting={contact.next_meeting} />
+      <NextConnection meeting={undefined /* Placeholder: contact.next_meeting no longer on Contact type */} />
       <ActionQueues 
             pogs={pogs}
             asks={asks}
@@ -150,16 +165,17 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         onBrainstormPogs={handleBrainstormPogs}
       />
       <ReciprocityDashboard 
-            balance={contact.reciprocityBalance}
-            healthIndex={contact.relationshipHealth}
-            status={contact.reciprocityStatus}
-            recentExchanges={contact.recentExchanges}
-            outstandingCommitments={contact.outstandingCommitments}
+            balance={undefined /* Placeholder: contact.reciprocityBalance no longer on Contact type */}
+            healthIndex={undefined /* Placeholder: contact.relationshipHealth no longer on Contact type */}
+            status={undefined /* Placeholder: contact.reciprocityStatus no longer on Contact type */}
+            recentExchanges={undefined /* Placeholder: contact.recentExchanges no longer on Contact type */}
+            outstandingCommitments={undefined /* Placeholder: contact.outstandingCommitments no longer on Contact type */}
           />
         </Box>
 
         <Box sx={{ flexGrow: 1, flexBasis: { md: '33%' } }}>
-          {/* Pass contact directly, ContextSections will destructure what it needs based on its ContextData type, which should align with GlobalContact fields */}
+          {/* Pass contact directly, ContextSections will destructure what it needs.
+              It will need to be updated to use contact.professional_context and contact.personal_context */}
           <ContextSections contactData={contact} /> 
         </Box>
       </Box>
