@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'; // Ensures the page is always dynamicall
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItemText, ListItemButton } from '@mui/material';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { default as nextDynamic } from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
@@ -85,6 +85,8 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const contactId = params.id as string;
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
@@ -118,6 +120,27 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     getProcessingStatus,
     getProcessingDuration
   } = useVoiceMemos({ contact_id: contactId });
+
+  // Effect to handle opening VoiceMemoDetailModal based on URL query params
+  useEffect(() => {
+    const artifactIdFromQuery = searchParams.get('artifactView');
+    const artifactTypeFromQuery = searchParams.get('artifactType');
+
+    if (artifactTypeFromQuery === 'voice_memo' && artifactIdFromQuery && voiceMemos.length > 0) {
+      const memoToOpen = voiceMemos.find(memo => memo.id === artifactIdFromQuery);
+      if (memoToOpen && !isVoiceMemoDetailModalOpen) {
+        setSelectedVoiceMemoForDetail(memoToOpen);
+        setIsVoiceMemoDetailModalOpen(true);
+        
+        // Clean up URL params after opening modal
+        const currentPathname = window.location.pathname;
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete('artifactView');
+        newSearchParams.delete('artifactType');
+        router.replace(`${currentPathname}?${newSearchParams.toString()}`, { scroll: false });
+      }
+    }
+  }, [searchParams, voiceMemos, router, isVoiceMemoDetailModalOpen]);
 
   // Instantiate useUpdateSuggestions hook
   const {
@@ -301,9 +324,19 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const handleCloseVoiceMemoDetailModal = useCallback(() => {
     setSelectedVoiceMemoForDetail(null);
     setIsVoiceMemoDetailModalOpen(false);
-    setPlayingAudioUrl(null); // Clear audio when modal closes
+    setPlayingAudioUrl(null); 
     setAudioPlaybackError(null);
-  }, []);
+
+    // Also ensure URL params are cleared if modal is closed manually
+    const artifactIdFromQuery = searchParams.get('artifactView');
+    if (artifactIdFromQuery) {
+      const currentPathname = window.location.pathname;
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('artifactView');
+      newSearchParams.delete('artifactType');
+      router.replace(`${currentPathname}?${newSearchParams.toString()}`, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleDeleteVoiceMemo = useCallback(async (artifactId: string) => {
     if (!selectedVoiceMemoForDetail) {
@@ -433,24 +466,23 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4, backgroundColor: '#f3f4f6' }}>
+    <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
+      {/* Sticky Header Area */}
       <Box sx={{ position: 'sticky', top: { xs: 56, sm: 64, md: 0 }, zIndex: 10, backgroundColor: '#f3f4f6', pb: 1, mb:1 }}>
         <ContactHeader 
-          name={contact.name}
-          title={contact.title}
-          company={contact.company}
-          location={contact.location}
-          profilePhotoUrl={contact.profile_photo_url}
-          relationshipScore={contact.relationship_score}
-          userGoal={personalContextForHeader?.relationship_goal}
-          connectCadence={connectCadenceText}
-          pendingSuggestions={pendingCount}
-          suggestionPriority={suggestionPriority}
-          hasNewSuggestions={hasNewSuggestions}
-          onViewSuggestions={handleViewSuggestions}
-          onRecordNote={handleRecordNote}
-          onSendPOG={handleSendPOG}
-          onScheduleConnect={handleScheduleConnect}
+           name={contact.name || 'Unnamed Contact'} 
+            title={contact.title}
+            company={contact.company}
+            profilePhotoUrl={contact.profile_photo_url}
+            connectDate={contact.last_contacted_date ? new Date(contact.last_contacted_date) : undefined}
+            connectCadence={connectCadenceText}
+            suggestionCount={pendingCount}
+            suggestionPriority={suggestionPriority}
+            onRecordNote={handleRecordNote}
+            onSendPOG={handleSendPOG}
+            onScheduleConnect={handleScheduleConnect}
+            onViewSuggestions={handleViewSuggestions}
+            personalContext={personalContextForHeader}
         />
         {/* Ensure ProcessingStatusBar is used if processingCount > 0 */}
         {processingCount > 0 && (
@@ -513,25 +545,34 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             )}
             {!isLoadingVoiceMemos && !isVoiceMemosError && voiceMemos.length > 0 && (
               <List dense>
-                {voiceMemos.map((memo: VoiceMemoArtifact) => {
-                  const processingInfo = getProcessingStatus(memo.id);
+                {voiceMemos.map((memo) => {
+                  const memoProcessingStatus = getProcessingStatus(memo.id);
                   return (
-                    <ListItemButton 
-                      key={memo.id} 
-                      onClick={() => handleOpenVoiceMemoDetailModal(memo)}
-                      divider
-                    >
-                      <ListItemText 
-                        primary={`Recorded: ${new Date(memo.created_at).toLocaleString()}`}
+                    <ListItemButton key={memo.id} onClick={() => handleOpenVoiceMemoDetailModal(memo)} divider>
+                      <ListItemText
+                        primary={`Voice Memo - ${new Date(memo.created_at).toLocaleDateString()}`}
                         secondary={
-                          <ProcessingIndicator
-                            status={processingInfo.status}
-                            startTime={processingInfo.startedAt || undefined}
-                            showTimer={true}
-                            compact={true}
-                            message={processingInfo.status === 'completed' ? 'Completed' : processingInfo.status === 'failed' ? 'Failed' : processingInfo.status === 'processing' ? 'Processing...' : 'Pending'}
-                          />
+                          memo.transcription_status === 'pending' ? (
+                            'Transcription pending...'
+                          ) : memoProcessingStatus.status === 'processing' ? (
+                            <ProcessingIndicator
+                              status="processing"
+                              startTime={memoProcessingStatus.startedAt || undefined}
+                              showTimer={true}
+                              compact
+                              message={`Processing... (${Math.round(getProcessingDuration(memo.id) / 1000)}s)`}
+                            />
+                          ) : memoProcessingStatus.status === 'completed' ? (
+                            `Analyzed: ${memo.transcription ? memo.transcription.substring(0, 30) + '...' : 'View details.'}`
+                          ) : memoProcessingStatus.status === 'failed' ? (
+                            <ProcessingIndicator status="failed" compact message="Processing failed. Click to view." />
+                          ) : memo.transcription_status === 'completed' && memo.ai_parsing_status === 'pending' ? ( 
+                             'AI analysis pending...'
+                          ) : (
+                            'Status unknown. Click to view.'
+                          )
                         }
+                        secondaryTypographyProps={{ component: 'div' }}
                       />
                     </ListItemButton>
                   );
@@ -550,7 +591,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         </Box>
 
         <Box sx={{ flexGrow: 1, flexBasis: { md: '33%' } }}>
-          <ContextSections contactData={contact} /> 
+          <ContextSections contactData={contact} contactId={contactId} /> 
         </Box>
       </Box>
       

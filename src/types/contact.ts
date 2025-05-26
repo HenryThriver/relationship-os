@@ -94,7 +94,7 @@ export interface PersonalContext {
   hobbies?: string[];
   travel_plans?: string[];
   motivations?: string[];
-  education?: string[];
+  education?: string[] | string;
 }
 
 // ----- Core Contact Type ----- 
@@ -111,6 +111,15 @@ export interface Contact extends Partial<Database['public']['Tables']['contacts'
   professional_context?: Json | null;
   personal_context?: Json | null;
   linkedin_data?: Json | null; 
+  field_sources?: FieldSources | Json | null; // Updated to allow FieldSources type or fallback to Json
+
+  // Add fields that might be causing issues with Partial<DBContactRow> resolution
+  title?: string | null;
+  company?: string | null;
+  last_contacted_date?: string | null;
+  connection_cadence_days?: number | null;
+  // location?: string | null; // if needed
+  // relationship_score?: number | null; // if needed
 
   // Related data that might be joined or fetched separately
   artifacts?: ArtifactGlobal[] | null; 
@@ -143,4 +152,9 @@ export interface NextConnection {
   status: 'scheduled' | 'completed' | 'cancelled' | 'pending_reschedule'; // Example statuses
   created_at: string;
   updated_at: string;
-} 
+}
+
+// ----- FieldSources Type ----- NEW
+export type FieldSources = {
+  [fieldPath: string]: string; // Maps a field path (e.g., "personal_context.name") to an artifact_id
+}; 
