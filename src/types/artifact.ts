@@ -1,7 +1,7 @@
 import type { Database } from '@/lib/supabase/types_db';
 
 // Moved from src/types/index.ts
-export type ArtifactTypeGlobal = Database['public']['Enums']['artifact_type_enum'] | 'pog' | 'ask'; // Add 'pog' and 'ask' if they are not in the DB enum yet
+export type ArtifactTypeGlobal = Database['public']['Enums']['artifact_type_enum'] | 'pog' | 'ask' | 'voice_memo'; // Add 'pog', 'ask', 'voice_memo'
 
 export interface ArtifactGlobal {
   id: string;
@@ -72,11 +72,25 @@ export interface AskArtifact extends ArtifactGlobal {
   metadata: AskArtifactContent;
 }
 
+// --- Voice Memo Artifact ---
+export type TranscriptionStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface VoiceMemoArtifact extends ArtifactGlobal {
+  type: 'voice_memo';
+  audio_file_path: string;
+  transcription?: string | null;
+  duration_seconds?: number | null;
+  transcription_status: TranscriptionStatus;
+  // content: string; // Inherited from ArtifactGlobal, can be used for a title/note
+  // metadata?: Record<string, any> | null; // Inherited from ArtifactGlobal
+}
+
 // Discriminated union for more specific artifact handling
 export type TypedArtifact =
   | LinkedInArtifact
   | POGArtifact
   | AskArtifact
+  | VoiceMemoArtifact // Added VoiceMemoArtifact
   // Potentially add other specific artifact types here
   | ArtifactGlobal; // Fallback for generic artifacts
 

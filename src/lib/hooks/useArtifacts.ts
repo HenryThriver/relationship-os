@@ -9,6 +9,12 @@ export type Artifact = Database['public']['Tables']['artifacts']['Row'];
 
 const ARTIFACTS_TABLE = 'artifacts';
 
+// Argument type for the delete mutation, including contact_id for optimistic updates
+interface DeleteArtifactParams {
+  id: string;
+  contactId?: string | null; // Optional: contact_id for precise cache updates
+}
+
 export const useArtifacts = () => {
   const queryClient = useQueryClient();
 
@@ -37,23 +43,97 @@ export const useArtifacts = () => {
   const createArtifactMutation = useMutation<Artifact, Error, NewArtifact>({
     mutationFn: createArtifactDB,
     onSuccess: (newArtifactData) => {
-      // Invalidate queries related to artifacts, e.g., a list of artifacts for a contact
-      queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, { contact_id: newArtifactData.contact_id }] });
-      queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE] }); // Or a more general invalidation
-      
-      // Optionally, update the cache directly
-      // queryClient.setQueryData([ARTIFACTS_TABLE, { contact_id: newArtifactData.contact_id }], (oldData: Artifact[] | undefined) => [...(oldData || []), newArtifactData]);
+      // Invalidate queries related to artifacts for a contact
+      if (newArtifactData.contact_id) {
+        queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, { contact_id: newArtifactData.contact_id }] });
+      }
+      // Invalidate any general artifact lists if you have them
+      queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, 'list'] }); // Example general list key
+      queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE]}); // Broader invalidation
     },
     onError: (error) => {
       console.error('Mutation error creating artifact:', error);
-      // Potentially show a user-facing error notification here
     }
+  });
+
+  // Delete an artifact
+  const deleteArtifactDB = async (artifactId: string): Promise<void> => {
+    const response = await fetch(`/api/artifacts/${artifactId}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: `Failed to delete artifact. Status: ${response.status}` }));
+      // Include code from errorData if available, for specific handling like 409 ARTIFACT_IS_SOURCE
+      const err = new Error(errorData.message || `Failed to delete artifact. Status: ${response.status}`);
+      (err as any).code = errorData.code; // Attach the specific error code if present
+      throw err;
+    }
+    // For 204 No Content, there is no body to parse
+    if (response.status === 204) {
+        return;
+    }
+    // Should not happen for a 204, but as a safeguard
+    const data = await response.json(); 
+    return data;
+  };
+
+  const deleteArtifactMutation = useMutation<
+    void, 
+    Error, 
+    DeleteArtifactParams, 
+    { previousArtifactsForContact?: Artifact[], contactId?: string | null }
+  >({
+    mutationFn: (params: DeleteArtifactParams) => deleteArtifactDB(params.id),
+    onMutate: async ({ id: deletedArtifactId, contactId }) => {
+      await queryClient.cancelQueries({ queryKey: [ARTIFACTS_TABLE, { contact_id: contactId }] });
+      await queryClient.cancelQueries({ queryKey: [ARTIFACTS_TABLE, 'list'] }); // Cancel general lists too
+      await queryClient.cancelQueries({ queryKey: [ARTIFACTS_TABLE, 'detail', deletedArtifactId]});
+
+      let previousArtifactsForContact: Artifact[] | undefined;
+
+      if (contactId) {
+        previousArtifactsForContact = queryClient.getQueryData<Artifact[]>([ARTIFACTS_TABLE, { contact_id: contactId }]);
+        if (previousArtifactsForContact) {
+          queryClient.setQueryData<Artifact[]>(
+            [ARTIFACTS_TABLE, { contact_id: contactId }],
+            previousArtifactsForContact.filter(artifact => artifact.id !== deletedArtifactId)
+          );
+        }
+      }
+      // It's harder to optimistically update a general 'list' without knowing its exact structure or filters.
+      // Relying on invalidation for general lists is often more practical.
+
+      return { previousArtifactsForContact, contactId };
+    },
+    onError: (err, variables, context) => {
+      console.error('Error deleting artifact:', err);
+      if (context?.previousArtifactsForContact && context.contactId) {
+        queryClient.setQueryData([ARTIFACTS_TABLE, { contact_id: context.contactId }], context.previousArtifactsForContact);
+      }
+      // If err has a specific code like ARTIFACT_IS_SOURCE, the UI can use it for specific messaging.
+      // Example: if ((err as any).code === 'ARTIFACT_IS_SOURCE') { /* show specific message */ }
+    },
+    onSettled: (data, error, { id: deletedArtifactId, contactId }) => {
+      // Invalidate all queries related to artifacts to ensure data consistency
+      if (contactId) {
+        queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, { contact_id: contactId }] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, 'list'] });
+      queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE] }); // Broadest invalidation as a fallback
+
+      // Remove the specific artifact detail query from cache if it exists
+      queryClient.removeQueries({ queryKey: [ARTIFACTS_TABLE, 'detail', deletedArtifactId] });
+    },
   });
 
   return {
     createArtifact: createArtifactMutation.mutateAsync,
     isCreatingArtifact: createArtifactMutation.isPending,
     createArtifactError: createArtifactMutation.error,
-    // Add functions for fetching/updating/deleting artifacts here later if needed
+
+    deleteArtifact: deleteArtifactMutation.mutateAsync,
+    isDeletingArtifact: deleteArtifactMutation.isPending,
+    deleteArtifactError: deleteArtifactMutation.error,
   };
 }; 

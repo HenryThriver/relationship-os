@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Paper, List, ListItem, ListItemText, Button, Chip } from '@mui/material';
-import { ArtifactType } from '@/app/dashboard/contacts/[id]/page'; // Assuming types are exported from page for now
+// import { ArtifactType } from '@/app/dashboard/contacts/[id]/page'; // Removed problematic import
 
 // This will evolve to LoopStatus and more detailed item structure
 export type ActionItemStatus = 'queued' | 'active' | 'pending' | 'closed' | 'brainstorm'; 
@@ -9,7 +9,7 @@ interface ActionItem {
   id: string;
   content: string;
   status: ActionItemStatus;
-  type: Extract<ArtifactType, 'pog' | 'ask'>;
+  type: 'pog' | 'ask'; // Directly use the specific union type needed here
 }
 
 interface ActionQueuesProps {
