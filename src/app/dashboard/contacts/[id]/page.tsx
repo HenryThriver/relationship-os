@@ -2,9 +2,8 @@
 
 export const dynamic = 'force-dynamic'; // Ensures the page is always dynamically rendered
 
-import React, { useState, useEffect } from 'react';
-import { Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItem, ListItemText, IconButton, ListItemButton } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItemText, ListItemButton } from '@mui/material';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { default as nextDynamic } from 'next/dynamic';
@@ -14,7 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ContactHeader } from '@/components/features/contacts/ContactHeader';
 import { NextConnection } from '@/components/features/contacts/NextConnection';
 import { ActionQueues, ActionItemStatus as ActionQueuesActionItemStatus } from '@/components/features/contacts/ActionQueues';
-import { ReciprocityDashboard, ExchangeItem } from '@/components/features/contacts/ReciprocityDashboard';
+import { ReciprocityDashboard } from '@/components/features/contacts/ReciprocityDashboard';
 import { ContextSections } from '@/components/features/contacts/ContextSections';
 import { QuickAdd } from '@/components/features/contacts/QuickAdd';
 
@@ -27,8 +26,8 @@ const VoiceRecorder = nextDynamic(() =>
   }
 );
 
-// Import UpdateSuggestionsModal
-import { UpdateSuggestionsModal } from '@/components/features/voice/UpdateSuggestionsModal';
+// Import new suggestion components
+import { SuggestionsPanel } from '@/components/features/suggestions/SuggestionsPanel';
 // Placeholder for the new VoiceMemoDetailModal
 import { VoiceMemoDetailModal } from '@/components/features/voice/VoiceMemoDetailModal'; // Uncommented
 
@@ -38,9 +37,7 @@ import { useVoiceMemos } from '@/lib/hooks/useVoiceMemos';
 // Import useUpdateSuggestions hook
 import { useUpdateSuggestions } from '@/lib/hooks/useUpdateSuggestions';
 import { useArtifacts } from '@/lib/hooks/useArtifacts';
-import { Database } from '@/lib/supabase/types_db';
 import type { 
-    Contact, 
     ArtifactGlobal,
     POGArtifactContent,
     AskArtifactContent,
@@ -50,7 +47,9 @@ import type {
     VoiceMemoArtifact
 } from '@/types';
 
-interface ContactProfilePageProps {}
+interface ContactProfilePageProps {
+  // Empty interface for future props
+}
 
 const mapPOGStatusToActionQueueStatus = (pogStatus?: POGArtifactContentStatus): ActionQueuesActionItemStatus => {
   if (!pogStatus) return 'queued';
@@ -91,7 +90,8 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
   // Add loading states for modal actions
   const [isReprocessingMemo, setIsReprocessingMemo] = useState(false);
-  const [deleteErrorAlert, setDeleteErrorAlert] = useState<string | null>(null);
+
+  const [hasNewSuggestions, setHasNewSuggestions] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -115,98 +115,115 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     suggestions,
     isLoading: isLoadingSuggestions,
     fetchError: suggestionsError,
-    showModal: showSuggestionsModal,
-    setShowModal: setShowSuggestionsModal,
-    applySuggestion,
-    isApplyingSuggestion,
-    rejectSuggestion,
-    isRejectingSuggestion,
+    pendingCount,
+    highConfidenceCount,
+    markAsViewed,
+    bulkApply,
+    bulkReject,
+    isBulkProcessing,
   } = useUpdateSuggestions({ contactId });
+
+  // State for suggestions panel
+  const [suggestionsPanelOpen, setSuggestionsPanelOpen] = useState(false);
 
   const {
     deleteArtifact,
     isDeletingArtifact,
   } = useArtifacts();
 
-  const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions;
+  // Memoize computed values to prevent re-renders
+  const suggestionPriority = useMemo(() => {
+    return highConfidenceCount > 0 ? 'high' : 'medium';
+  }, [highConfidenceCount]);
 
-  if (isLoading) {
-    return <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Container>;
-  }
+  const personalContextForHeader = useMemo(() => {
+    return contact?.personal_context 
+      ? contact.personal_context as PersonalContextType 
+      : undefined;
+  }, [contact?.personal_context]);
 
-  if (contactError) {
-    return <Container sx={{ py: 4 }}><Alert severity="error">{contactError.message || "Failed to load contact information."}</Alert></Container>;
-  }
+  const connectCadenceText = useMemo(() => {
+    return contact?.connection_cadence_days 
+      ? `Connect every ${contact.connection_cadence_days} days` 
+      : undefined;
+  }, [contact?.connection_cadence_days]);
 
-  if (suggestionsError) {
-    console.error("Error fetching suggestions:", suggestionsError);
-  }
+  // Use useCallback for event handlers to prevent re-renders
+  const handleViewSuggestions = useCallback(() => {
+    setSuggestionsPanelOpen(true);
+  }, []);
 
-  if (!contact) {
-    return <Container sx={{ py: 4 }}><Alert severity="warning">Contact not found.</Alert></Container>;
-  }
+  const handleCloseSuggestionsPanel = useCallback(() => {
+    setSuggestionsPanelOpen(false);
+  }, []);
 
-  const personalContextForHeader = contact.personal_context 
-    ? contact.personal_context as PersonalContextType 
-    : undefined;
-  
-  // Find the first pending suggestion record to display in the modal
-  const currentSuggestionRecord = suggestions.find(s => s.status === 'pending');
+  const handleRecordNote = useCallback(() => {
+    console.log('Record Note clicked');
+  }, []);
 
-  interface ActionItemLike {
-    id: string;
-    content: string;
-    status: ActionQueuesActionItemStatus;
-    type: 'pog' | 'ask';
-  }
-  
-  const pogs: ActionItemLike[] = contact.artifacts
-    ?.filter(art => art.type === 'pog')
-    .map((art: ArtifactGlobal): ActionItemLike => {
-      const metadata = art.metadata as POGArtifactContent | undefined;
-      return {
-        id: art.id,
-        content: metadata?.description || art.content,
-        status: mapPOGStatusToActionQueueStatus(metadata?.status),
-        type: 'pog' as const,
-      };
-    }) || [];
-  
-  const asks: ActionItemLike[] = contact.artifacts
-    ?.filter(art => art.type === 'ask')
-    .map((art: ArtifactGlobal): ActionItemLike => {
-      const metadata = art.metadata as AskArtifactContent | undefined;
-      return {
-        id: art.id,
-        content: metadata?.request_description || art.content,
-        status: mapAskStatusToActionQueueStatus(metadata?.status),
-        type: 'ask' as const,
-      };
-    }) || [];
+  const handleSendPOG = useCallback(() => {
+    console.log('Send POG clicked');
+  }, []);
 
-  const handleRecordNote = () => console.log('Record Note clicked');
-  const handleSendPOG = () => console.log('Send POG clicked');
-  const handleScheduleConnect = () => console.log('Schedule Connect clicked');
-  const handleUpdateStatus = (itemId: string, newStatus: ActionQueuesActionItemStatus, type: 'pog' | 'ask') => {
+  const handleScheduleConnect = useCallback(() => {
+    console.log('Schedule Connect clicked');
+  }, []);
+
+  const handleUpdateStatus = useCallback((itemId: string, newStatus: ActionQueuesActionItemStatus, type: 'pog' | 'ask') => {
     console.log(`Update ${type} item ${itemId} to ${newStatus}`);
-  };
-  const handleBrainstormPogs = () => console.log('Brainstorm POGs clicked');
-  const handleQuickAdd = (type: string) => console.log(`Quick Add ${type} clicked`);
+  }, []);
 
-  const handleVoiceRecordingComplete = (artifact: any) => {
+  const handleBrainstormPogs = useCallback(() => {
+    console.log('Brainstorm POGs clicked');
+  }, []);
+
+  const handleQuickAdd = useCallback((type: string) => {
+    console.log(`Quick Add ${type} clicked`);
+  }, []);
+
+  const handleQuickAddNote = useCallback(() => handleQuickAdd('note'), [handleQuickAdd]);
+  const handleQuickAddMeeting = useCallback(() => handleQuickAdd('meeting'), [handleQuickAdd]);
+  const handleQuickAddPOG = useCallback(() => handleQuickAdd('POG'), [handleQuickAdd]);
+  const handleQuickAddAsk = useCallback(() => handleQuickAdd('Ask'), [handleQuickAdd]);
+  const handleQuickAddMilestone = useCallback(() => handleQuickAdd('milestone'), [handleQuickAdd]);
+
+  const handleApplySuggestions = useCallback(async (suggestionIds: string[], selectedPathsMap: Record<string, string[]>) => {
+    await bulkApply({ suggestionIds, selectedPathsMap });
+    handleCloseSuggestionsPanel();
+  }, [bulkApply, handleCloseSuggestionsPanel]);
+
+  const handleRejectSuggestions = useCallback(async (suggestionIds: string[]) => {
+    await bulkReject({ suggestionIds });
+    handleCloseSuggestionsPanel();
+  }, [bulkReject, handleCloseSuggestionsPanel]);
+
+  const handleMarkAsViewed = useCallback(async (suggestionId: string) => {
+    await markAsViewed({ suggestionId });
+  }, [markAsViewed]);
+
+  const handleAudioEnded = useCallback(() => {
+    setPlayingAudioUrl(null);
+  }, []);
+
+  const handleAudioError = useCallback(() => {
+    setAudioPlaybackError('Error playing audio.');
+    setPlayingAudioUrl(null);
+  }, []);
+
+  const handleVoiceRecordingComplete = useCallback((artifact: any) => {
     console.log('Voice memo created and processing started:', artifact);
     queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
     queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] });
-  };
+  }, [queryClient, contactId]);
 
-  const handleVoiceMemoError = (error: string) => {
+  const handleVoiceMemoError = useCallback((error: string) => {
     console.error('Voice memo recording/upload error:', error);
     // Show error notification to user, e.g., using a toast library
     // The component itself shows an error alert.
-  };
+  }, []);
 
   // This function will be passed to and used by the VoiceMemoDetailModal
-  const playAudioFromModal = async (audioFilePath: string) => {
+  const playAudioFromModal = useCallback(async (audioFilePath: string) => {
     setAudioPlaybackError(null);
     setPlayingAudioUrl(null); // Reset any existing playback
     try {
@@ -226,29 +243,64 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       setAudioPlaybackError(e.message || 'Could not play audio.');
       throw e; // Re-throw for modal to handle
     }
-  };
+  }, []);
+
+  interface ActionItemLike {
+    id: string;
+    content: string;
+    status: ActionQueuesActionItemStatus;
+    type: 'pog' | 'ask';
+  }
   
-  const handleOpenVoiceMemoDetailModal = (memo: VoiceMemoArtifact) => {
+  const pogs: ActionItemLike[] = useMemo(() => {
+    if (!contact?.artifacts) return [];
+    return contact.artifacts
+      .filter(art => art.type === 'pog')
+      .map((art: ArtifactGlobal): ActionItemLike => {
+        const metadata = art.metadata as POGArtifactContent | undefined;
+        return {
+          id: art.id,
+          content: metadata?.description || art.content,
+          status: mapPOGStatusToActionQueueStatus(metadata?.status),
+          type: 'pog' as const,
+        };
+      });
+  }, [contact?.artifacts]);
+  
+  const asks: ActionItemLike[] = useMemo(() => {
+    if (!contact?.artifacts) return [];
+    return contact.artifacts
+      .filter(art => art.type === 'ask')
+      .map((art: ArtifactGlobal): ActionItemLike => {
+        const metadata = art.metadata as AskArtifactContent | undefined;
+        return {
+          id: art.id,
+          content: metadata?.request_description || art.content,
+          status: mapAskStatusToActionQueueStatus(metadata?.status),
+          type: 'ask' as const,
+        };
+      });
+  }, [contact?.artifacts]);
+
+  const handleOpenVoiceMemoDetailModal = useCallback((memo: VoiceMemoArtifact) => {
     setSelectedVoiceMemoForDetail(memo);
     setIsVoiceMemoDetailModalOpen(true);
     setPlayingAudioUrl(null); // Clear any main page audio
     setAudioPlaybackError(null);
-  };
+  }, []);
 
-  const handleCloseVoiceMemoDetailModal = () => {
+  const handleCloseVoiceMemoDetailModal = useCallback(() => {
     setSelectedVoiceMemoForDetail(null);
     setIsVoiceMemoDetailModalOpen(false);
     setPlayingAudioUrl(null); // Clear audio when modal closes
     setAudioPlaybackError(null);
-  };
+  }, []);
 
-  const handleDeleteVoiceMemo = async (artifactId: string) => {
+  const handleDeleteVoiceMemo = useCallback(async (artifactId: string) => {
     if (!selectedVoiceMemoForDetail) {
-      setDeleteErrorAlert('No voice memo selected for deletion.');
+      console.error('No voice memo selected for deletion.');
       return;
     }
-    setDeleteErrorAlert(null);
-
     try {
       await deleteArtifact({
         id: artifactId,
@@ -262,11 +314,11 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       const message = error.code === 'ARTIFACT_IS_SOURCE' 
           ? error.message 
           : 'Failed to delete voice memo. Please try again.';
-      setDeleteErrorAlert(message);
+      setAudioPlaybackError(message);
     }
-  };
+  }, [selectedVoiceMemoForDetail, deleteArtifact, handleCloseVoiceMemoDetailModal, queryClient, contactId]);
 
-  const handleReprocessAi = async (artifactId: string) => {
+  const handleReprocessAi = useCallback(async (artifactId: string) => {
     setIsReprocessingMemo(true);
     setAudioPlaybackError(null);
     try {
@@ -288,7 +340,26 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     } finally {
       setIsReprocessingMemo(false);
     }
-  };
+  }, [queryClient, contactId, handleCloseVoiceMemoDetailModal]);
+
+  // All hooks have been called. Now we can have conditional returns.
+  const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions;
+
+  if (isLoading) {
+    return <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Container>;
+  }
+
+  if (contactError) {
+    return <Container sx={{ py: 4 }}><Alert severity="error">{contactError.message || "Failed to load contact information."}</Alert></Container>;
+  }
+
+  if (suggestionsError) {
+    console.error("Error fetching suggestions:", suggestionsError);
+  }
+
+  if (!contact) {
+    return <Container sx={{ py: 4 }}><Alert severity="warning">Contact not found.</Alert></Container>;
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4, backgroundColor: '#f3f4f6' }}>
@@ -301,12 +372,28 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           profilePhotoUrl={contact.profile_photo_url}
           relationshipScore={contact.relationship_score}
           userGoal={personalContextForHeader?.relationship_goal}
-          connectCadence={contact.connection_cadence_days ? `Connect every ${contact.connection_cadence_days} days` : undefined}
+          connectCadence={connectCadenceText}
+          pendingSuggestions={pendingCount}
+          suggestionPriority={suggestionPriority}
+          hasNewSuggestions={hasNewSuggestions}
+          onViewSuggestions={handleViewSuggestions}
           onRecordNote={handleRecordNote}
           onSendPOG={handleSendPOG}
           onScheduleConnect={handleScheduleConnect}
         />
       </Box>
+
+      {/* Suggestions Panel */}
+      <SuggestionsPanel
+        contactId={contactId}
+        isOpen={suggestionsPanelOpen}
+        onClose={handleCloseSuggestionsPanel}
+        suggestions={suggestions || []}
+        onApplySuggestions={handleApplySuggestions}
+        onRejectSuggestions={handleRejectSuggestions}
+        onMarkAsViewed={handleMarkAsViewed}
+        isLoading={isLoadingSuggestions || isBulkProcessing}
+      />
 
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
         <Box sx={{ flexGrow: 1, flexBasis: { md: '66%' }, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -336,7 +423,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             {audioPlaybackError && <Alert severity="error" sx={{mt: 1}}>{audioPlaybackError}</Alert>}
             {playingAudioUrl && (
               <Box mt={2} mb={1}>
-                <audio controls autoPlay src={playingAudioUrl} onEnded={() => setPlayingAudioUrl(null)} onError={() => {setAudioPlaybackError('Error playing audio.'); setPlayingAudioUrl(null);}}>
+                <audio controls autoPlay src={playingAudioUrl} onEnded={handleAudioEnded} onError={handleAudioError}>
                   Your browser does not support the audio element.
                 </audio>
               </Box>
@@ -377,48 +464,17 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       </Box>
       
       <QuickAdd 
-        onAddNote={() => handleQuickAdd('note')}
-        onAddMeeting={() => handleQuickAdd('meeting')}
-        onAddPOG={() => handleQuickAdd('POG')}
-        onAddAsk={() => handleQuickAdd('Ask')}
-        onAddMilestone={() => handleQuickAdd('milestone')}
+        onAddNote={handleQuickAddNote}
+        onAddMeeting={handleQuickAddMeeting}
+        onAddPOG={handleQuickAddPOG}
+        onAddAsk={handleQuickAddAsk}
+        onAddMilestone={handleQuickAddMilestone}
       />
       <Box sx={{ textAlign: 'center', py: 3, mt: 4, borderTop: 1, borderColor: 'divider'}}>
         <Typography variant="caption" color="text.secondary">
           Data for {contact.name || 'this contact'}. Last updated: {contact.updated_at ? new Date(contact.updated_at).toLocaleDateString() : 'N/A'}
         </Typography>
       </Box>
-
-      {/* Render UpdateSuggestionsModal */}
-      {showSuggestionsModal && currentSuggestionRecord && (
-        <UpdateSuggestionsModal
-          open={showSuggestionsModal}
-          onClose={() => setShowSuggestionsModal(false)}
-          suggestions={currentSuggestionRecord.suggested_updates.suggestions}
-          suggestionRecordId={currentSuggestionRecord.id}
-          contactName={contact.name || 'this contact'}
-          onApprove={async (suggestionRecordId: string, selectedPaths: string[]) => {
-            try {
-              await applySuggestion({ suggestionId: suggestionRecordId, selectedPaths });
-            } catch (error) {
-              console.error("Error applying suggestion:", error);
-            }
-          }}
-          onReject={async (suggestionRecordId: string) => {
-            try {
-              await rejectSuggestion({ suggestionId: suggestionRecordId });
-            } catch (error) {
-              console.error("Error rejecting suggestion:", error);
-            }
-          }}
-          isLoading={isApplyingSuggestion || isRejectingSuggestion} // Combined loading state for modal
-          transcriptionText={
-            currentSuggestionRecord.artifacts?.transcription 
-              ? String(currentSuggestionRecord.artifacts.transcription) 
-              : "Transcription not available."
-          }
-        />
-      )}
 
       {/* Placeholder for VoiceMemoDetailModal - to be created next */}
       {selectedVoiceMemoForDetail && (

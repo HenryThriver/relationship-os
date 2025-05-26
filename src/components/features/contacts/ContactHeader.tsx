@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, Paper, Avatar, Button, Stack, Chip } from '@mui/material';
+import { SuggestionNotificationBadge } from '../suggestions/SuggestionNotificationBadge';
 
 // RQ Bubble Colors (from your HTML example)
 const rqBubbleColors: { [key: number]: { backgroundColor: string; color: string; } } = {
@@ -22,6 +23,11 @@ interface ContactHeaderProps {
   relationshipScore?: number | null;
   userGoal?: string | null;
   connectCadence?: string | null;
+  // Suggestion notification props
+  pendingSuggestions?: number;
+  suggestionPriority?: 'high' | 'medium' | 'low';
+  hasNewSuggestions?: boolean;
+  onViewSuggestions?: () => void;
   // Action handlers - to be implemented
   onRecordNote?: () => void;
   onSendPOG?: () => void;
@@ -37,6 +43,10 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
   relationshipScore,
   userGoal,
   connectCadence,
+  pendingSuggestions = 0,
+  suggestionPriority = 'medium',
+  hasNewSuggestions = false,
+  onViewSuggestions,
   onRecordNote,
   onSendPOG,
   onScheduleConnect,
@@ -114,6 +124,15 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
                         height: 'auto', // to let padding define height
                         padding: '0.3rem 0.75rem',
                     }}
+                />
+              )}
+              {pendingSuggestions > 0 && onViewSuggestions && (
+                <SuggestionNotificationBadge
+                  contactId="" // Will be passed from parent
+                  count={pendingSuggestions}
+                  onClick={onViewSuggestions}
+                  priority={suggestionPriority}
+                  hasNewSuggestions={hasNewSuggestions}
                 />
               )}
             </Box>

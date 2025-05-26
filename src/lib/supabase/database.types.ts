@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       artifacts: {
@@ -110,13 +135,16 @@ export type Database = {
           confidence_scores: Json | null
           contact_id: string | null
           created_at: string | null
+          dismissed_at: string | null
           field_paths: string[]
           id: string
+          priority: string | null
           reviewed_at: string | null
           status: string | null
           suggested_updates: Json
           user_id: string | null
           user_selections: Json | null
+          viewed_at: string | null
         }
         Insert: {
           applied_at?: string | null
@@ -124,13 +152,16 @@ export type Database = {
           confidence_scores?: Json | null
           contact_id?: string | null
           created_at?: string | null
+          dismissed_at?: string | null
           field_paths: string[]
           id?: string
+          priority?: string | null
           reviewed_at?: string | null
           status?: string | null
           suggested_updates: Json
           user_id?: string | null
           user_selections?: Json | null
+          viewed_at?: string | null
         }
         Update: {
           applied_at?: string | null
@@ -138,13 +169,16 @@ export type Database = {
           confidence_scores?: Json | null
           contact_id?: string | null
           created_at?: string | null
+          dismissed_at?: string | null
           field_paths?: string[]
           id?: string
+          priority?: string | null
           reviewed_at?: string | null
           status?: string | null
           suggested_updates?: Json
           user_id?: string | null
           user_selections?: Json | null
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -411,6 +445,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       artifact_type_enum: [

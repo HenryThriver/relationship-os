@@ -22,6 +22,9 @@ export interface UpdateSuggestionRecord {
   created_at: string;
   reviewed_at?: string;
   applied_at?: string;
+  viewed_at?: string; // New: When user viewed the suggestions
+  priority?: 'high' | 'medium' | 'low'; // New: Priority level
+  dismissed_at?: string; // New: When user dismissed the suggestions
   artifacts?: { // Optional: For joining artifact data like transcription for context in UI
     transcription?: string | null; // Transcription might be null
     created_at: string; // artifact created_at timestamp

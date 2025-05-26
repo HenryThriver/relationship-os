@@ -97,8 +97,8 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - Optimize images with Next.js Image component
 
 ## Supabase Conventions
-- My Supabase project ID is zepawphplcisievcdugz. At the beginning of a new chat link the project but after that do not invoke "--project-ref zepawphplcisievcdugz" at the end of supabase commands because it isn't necessary and will simply apply to the linked project.
-- Make all changes in the cloud version of my supabase db. To do that successfully, run with the npx command
+- My Supabase project ID is zepawphplcisievcdugz. At the beginning of a new chat link the project but after that do not invoke "--project-id zepawphplcisievcdugz" at the end of supabase commands because it isn't necessary and will simply apply to the linked to the project
+- Make all changes in the cloud version of my supabase db. To do that successfully, run with the npx command "npx supabase db push -y" so that it's auto applied
 - Connect to the cloud project at the beginning of each chat thread
 - When creating migrations, use "python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))'" to get the proper datetime to name the migration file
 - When applying migrations, apply them to the cloud instance where I am developing directly
