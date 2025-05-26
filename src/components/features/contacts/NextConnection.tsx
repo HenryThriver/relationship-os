@@ -1,36 +1,59 @@
 import React from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Chip } from '@mui/material';
+import { Box, Typography, Paper, List, ListItem, ListItemText, Chip, CircularProgress, Alert } from '@mui/material';
+import { useNextConnection } from '@/lib/hooks/useNextConnection';
+import type { ConnectionAgendaItem } from '@/types'; // Assuming ConnectionAgendaItem is the type for items in ConnectionAgenda
 
-// Simplified props, from Contact.next_meeting
 interface NextConnectionProps {
-  meeting?: {
-    title: string;
-    dateTime: string;
-    location: string;
-    platform?: string;
-    agendaItems?: { id: string; text: string; type: 'celebrate' | 'open_thread' | 'new_thread' }[];
-  } | null;
+  contactId: string;
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'Date TBD';
   try {
     return new Date(dateString).toLocaleDateString(undefined, { 
       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
     });
   } catch (e) {
+    console.error("Error formatting date:", e);
     return 'Invalid Date';
   }
 };
 
 const agendaItemStyles = {
-  celebrate: { icon: '🎉', color: '#34d399' /* emerald-400 for icon bg or similar */, textColor: '#047857' /* emerald-700 */ },
-  open_thread: { icon: '🔗', color: '#fbbf24' /* amber-400 */, textColor: '#b45309' /* amber-700 */ },
-  new_thread: { icon: '💡', color: '#60a5fa' /* blue-400 */, textColor: '#1d4ed8' /* blue-700 */ },
+  celebrate: { icon: '🎉', color: '#34d399', textColor: '#047857' },
+  open_thread: { icon: '🔗', color: '#fbbf24', textColor: '#b45309' },
+  new_thread: { icon: '💡', color: '#60a5fa', textColor: '#1d4ed8' },
 };
 
-export const NextConnection: React.FC<NextConnectionProps> = ({ meeting }) => {
-  if (!meeting) {
+export const NextConnection: React.FC<NextConnectionProps> = ({ contactId }) => {
+  const { 
+    nextConnection,
+    isLoading,
+    error,
+    // scheduleConnection, // Available for future actions
+    // updateAgenda,       // Available for future actions
+    // markCompleted       // Available for future actions
+  } = useNextConnection(contactId);
+
+  if (isLoading) {
+    return (
+      <Paper elevation={0} sx={{ p: 2, mb: 2, textAlign: 'center', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.07)', backgroundColor: '#fafafa' }}>
+        <CircularProgress size={24} />
+        <Typography variant="subtitle1" color="text.secondary" sx={{ml: 1, display: 'inline-block'}}>Loading next connection...</Typography>
+      </Paper>
+    );
+  }
+
+  if (error) {
+    return (
+      <Paper elevation={0} sx={{ p: 2, mb: 2, borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.07)', backgroundColor: '#fff2f2' }}>
+        <Alert severity="warning">Could not load next connection: {error.message}</Alert>
+      </Paper>
+    );
+  }
+
+  if (!nextConnection || nextConnection.status === 'completed' || nextConnection.status === 'cancelled') {
+    // Also consider if other statuses like 'completed' or 'cancelled' mean no *active* upcoming connection
     return (
       <Paper 
         elevation={0}
@@ -39,14 +62,18 @@ export const NextConnection: React.FC<NextConnectionProps> = ({ meeting }) => {
           mb: 2, 
           textAlign: 'center',
           borderRadius: '0.75rem', 
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.07)', // Softer shadow-md
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.07)',
           backgroundColor: '#fafafa', 
         }}
       >
         <Typography variant="subtitle1" color="text.secondary">No upcoming connection scheduled.</Typography>
+        {/* TODO: Add a button to schedule one using scheduleConnection mutation */}
       </Paper>
     );
   }
+
+  // Assuming nextConnection.agenda is of type ConnectionAgenda which has an items array
+  const agendaItems = nextConnection.agenda?.items;
 
   return (
     <Paper 
@@ -58,31 +85,31 @@ export const NextConnection: React.FC<NextConnectionProps> = ({ meeting }) => {
         borderLeft: '4px solid', 
         borderColor: '#6366f1', // indigo-500
         borderRadius: '0.75rem',
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.07)', // Softer shadow-md
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.07)', 
       }}
     >
-      <Typography variant="h5" component="h2" sx={{ fontWeight: 600, color: '#3730a3' /* indigo-800 */, mb: 1.5, fontSize: {xs: '1.25rem', md: '1.5rem'} }}>
-        Next Connection: {meeting.title}
+      <Typography variant="h5" component="h2" sx={{ fontWeight: 600, color: '#3730a3', mb: 1.5, fontSize: {xs: '1.25rem', md: '1.5rem'} }}>
+        Next Connection: {nextConnection.connection_type || 'Catch-up'} {/* Use connection_type or a default */}
       </Typography>
-      <Typography variant="body1" sx={{ color: '#4338ca' /* indigo-700 */, fontWeight: 500, mb: 0.5 }}>
-        <strong>When:</strong> {formatDate(meeting.dateTime)}
+      <Typography variant="body1" sx={{ color: '#4338ca', fontWeight: 500, mb: 0.5 }}>
+        <strong>When:</strong> {formatDate(nextConnection.scheduled_date)}
       </Typography>
-      <Typography variant="body1" sx={{ color: '#4338ca' /* indigo-700 */, mb: {xs: 2, md: 3} }}>
-        <strong>Where:</strong> {meeting.location} {meeting.platform ? `(${meeting.platform})` : ''}
+      <Typography variant="body1" sx={{ color: '#4338ca', mb: {xs: 2, md: 3} }}>
+        <strong>Where:</strong> {nextConnection.location || 'Location TBD'} {/* Add platform if available and needed */}
       </Typography>
 
-      {meeting.agendaItems && meeting.agendaItems.length > 0 && (
+      {agendaItems && agendaItems.length > 0 && (
         <Box mt={{xs: 2, md: 3}}>
-          <Typography variant="h6" component="h3" sx={{ fontWeight: 600, color: '#3730a3' /* indigo-800 */, mb: 2, fontSize: {xs: '1.1rem', md: '1.25rem'} }}>
+          <Typography variant="h6" component="h3" sx={{ fontWeight: 600, color: '#3730a3', mb: 2, fontSize: {xs: '1.1rem', md: '1.25rem'} }}>
             Quick Agenda & Talking Points:
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 2, md: 3 } }}>
-            {[ // Define categories for 3-column layout
+            {[ 
               { title: 'Things to Celebrate', type: 'celebrate' as const, icon: agendaItemStyles.celebrate.icon, iconColor: agendaItemStyles.celebrate.color, textColor: agendaItemStyles.celebrate.textColor },
               { title: 'Open Threads', type: 'open_thread' as const, icon: agendaItemStyles.open_thread.icon, iconColor: agendaItemStyles.open_thread.color, textColor: agendaItemStyles.open_thread.textColor },
               { title: 'New Threads to Open', type: 'new_thread' as const, icon: agendaItemStyles.new_thread.icon, iconColor: agendaItemStyles.new_thread.color, textColor: agendaItemStyles.new_thread.textColor },
             ].map(category => {
-              const itemsForCategory = meeting.agendaItems?.filter(item => item.type === category.type);
+              const itemsForCategory = agendaItems?.filter((item: ConnectionAgendaItem) => item.type === category.type);
               if (!itemsForCategory || itemsForCategory.length === 0) return null;
 
               return (
@@ -92,14 +119,14 @@ export const NextConnection: React.FC<NextConnectionProps> = ({ meeting }) => {
                     {category.title}:
                   </Typography>
                   <List dense disablePadding>
-                    {itemsForCategory.map(item => (
+                    {itemsForCategory.map((item: ConnectionAgendaItem) => (
                       <ListItem key={item.id} disableGutters sx={{ pl: 0, alignItems: 'flex-start', display: 'list-item', listStyleType: 'disc', ml: 3}}>
                         <ListItemText 
                           primary={item.text} 
                           primaryTypographyProps={{
                             variant: 'body2',
-                            color: category.textColor, // Use category-specific text color
-                            sx: { display: 'block'} // ensure it behaves as a block for list item
+                            color: category.textColor, 
+                            sx: { display: 'block', textDecoration: item.completed ? 'line-through' : 'none'} // Strikethrough if completed
                           }}
                         />
                       </ListItem>
@@ -111,6 +138,7 @@ export const NextConnection: React.FC<NextConnectionProps> = ({ meeting }) => {
           </Box>
         </Box>
       )}
+      {/* TODO: Add buttons to update agenda or mark as completed using mutations */}
     </Paper>
   );
 }; 

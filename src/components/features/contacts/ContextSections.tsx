@@ -1,66 +1,36 @@
 import React from 'react';
 import { Box } from '@mui/material';
 
-// Import the new card components
-import { FamilyCard } from './FamilyCard';
-import { ProfessionalSnapshotCard } from './ProfessionalSnapshotCard';
-import { PersonalMilestonesCard } from './PersonalMilestonesCard';
-import { WorkCareerEventsCard } from './WorkCareerEventsCard';
-import { PersonalInterestsCard } from './PersonalInterestsCard';
-import { ProfessionalExpertiseCard } from './ProfessionalExpertiseCard';
-import { PersonalConversationStartersCard } from './PersonalConversationStartersCard';
-import { ProfessionalConversationStartersCard } from './ProfessionalConversationStartersCard';
+// Import the new comprehensive display components
+import { PersonalContextDisplay } from './PersonalContext'; // Assuming PersonalContext.tsx exports PersonalContextDisplay
+import { ProfessionalContextDisplay } from './ProfessionalContext'; // Assuming ProfessionalContext.tsx exports ProfessionalContextDisplay
 
-// Import the comprehensive Contact type and related types from @/types
-import type { 
-    Contact as GlobalContact, 
-    ExperienceItem, 
-    EducationItem, 
-    FamilyMember, 
-    GoalItem, 
-    VentureItem 
-} from '@/types';
+// Import the new comprehensive Contact type
+import type { Contact } from '@/types';
 
-// The contactData prop will now be of type GlobalContact (or a compatible subset/extension)
 interface ContextSectionsProps {
-  contactData: GlobalContact; // Use GlobalContact for the prop type
+  contactData: Contact | null; // Use the new Contact type, allow null for loading states
 }
 
 export const ContextSections: React.FC<ContextSectionsProps> = ({ contactData }) => {
+  if (!contactData) {
+    // Optionally return a loading skeleton or null if parent handles loading state
+    return null; 
+  }
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <ProfessionalContextDisplay professionalContext={contactData.professional_context} />
+      <PersonalContextDisplay personalContext={contactData.personal_context} />
       {/* 
-        Pass relevant slices of contactData to each card.
-        For now, many will use their internal mock data due to missing fields in current mock `Contact` type.
-        This will be connected properly when we integrate real data / update Contact type.
+        Other general sections or cards that are not part of professional/personal context 
+        can be added here if needed in the future.
+
+        The old granular cards like FamilyCard, ProfessionalSnapshotCard, etc., are now replaced 
+        by the content within PersonalContextDisplay and ProfessionalContextDisplay.
+        If specific layouts or sub-components from those old cards are desired, 
+        their logic/UI should be integrated into the new context display components.
       */}
-      <FamilyCard familyMembers={contactData.familyMembers ?? []} />
-      <ProfessionalSnapshotCard 
-        about={contactData.about}
-        experience={contactData.experience}
-        education={contactData.education}
-        linkedin_profile_url={contactData.linkedin_url}
-        hisGoals={contactData.hisGoals ?? []}
-        currentVentures={contactData.currentVentures ?? []}
-        keySkills={contactData.keySkills ?? []}
-      />
-      <PersonalMilestonesCard 
-        // milestones={contactData.personalMilestones} - Add to Contact type and mock
-        // recentAnecdotes={contactData.recentAnecdotes} - Add to Contact type and mock
-      />
-      <WorkCareerEventsCard 
-        // events={contactData.workCareerEvents} - Add to Contact type and mock
-      />
-      <PersonalInterestsCard 
-        interests={contactData.personalInterests ?? []}
-        // values={contactData.personalValues ?? []} - Add to Contact type and mock
-      />
-      <ProfessionalExpertiseCard 
-        expertiseTags={contactData.professionalExpertise ?? []}
-        // keySkills={contactData.keySkills ?? []} - Add to Contact type and mock
-      />
-      <PersonalConversationStartersCard personalStarters={contactData.conversationStarters?.personal ?? []} />
-      <ProfessionalConversationStartersCard professionalStarters={contactData.conversationStarters?.professional ?? []} />
     </Box>
   );
 }; 

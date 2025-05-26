@@ -1,124 +1,106 @@
+import type { Database } from '@/lib/supabase/types_db';
+import type { ArtifactGlobal, LinkedInArtifactContent } from './artifact'; // Assuming LinkedInArtifactContent is defined here
+
+// ----- Professional Context ----- 
+export interface ProfessionalAchievementItem {
+  event: string;
+  date?: string; // Could be a year or a more specific date
+  details?: string;
+}
+
 export interface ProfessionalContext {
-  goals?: string[]; // ["Beyond Connections for corporate", "Speaking engagements"]
+  current_role?: string;
+  current_company?: string;
+  goals?: string[]; // Professional goals
   background?: {
-    education?: string[]; // ["Yale University (Economics)", "London School of Economics"]
-    previous_companies?: string[]; // ["JPMorgan", "Lehman Brothers", "Cross Campus"]
-    expertise_areas?: string[]; // ["Executive Coaching", "Leadership Development"]
-    focus_areas?: string; // "Executive coaching, leadership team development..."
+    focus_areas?: string; // e.g. "B2B SaaS, GTM Strategy, Product-Led Growth"
+    education?: string[]; // Brief list: "Stanford MBA", "UC Berkeley CS"
+    previous_companies?: string[]; // List of notable past companies
+    expertise_areas?: string[]; // e.g. ["AI/ML", "Data Analytics", "Cloud Infrastructure"]
   };
-  current_ventures?: string; // "Partner at Ferrazzi Greenlight, Co-founder of Connected Success"
+  current_ventures?: string; // For entrepreneurs or those with side projects
   speaking_topics?: string[];
-  achievements?: Array<{
-    event: string; // "Recent Keynote for Fortune 50 company"
-    date?: string;
-    details?: string;
-  }>;
+  achievements?: ProfessionalAchievementItem[];
+}
+
+// ----- Personal Context ----- 
+export interface FamilyMemberDetail {
+    name: string;
+    relationship: string; // e.g. "Partner", "Son", "Daughter"
+    details?: string; // e.g. "Loves dinosaurs", "Plays soccer"
+}
+
+export interface PersonalMilestone {
+    emoji?: string;
+    event: string; // e.g. "Ran first marathon", "Bought a house"
+    date?: string; // e.g. "2023-05-15" or "Summer 2022"
+    impact?: string; // How it affected them or the relationship
+}
+
+export interface ConversationStarters {
+    personal?: string[];
+    professional?: string[];
 }
 
 export interface PersonalContext {
   family?: {
-    partner?: { 
-      name: string; // "Julia"
-      details?: string; // "Recently moved in together, combining families"
-    };
-    children?: Array<{ 
-      name: string; // "Sebastian", "Gabriel"
-      relationship: string; // "Son", "Partner's Son"
-      details?: string;
-    }>;
-    parents?: string;
-    siblings?: string;
+    partner?: FamilyMemberDetail;
+    children?: FamilyMemberDetail[];
+    parents?: string; // Free text for now
+    siblings?: string; // Free text for now
   };
-  interests?: string[]; // ["Intentional Breathwork", "Meditation", "Health & Wellness"]
-  values?: string[]; // ["Family", "Personal Growth", "Resilience"]
-  milestones?: Array<{
-    event: string; // "Recently moved in with partner Julia"
-    date?: string;
-    emoji?: string; // "🏡"
-    impact?: 'positive' | 'negative' | 'neutral'; // for color coding
-  }>;
-  anecdotes?: string[]; // ["Attended Yale at 16", "Manages ADHD"]
-  communication_style?: string; // "Prefers morning calls", "Direct communicator"
-  relationship_goal?: string; // "Deepen connection & explore collaboration"
-  conversation_starters?: {
-    personal?: string[]; // ["How is settling into the new combined family home..."]
-    professional?: string[]; // ["What are the biggest shifts you're seeing..."]
-  };
+  interests?: string[]; // e.g. ["Hiking", "Photography", "Jazz Music"]
+  values?: string[]; // e.g. ["Integrity", "Continuous Learning"]
+  milestones?: PersonalMilestone[];
+  anecdotes?: string[]; // Short stories or memorable interactions
+  communication_style?: string; // e.g. "Prefers email, direct and to the point"
+  relationship_goal?: string; // User's goal for this specific relationship
+  conversation_starters?: ConversationStarters;
 }
 
-// Forward declaration for LinkedInArtifactContent to avoid circular dependency if it were in this file.
-// Assuming it will be defined in artifact.ts and re-exported via index.ts or directly imported.
-// For now, using 'any' as a placeholder until artifact.ts is processed.
-// Ideally, this would be: import type { LinkedInArtifactContent } from './artifact';
-type LinkedInArtifactContent = any; 
+// ----- Core Contact Type ----- 
+export interface Contact extends Partial<Database['public']['Tables']['contacts']['Row']> { 
+  // Required fields from DB that are not optional in the interface
+  id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  name: string; // Assuming name is not nullable
+  
+  // JSONB fields, strongly typed
+  professional_context?: ProfessionalContext | null;
+  personal_context?: PersonalContext | null;
+  linkedin_data?: LinkedInArtifactContent | null; // From LinkedInArtifactContent
 
-export interface Contact {
-  id: string; // UUID
-  user_id: string; // UUID, from DB
-  
-  // Core fields
-  name: string;
-  email?: string;
-  company?: string;
-  title?: string;
-  location?: string; // "Los Angeles Area"
-  linkedin_url: string; // Existing field, NOT NULL in DB
-  
-  // Relationship management
-  relationship_score: number; // Integer 0-6 (displayed as RQ 3, RQ 5, etc.)
-  last_interaction_date?: string; // Timestampz
-  connection_cadence_days: number; // 42 = "Connect every 6 weeks"
-  
-  // Rich context (JSON)
-  professional_context: ProfessionalContext;
-  personal_context: PersonalContext;
-  linkedin_data?: LinkedInArtifactContent | null; // To store structured LinkedIn data
-  
-  created_at: string; // Timestampz
-  updated_at: string; // Timestampz
+  // Related data that might be joined or fetched separately
+  artifacts?: ArtifactGlobal[] | null; 
+  // next_connections are handled by useNextConnection hook, not directly on Contact
+}
 
-  // Array of artifacts associated with the contact.
-  // Assuming ArtifactGlobal will be defined in artifact.ts
-  // For now, using 'any' as a placeholder.
-  // Ideally, this would be: import type { ArtifactGlobal } from './artifact';
-  artifacts?: any[] | null; 
-  
-  // Other fields that were on the old Contact/PageContact that might still be needed or are from DB
-  notes?: string | null;
-  phone?: string | null;
-  role?: string | null; 
-  relationship_context?: string | null; 
-  tags?: string[] | null; 
-  profile_photo_url?: string | null;
+// ----- Next Connection Types ----- 
+export interface ConnectionAgendaItem { // DEFINING AND EXPORTING THIS
+    id: string;
+    text: string;
+    type: 'celebrate' | 'open_thread' | 'new_thread';
+    completed?: boolean;
 }
 
 export interface ConnectionAgenda {
-  celebrate?: Array<{
-    item: string; // "His recent Fortune 50 talk"
-    emoji?: string; // "🎉"
-  }>;
-  follow_up?: Array<{
-    item: string; // "AI-based people research event"
-    emoji?: string; // "🔗"
-  }>;
-  new_topics?: Array<{
-    item: string; // "Discuss event with Guru"
-    emoji?: string; // "💡"
-  }>;
+  goal?: string; // Overall goal for this connection
+  shared_topics?: string[]; // Topics relevant to both parties
+  items?: ConnectionAgendaItem[];
 }
 
+// This is based on the next_connections table schema
 export interface NextConnection {
-  id: string; // UUID
-  contact_id: string; // UUID
-  user_id: string; // UUID
-  
-  connection_type: string; // "Video Call", 'coffee', 'event' etc.
-  scheduled_date?: string; // Timestampz "Tuesday, May 20th @ 10:00 AM"
-  location?: string; // "Virtual (Zoom)", "Starbucks downtown"
-  
-  agenda: ConnectionAgenda;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
-  
-  created_at: string; // Timestampz
-  updated_at: string; // Timestampz
+  id: string;
+  contact_id: string;
+  user_id: string;
+  connection_type?: string | null; // e.g., 'Coffee Chat', 'Strategy Session', 'Follow-up'
+  scheduled_date: string; // TIMESTAMPTZ
+  location?: string | null; // Physical or virtual (e.g. Zoom link)
+  agenda?: ConnectionAgenda | null; // JSONB
+  status: 'scheduled' | 'completed' | 'cancelled' | 'pending_reschedule'; // Example statuses
+  created_at: string;
+  updated_at: string;
 } 

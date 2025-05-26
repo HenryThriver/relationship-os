@@ -41,10 +41,13 @@ export interface LinkedInArtifact extends ArtifactGlobal {
 }
 
 // --- POG (Packet of Generosity) Artifact --- 
+export type POGArtifactContentStatus = 'brainstorm' | 'queued' | 'offered' | 'in_progress' | 'delivered' | 'closed';
+
 export interface POGArtifactContent {
   description: string;
   value_assessment?: string;
-  status?: 'queued' | 'offered' | 'in_progress' | 'delivered' | 'closed'; // Example statuses
+  status?: POGArtifactContentStatus;
+  type_of_pog?: 'intro' | 'endorsement' | 'advice' | 'reference' | 'other';
   // ... other POG-specific fields
 }
 
@@ -54,10 +57,13 @@ export interface POGArtifact extends ArtifactGlobal {
 }
 
 // --- Ask Artifact --- 
+export type AskArtifactContentStatus = 'queued' | 'requested' | 'in_progress' | 'received' | 'closed';
+
 export interface AskArtifactContent {
   request_description: string;
   success_criteria?: string;
-  status?: 'queued' | 'requested' | 'in_progress' | 'received' | 'closed'; // Example statuses
+  status?: AskArtifactContentStatus;
+  type_of_ask?: 'feedback' | 'intro' | 'help' | 'question' | 'other';
   // ... other Ask-specific fields
 }
 
