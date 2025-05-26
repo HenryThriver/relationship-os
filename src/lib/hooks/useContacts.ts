@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import type { Contact } from '@/types';
@@ -13,11 +14,11 @@ export const useContacts = () => {
   const queryClient = useQueryClient();
 
   // Fetch all contacts
-  const getContacts = async (): Promise<Contact[]> => {
+  const getContacts = React.useCallback(async (): Promise<Contact[]> => {
     const { data, error } = await supabase.from(CONTACTS_TABLE).select('*');
     if (error) throw new Error(error.message);
     return data || [];
-  };
+  }, []);
 
   const { data: contacts, isLoading: isLoadingContacts, error: contactsError } = useQuery<Contact[]>({
     queryKey: [CONTACTS_TABLE],
@@ -25,7 +26,7 @@ export const useContacts = () => {
   });
 
   // Fetch a single contact by ID
-  const getContactById = async (id: string): Promise<Contact | null> => {
+  const getContactById = React.useCallback(async (id: string): Promise<Contact | null> => {
     const { data, error } = await supabase
       .from(CONTACTS_TABLE)
       .select('*')
@@ -37,18 +38,18 @@ export const useContacts = () => {
       throw new Error(error.message);
     }
     return data;
-  };
+  }, []);
 
   // Prefetch a contact - useful for hover effects or navigating to detail page
-  const prefetchContact = async (id: string): Promise<void> => {
+  const prefetchContact = React.useCallback(async (id: string): Promise<void> => {
     await queryClient.prefetchQuery({
       queryKey: [CONTACTS_TABLE, id],
       queryFn: () => getContactById(id),
     });
-  };
+  }, [queryClient, getContactById]);
   
   // Create a new contact - updated to accept ContactInsert type
-  const createContactDB = async (newContactData: ContactInsert): Promise<Contact> => {
+  const createContactDB = React.useCallback(async (newContactData: ContactInsert): Promise<Contact> => {
     if (!newContactData.user_id) {
       throw new Error('User ID is required to create a contact.');
     }
@@ -68,7 +69,7 @@ export const useContacts = () => {
     }
     if (!data) throw new Error('Contact creation failed, no data returned.');
     return data as Contact; // Cast to local Contact type if its structure is a subset or matches Row
-  };
+  }, []);
 
   const createContactMutation = useMutation<Contact, Error, ContactInsert>({
     mutationFn: createContactDB,
@@ -83,7 +84,7 @@ export const useContacts = () => {
   });
 
   // Update an existing contact
-  const updateContact = async (updatedContact: Partial<Contact> & Pick<Contact, 'id'>): Promise<Contact> => {
+  const updateContact = React.useCallback(async (updatedContact: Partial<Contact> & Pick<Contact, 'id'>): Promise<Contact> => {
     const { id, ...updateData } = updatedContact;
     const { data, error } = await supabase
       .from(CONTACTS_TABLE)
@@ -95,7 +96,7 @@ export const useContacts = () => {
     if (error) throw new Error(error.message);
     if (!data) throw new Error('Contact update failed, no data returned.');
     return data;
-  };
+  }, []);
 
   const updateContactMutation = useMutation<Contact, Error, Partial<Contact> & Pick<Contact, 'id'>>({
     mutationFn: updateContact,
@@ -106,10 +107,10 @@ export const useContacts = () => {
   });
 
   // Delete a contact
-  const deleteContact = async (id: string): Promise<void> => {
+  const deleteContact = React.useCallback(async (id: string): Promise<void> => {
     const { error } = await supabase.from(CONTACTS_TABLE).delete().eq('id', id);
     if (error) throw new Error(error.message);
-  };
+  }, []);
 
   const deleteContactMutation = useMutation<void, Error, string>({
     mutationFn: deleteContact,
