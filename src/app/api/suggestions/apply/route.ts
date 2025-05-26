@@ -6,6 +6,39 @@ import { Database, Json } from '@/lib/supabase/database.types'; // Assuming this
 // Helper type for context fields
 type ContactContext = { [key: string]: any }; // Using any for easier deep manipulation
 
+// Define arrayFieldPaths at the module level so it can be accessed by the POST handler
+const arrayFieldPaths: Set<string> = new Set([
+  // Personal Context Arrays
+  'family.children',
+  'key_life_events',
+  'current_challenges',
+  'upcoming_changes',
+  'interests',
+  'hobbies',
+  'travel_plans',
+  'values',
+  'motivations',
+  // Professional Context Arrays
+  'key_responsibilities',
+  'work_challenges',
+  'goals',
+  'skill_development',
+  'career_transitions',
+  'networking_objectives',
+  'projects_involved',
+  'collaborations',
+  'upcoming_projects',
+  'skills',
+  'expertise_areas',
+  'industry_knowledge',
+  'mentions.colleagues',
+  'mentions.clients',
+  'mentions.competitors',
+  'mentions.collaborators',
+  'mentions.mentors',
+  'mentions.industry_contacts',
+]);
+
 // Helper function to set a value at a nested path
 function setValueAtPath(obj: ContactContext, path: string, value: any, action: 'add' | 'update' | 'remove') {
   const keys = path.split('.');
@@ -20,42 +53,6 @@ function setValueAtPath(obj: ContactContext, path: string, value: any, action: '
     current = current[key];
   }
   const finalKey = keys[keys.length - 1];
-
-  // Define field paths that are known to be arrays. 
-  // This helps in deciding how to handle 'add', 'update', 'remove' actions.
-  const arrayFieldPaths: Set<string> = new Set([
-    // Personal Context Arrays
-    'family.children',
-    'key_life_events',
-    'current_challenges',
-    'upcoming_changes',
-    'interests',
-    'hobbies',
-    'travel_plans',
-    'values',
-    'motivations',
-    // Professional Context Arrays
-    'key_responsibilities',
-    'work_challenges',
-    'goals',
-    'skill_development',
-    'career_transitions',
-    'networking_objectives',
-    'projects_involved',
-    'collaborations',
-    'upcoming_projects',
-    'skills',
-    'expertise_areas',
-    'industry_knowledge',
-    'mentions.colleagues',
-    'mentions.clients',
-    'mentions.competitors',
-    'mentions.collaborators',
-    'mentions.mentors',
-    'mentions.industry_contacts',
-    // Legacy array keys if still needed (review and remove if not)
-    // 'education' // if education was treated as an array of strings/objects
-  ]);
 
   const fullPathForArrayCheck = keys.join('.'); // Use the partial path relative to professional_context/personal_context
   const isArrayField = arrayFieldPaths.has(fullPathForArrayCheck);
@@ -157,30 +154,111 @@ export async function POST(request: NextRequest) {
     const sourceUpdates: Record<string, string> = { ...(contact.field_sources as object || {}) };
 
     for (const s of selectedSuggestions) {
-      sourceUpdates[s.field_path] = suggestionRecord.artifact_id;
-      const action = s.action as 'add' | 'update' | 'remove';
-      console.log(`[ApplySuggestions API] Processing suggestion for path: ${s.field_path}, action: ${action}, value: ${JSON.stringify(s.suggested_value)}`);
+      // const action = s.action as 'add' | 'update' | 'remove'; // Keep this for logging if needed
+      console.log(`[ApplySuggestions API] Processing suggestion for path: ${s.field_path}, action: ${s.action}, value: ${JSON.stringify(s.suggested_value)}`);
 
-      if (s.field_path.startsWith('professional_context.')) {
-        const path = s.field_path.replace('professional_context.', '');
-        const profContextBefore = JSON.stringify(contact.professional_context);
-        setValueAtPath(contact.professional_context as ContactContext, path, s.suggested_value, action);
-        // Ensure a fresh clone is assigned to contactUpdates
-        contactUpdates.professional_context = JSON.parse(JSON.stringify(contact.professional_context)) as Json; 
-        console.log(`[ApplySuggestions API] Prof. context BEFORE: ${profContextBefore}, AFTER setValueAtPath: ${JSON.stringify(contact.professional_context)}`);
-      } else if (s.field_path.startsWith('personal_context.')) {
-        const path = s.field_path.replace('personal_context.', '');
-        const persContextBefore = JSON.stringify(contact.personal_context);
-        setValueAtPath(contact.personal_context as ContactContext, path, s.suggested_value, action);
-        // Ensure a fresh clone is assigned to contactUpdates
+      const artifactId = suggestionRecord.artifact_id;
+      const fullSuggestedPath = s.field_path; // e.g., "personal_context.key_life_events"
+
+      // Apply actual data updates using setValueAtPath
+      let contextObjectToUpdate: ContactContext | undefined;
+      let pathWithinContext: string | undefined; // path relative to personal_context or professional_context
+      let mainContextKey: 'personal_context' | 'professional_context' | undefined;
+
+      if (fullSuggestedPath.startsWith('professional_context.')) {
+        pathWithinContext = fullSuggestedPath.replace('professional_context.', '');
+        mainContextKey = 'professional_context';
+        contextObjectToUpdate = contact.professional_context as ContactContext;
+        setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
+        contactUpdates.professional_context = JSON.parse(JSON.stringify(contact.professional_context)) as Json;
+      } else if (fullSuggestedPath.startsWith('personal_context.')) {
+        pathWithinContext = fullSuggestedPath.replace('personal_context.', '');
+        mainContextKey = 'personal_context';
+        contextObjectToUpdate = contact.personal_context as ContactContext;
+        setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
         contactUpdates.personal_context = JSON.parse(JSON.stringify(contact.personal_context)) as Json;
-        console.log(`[ApplySuggestions API] Pers. context BEFORE: ${persContextBefore}, AFTER setValueAtPath: ${JSON.stringify(contact.personal_context)}`);
       } else {
-        const directFieldKey = s.field_path as keyof Pick<Database['public']['Tables']['contacts']['Row'], 'company' | 'title'>;
-        if (action === 'remove') {
+        // Direct contact field update (e.g., 'company', 'title')
+        const directFieldKey = fullSuggestedPath as keyof Database['public']['Tables']['contacts']['Row'];
+        if (s.action === 'remove') {
             (contactUpdates as any)[directFieldKey] = null;
-        } else {
+        } else { // 'add' or 'update'
             (contactUpdates as any)[directFieldKey] = s.suggested_value;
+        }
+        // Source the direct field - already granular
+        sourceUpdates[fullSuggestedPath] = artifactId;
+      }
+
+      // Granular source attribution logic
+      if (mainContextKey && pathWithinContext) {
+        const isArrayFieldTarget = arrayFieldPaths.has(pathWithinContext);
+
+        if (s.action === 'update') {
+          if (isArrayFieldTarget) {
+            // AI suggested an 'update' to an entire array. Treat as replacing the array.
+            // Source each element of the new array value.
+            const newArrayValue = Array.isArray(s.suggested_value) ? s.suggested_value : (s.suggested_value !== null && s.suggested_value !== undefined ? [s.suggested_value] : []);
+            newArrayValue.forEach((_, index) => {
+              sourceUpdates[`${fullSuggestedPath}.${index}`] = artifactId;
+            });
+          } else if (typeof s.suggested_value === 'object' && s.suggested_value !== null && !Array.isArray(s.suggested_value)) {
+            // AI suggested an 'update' to an object. Source each key within the suggested_value.
+            for (const key in s.suggested_value) {
+              if (Object.prototype.hasOwnProperty.call(s.suggested_value, key)) {
+                sourceUpdates[`${fullSuggestedPath}.${key}`] = artifactId;
+              }
+            }
+          } else {
+            // Simple field update within context (e.g. professional_context.pending_requests)
+            sourceUpdates[fullSuggestedPath] = artifactId;
+          }
+        } else if (s.action === 'add' && isArrayFieldTarget) {
+          // AI suggested an 'add' to an array.
+          // After setValueAtPath, get the current state of that array from the (potentially) modified contact object.
+          let finalArrayState: any[] = [];
+          let tempCurrent = contact[mainContextKey] as ContactContext; // Start with the correct context object
+          const keysToTargetArray = pathWithinContext.split('.');
+          try {
+            for (let i = 0; i < keysToTargetArray.length; i++) {
+              tempCurrent = tempCurrent[keysToTargetArray[i]];
+            }
+            if(Array.isArray(tempCurrent)) {
+              finalArrayState = tempCurrent;
+            }
+          } catch (e) {
+            console.warn(`[ApplySuggestions API] Could not resolve path to array for sourcing: ${pathWithinContext} in ${mainContextKey}`);
+            finalArrayState = []; // Fallback to empty if path resolution fails
+          }
+          
+          // Source each element of the array's current state.
+          // If the element is an object, source its properties.
+          finalArrayState.forEach((item, index) => {
+            const currentItemBasePath = `${fullSuggestedPath}.${index}`; // e.g., "personal_context.family.children.0"
+            if (typeof item === 'object' && item !== null) {
+              // It's an object within the array, source its properties
+              for (const key in item) {
+                if (Object.prototype.hasOwnProperty.call(item, key)) {
+                  sourceUpdates[`${currentItemBasePath}.${key}`] = artifactId; // e.g., "personal_context.family.children.0.name"
+                }
+              }
+            } else {
+              // It's a primitive value in the array (e.g., for key_life_events)
+              sourceUpdates[currentItemBasePath] = artifactId; // e.g., "personal_context.key_life_events.0"
+            }
+          });
+        } else if (s.action === 'remove') {
+          // For 'remove', the original coarse path is removed from sourceUpdates.
+          // If it was an object, its sub-properties sourced previously would remain unless explicitly cleared.
+          // If it was an array element, specific index sourcing for removal is very complex.
+          // Safest for now: remove the coarse path source. UI won't show source for removed data.
+          // If specific object properties were removed, their source entries won't be automatically cleaned up by this logic.
+          delete sourceUpdates[fullSuggestedPath];
+          // Potentially, if s.suggested_value indicates what was removed, could try to remove specific granular paths.
+          // For example, if action: 'remove', field_path: 'personal_context.interests', value: 'OldInterest',
+          // we'd need to find index of 'OldInterest' and delete personal_context.interests.INDEX
+        } else {
+           // Default for other actions or non-array/non-object 'add'/'update' on context fields
+           sourceUpdates[fullSuggestedPath] = artifactId;
         }
       }
     }

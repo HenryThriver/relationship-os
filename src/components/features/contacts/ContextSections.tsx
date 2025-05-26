@@ -10,9 +10,10 @@ import type { Contact, ProfessionalContext as ProfessionalContextTypeAlias, Pers
 
 interface ContextSectionsProps {
   contactData: Contact | null; // Use the new Contact type, allow null for loading states
+  contactId: string; // Added contactId
 }
 
-export const ContextSections: React.FC<ContextSectionsProps> = ({ contactData }) => {
+export const ContextSections: React.FC<ContextSectionsProps> = ({ contactData, contactId }) => {
   if (!contactData) {
     // Optionally return a loading skeleton or null if parent handles loading state
     return null; 
@@ -32,8 +33,8 @@ export const ContextSections: React.FC<ContextSectionsProps> = ({ contactData })
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <ProfessionalContextDisplay professionalContext={professionalContextProp} />
-      <PersonalContextDisplay personalContext={personalContextProp} />
+      <ProfessionalContextDisplay professionalContext={professionalContextProp} contactId={contactId} />
+      <PersonalContextDisplay personalContext={personalContextProp} contactId={contactId} />
       {/* 
         Other general sections or cards that are not part of professional/personal context 
         can be added here if needed in the future.

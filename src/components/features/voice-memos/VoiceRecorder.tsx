@@ -16,6 +16,7 @@ import { Mic, Stop, CheckCircle } from '@mui/icons-material';
 import { supabase } from '@/lib/supabase/client'; // Import the shared client directly
 import { useAuth } from '@/lib/contexts/AuthContext'; 
 import { Database } from '@/lib/supabase/types_db'; // Database types still useful
+import { useQueryClient } from '@tanstack/react-query'; // Added import
 
 interface VoiceRecorderProps {
   contactId: string;
@@ -44,6 +45,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   // const supabase = useSupabaseClient<Database>(); // Removed useSupabaseClient
   // supabase is now imported directly and available in the module scope
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient(); // Added queryClient
 
   // Cleanup on unmount
   useEffect(() => {
@@ -217,7 +219,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       attempts++;
       
       try {
-        const { data: artifact, error: fetchError } = await supabase // Renamed error variable
+        const { data: artifact, error: fetchError } = await supabase
           .from('artifacts')
           .select('transcription_status, transcription')
           .eq('id', artifactId)
@@ -235,6 +237,14 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           setIsUploading(false);
           setSuccess(true);
           setDuration(0); // Reset duration after successful upload and processing
+          
+          // Invalidate queries
+          await queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
+          await queryClient.invalidateQueries({ queryKey: ['contactUpdateSuggestions', contactId] });
+          // Also invalidate a general artifacts query if one exists for broader updates
+          await queryClient.invalidateQueries({ queryKey: ['artifacts', contactId] });
+
+
           setTimeout(() => setSuccess(false), 5000);
         } else if (artifact.transcription_status === 'failed') {
           clearInterval(pollInterval);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Paper, Avatar, Button, Stack, Chip } from '@mui/material';
 import { SuggestionNotificationBadge } from '../suggestions/SuggestionNotificationBadge';
+import type { PersonalContext as PersonalContextType } from '@/types';
 
 // RQ Bubble Colors (from your HTML example)
 const rqBubbleColors: { [key: number]: { backgroundColor: string; color: string; } } = {
@@ -21,10 +22,11 @@ interface ContactHeaderProps {
   location?: string | null;
   profilePhotoUrl?: string | null;
   relationshipScore?: number | null;
-  userGoal?: string | null;
+  personalContext?: PersonalContextType | null;
+  connectDate?: Date;
   connectCadence?: string | null;
   // Suggestion notification props
-  pendingSuggestions?: number;
+  suggestionCount?: number;
   suggestionPriority?: 'high' | 'medium' | 'low';
   hasNewSuggestions?: boolean;
   onViewSuggestions?: () => void;
@@ -41,9 +43,10 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
   location,
   profilePhotoUrl,
   relationshipScore,
-  userGoal,
+  personalContext,
+  connectDate,
   connectCadence,
-  pendingSuggestions = 0,
+  suggestionCount = 0,
   suggestionPriority = 'medium',
   hasNewSuggestions = false,
   onViewSuggestions,
@@ -53,6 +56,8 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
 }) => {
 
   const rqStyle = rqBubbleColors[relationshipScore ?? 0] || rqBubbleColors[0];
+
+  const userGoal = personalContext?.relationship_goal;
 
   const actionButtonSx = {
     backgroundColor: '#e5e7eb', // gray-200
@@ -126,10 +131,10 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
                     }}
                 />
               )}
-              {pendingSuggestions > 0 && onViewSuggestions && (
+              {suggestionCount > 0 && onViewSuggestions && (
                 <SuggestionNotificationBadge
                   contactId="" // Will be passed from parent
-                  count={pendingSuggestions}
+                  count={suggestionCount}
                   onClick={onViewSuggestions}
                   priority={suggestionPriority}
                   hasNewSuggestions={hasNewSuggestions}
