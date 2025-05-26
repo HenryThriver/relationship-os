@@ -2,7 +2,7 @@ import type { Database } from '@/lib/supabase/types_db';
 
 // Define all known artifact type string literals for more robust typing
 export type ArtifactTypeEnum = Database['public']['Enums']['artifact_type_enum'];
-export type ExtendedArtifactType = 'pog' | 'ask'; // Types not in the DB enum, handled client-side
+export type ExtendedArtifactType = 'pog' | 'ask' | 'prompt_set' | 'goal' | 'loop' | 'linkedin_interaction'; // Types not in the DB enum, handled client-side
 export type ArtifactType = ArtifactTypeEnum | ExtendedArtifactType;
 
 export interface ArtifactGlobal {
