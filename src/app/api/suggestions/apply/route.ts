@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { ContactUpdateSuggestion, UpdateSuggestionRecord } from '@/types/suggestions';
 import { Database, Json } from '@/lib/supabase/database.types'; // Assuming this is your main generated types
 
@@ -15,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing suggestionId or selectedPaths' }, { status: 400 });
     }
 
-    const supabase = createRouteHandlerClient<Database>({ cookies });
+    const supabase = await createClient();
     
     const { data: suggestionRecord, error: fetchError } = await supabase
       .from('contact_update_suggestions')
