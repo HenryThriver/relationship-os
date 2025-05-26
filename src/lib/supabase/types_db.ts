@@ -15,9 +15,17 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          impact_score: number | null
+          initiator_contact_id: string | null
+          initiator_user_id: string | null
+          loop_status: string | null
           metadata: Json | null
+          recipient_contact_id: string | null
+          recipient_user_id: string | null
+          reciprocity_weight: number | null
           timestamp: string
           type: Database["public"]["Enums"]["artifact_type_enum"]
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -25,9 +33,17 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          impact_score?: number | null
+          initiator_contact_id?: string | null
+          initiator_user_id?: string | null
+          loop_status?: string | null
           metadata?: Json | null
+          recipient_contact_id?: string | null
+          recipient_user_id?: string | null
+          reciprocity_weight?: number | null
           timestamp?: string
           type: Database["public"]["Enums"]["artifact_type_enum"]
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -35,9 +51,17 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          impact_score?: number | null
+          initiator_contact_id?: string | null
+          initiator_user_id?: string | null
+          loop_status?: string | null
           metadata?: Json | null
+          recipient_contact_id?: string | null
+          recipient_user_id?: string | null
+          reciprocity_weight?: number | null
           timestamp?: string
           type?: Database["public"]["Enums"]["artifact_type_enum"]
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -48,49 +72,128 @@ export type Database = {
             referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "artifacts_initiator_contact_id_fkey"
+            columns: ["initiator_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artifacts_recipient_contact_id_fkey"
+            columns: ["recipient_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contacts: {
         Row: {
           company: string | null
+          connection_cadence_days: number | null
           created_at: string
           email: string | null
           id: string
+          last_interaction_date: string | null
+          linkedin_data: Json | null
           linkedin_url: string
           location: string | null
           name: string | null
           notes: string | null
+          personal_context: Json | null
+          professional_context: Json | null
+          relationship_score: number | null
           title: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           company?: string | null
+          connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
           id?: string
+          last_interaction_date?: string | null
+          linkedin_data?: Json | null
           linkedin_url: string
           location?: string | null
           name?: string | null
           notes?: string | null
+          personal_context?: Json | null
+          professional_context?: Json | null
+          relationship_score?: number | null
           title?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           company?: string | null
+          connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
           id?: string
+          last_interaction_date?: string | null
+          linkedin_data?: Json | null
           linkedin_url?: string
           location?: string | null
           name?: string | null
           notes?: string | null
+          personal_context?: Json | null
+          professional_context?: Json | null
+          relationship_score?: number | null
           title?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      next_connections: {
+        Row: {
+          agenda: Json | null
+          connection_type: string
+          contact_id: string | null
+          created_at: string | null
+          id: string
+          location: string | null
+          scheduled_date: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          agenda?: Json | null
+          connection_type: string
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          location?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          agenda?: Json | null
+          connection_type?: string
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          location?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "next_connections_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -110,6 +213,9 @@ export type Database = {
         | "file"
         | "other"
         | "linkedin_profile"
+        | "pog"
+        | "ask"
+        | "milestone"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -235,6 +341,9 @@ export const Constants = {
         "file",
         "other",
         "linkedin_profile",
+        "pog",
+        "ask",
+        "milestone",
       ],
     },
   },

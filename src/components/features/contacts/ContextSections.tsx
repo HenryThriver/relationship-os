@@ -6,7 +6,7 @@ import { PersonalContextDisplay } from './PersonalContext'; // Assuming Personal
 import { ProfessionalContextDisplay } from './ProfessionalContext'; // Assuming ProfessionalContext.tsx exports ProfessionalContextDisplay
 
 // Import the new comprehensive Contact type
-import type { Contact } from '@/types';
+import type { Contact, ProfessionalContext as ProfessionalContextTypeAlias, PersonalContext as PersonalContextTypeAlias } from '@/types';
 
 interface ContextSectionsProps {
   contactData: Contact | null; // Use the new Contact type, allow null for loading states
@@ -18,10 +18,22 @@ export const ContextSections: React.FC<ContextSectionsProps> = ({ contactData })
     return null; 
   }
 
+  // contactData.professional_context is Json | null | undefined
+  // ProfessionalContextDisplay expects ProfessionalContextTypeAlias | undefined
+  const professionalContextProp = contactData.professional_context 
+    ? contactData.professional_context as ProfessionalContextTypeAlias 
+    : undefined;
+  
+  // contactData.personal_context is Json | null | undefined
+  // PersonalContextDisplay expects PersonalContextTypeAlias | undefined
+  const personalContextProp = contactData.personal_context 
+    ? contactData.personal_context as PersonalContextTypeAlias 
+    : undefined;
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <ProfessionalContextDisplay professionalContext={contactData.professional_context} />
-      <PersonalContextDisplay personalContext={contactData.personal_context} />
+      <ProfessionalContextDisplay professionalContext={professionalContextProp} />
+      <PersonalContextDisplay personalContext={personalContextProp} />
       {/* 
         Other general sections or cards that are not part of professional/personal context 
         can be added here if needed in the future.

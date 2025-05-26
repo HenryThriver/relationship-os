@@ -20,7 +20,8 @@ import type {
     POGArtifactContent,
     AskArtifactContent,
     POGArtifactContentStatus,
-    AskArtifactContentStatus
+    AskArtifactContentStatus,
+    PersonalContext as PersonalContextType
 } from '@/types';
 
 interface ContactProfilePageProps {}
@@ -31,7 +32,7 @@ const mapPOGStatusToActionQueueStatus = (pogStatus?: POGArtifactContentStatus): 
     case 'brainstorm': return 'brainstorm';
     case 'delivered': return 'closed';
     case 'closed': return 'closed';
-    case 'offered': return 'active'; // or 'pending' depending on desired UX for ActionQueue
+    case 'offered': return 'active';
     case 'queued': return 'queued';
     default: return 'queued';
   }
@@ -43,7 +44,7 @@ const mapAskStatusToActionQueueStatus = (askStatus?: AskArtifactContentStatus): 
     case 'received': return 'closed';
     case 'closed': return 'closed';
     case 'in_progress': return 'active';
-    case 'requested': return 'active'; // or 'pending'
+    case 'requested': return 'active';
     case 'queued': return 'queued';
     default: return 'queued';
   }
@@ -53,7 +54,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const params = useParams();
   const contactId = params.id as string;
 
-  // Use the new hook to fetch contact data
   const { 
     contact, 
     isLoading, 
@@ -72,7 +72,10 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     return <Container sx={{ py: 4 }}><Alert severity="warning">Contact not found.</Alert></Container>;
   }
 
-  // pogs and asks mapping - ensure content is from metadata if applicable
+  const personalContextForHeader = contact.personal_context 
+    ? contact.personal_context as PersonalContextType 
+    : undefined;
+
   interface ActionItemLike {
     id: string;
     content: string;
@@ -87,7 +90,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       return {
         id: art.id,
         content: metadata?.description || art.content,
-        status: mapPOGStatusToActionQueueStatus(metadata?.status), 
+        status: mapPOGStatusToActionQueueStatus(metadata?.status),
         type: 'pog' as const,
       };
     }) || [];
@@ -99,7 +102,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       return {
         id: art.id,
         content: metadata?.request_description || art.content,
-        status: mapAskStatusToActionQueueStatus(metadata?.status), 
+        status: mapAskStatusToActionQueueStatus(metadata?.status),
         type: 'ask' as const,
       };
     }) || [];
@@ -123,7 +126,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           location={contact.location}
           profilePhotoUrl={contact.profile_photo_url}
           relationshipScore={contact.relationship_score}
-          userGoal={contact.personal_context?.relationship_goal} 
+          userGoal={personalContextForHeader?.relationship_goal}
           connectCadence={contact.connection_cadence_days ? `Connect every ${contact.connection_cadence_days} days` : undefined}
           onRecordNote={handleRecordNote}
           onSendPOG={handleSendPOG}
@@ -170,4 +173,4 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   );
 };
 
-export default ContactProfilePage; 
+export default ContactProfilePage;

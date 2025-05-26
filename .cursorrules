@@ -97,6 +97,9 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - Optimize images with Next.js Image component
 
 ## Supabase Conventions
+- My Supabase project ID is zepawphplcisievcdugz
+- Make all changes in the cloud version of my supabase db
+- Connect to the cloud project at the beginning of each chat thread
 - Use Row Level Security (RLS) for all tables
 - Create typed clients using generated types
 - Use real-time subscriptions sparingly
