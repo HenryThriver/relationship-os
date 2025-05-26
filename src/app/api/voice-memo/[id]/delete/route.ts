@@ -7,9 +7,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({ 
-    cookies: () => cookieStore
+    cookies
   });
 
   const resolvedParams = await params;
@@ -25,8 +24,8 @@ export async function DELETE(
     const { data: approvedSuggestions, error: suggestionCheckError } = await supabase
       .from('contact_update_suggestions')
       .select('id')
-      .eq('artifact_id', artifactIdToDelete)
-      .in('status', ['approved', 'partial'])
+      .eq('artifact_id', artifactIdToDelete as any) // Type assertion
+      .in('status', ['approved', 'partial'] as any) // Type assertion
       .limit(1);
 
     if (suggestionCheckError) {
@@ -37,7 +36,7 @@ export async function DELETE(
     if (approvedSuggestions && approvedSuggestions.length > 0) {
       return NextResponse.json(
         { error: 'This voice memo cannot be deleted because one or more of its suggestions have been approved. Edits sourced from this memo might be active in a contact profile.' }, 
-        { status: 403 } // Forbidden
+        { status: 403 }
       );
     }
 
@@ -45,7 +44,7 @@ export async function DELETE(
     const { data: artifacts, error: fetchError } = await supabase
       .from('artifacts')
       .select('id, type, audio_file_path')
-      .eq('id', artifactIdToDelete);
+      .eq('id', artifactIdToDelete as any); // Type assertion
 
     if (fetchError) {
       console.error('Error fetching artifact for deletion:', fetchError);
@@ -54,15 +53,13 @@ export async function DELETE(
 
     if (!artifacts || artifacts.length === 0) {
       console.log(`Artifact ${artifactIdToDelete} not found for deletion. It might have been already deleted.`);
-      // Return a success-like response or a specific message indicating it was already gone.
-      // For idempotency, often a 200 or 204 is returned even if it was already deleted.
       return NextResponse.json({ message: 'Artifact not found or already deleted.', artifact_id: artifactIdToDelete }, { status: 200 }); 
     }
     
     // Since ID is unique, if artifacts.length > 0, it must be 1.
     const artifact = artifacts[0];
 
-    if (artifact.type !== 'voice_memo') {
+    if (artifact && artifact.type !== 'voice_memo') {
       return NextResponse.json({ error: 'Deletion target is not a voice memo.' }, { status: 400 });
     }
 
@@ -70,7 +67,7 @@ export async function DELETE(
     const { error: deleteArtifactError } = await supabase
       .from('artifacts')
       .delete()
-      .eq('id', artifactIdToDelete);
+      .eq('id', artifactIdToDelete as any); // Type assertion
 
     if (deleteArtifactError) {
       console.error('Error deleting artifact record:', deleteArtifactError);
@@ -78,15 +75,12 @@ export async function DELETE(
     }
 
     // 4. Delete the associated audio file from Supabase Storage (if path exists)
-    if (artifact.audio_file_path) {
+    if (artifact && artifact.audio_file_path) {
       const { error: deleteStorageError } = await supabase.storage
         .from('voice-memos')
         .remove([artifact.audio_file_path]);
 
       if (deleteStorageError) {
-        // Log this error but consider the main deletion successful as the DB record is gone.
-        // This prevents a case where the DB delete works but storage fails, leaving an orphaned file but a half-successful operation.
-        // Alternatively, you could implement a more complex rollback or retry here.
         console.warn(`Successfully deleted artifact record ${artifactIdToDelete} but failed to delete from storage: ${deleteStorageError.message}`);
       }
     }

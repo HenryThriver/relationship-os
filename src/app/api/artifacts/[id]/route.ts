@@ -7,9 +7,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({ 
-    cookies: () => cookieStore
+    cookies
   });
   
   const resolvedParams = await params;
@@ -29,20 +28,19 @@ export async function DELETE(
     // 1. Fetch the artifact
     const { data: artifact, error: fetchError } = await supabase
       .from('artifacts')
-      .select('id, user_id, contact_id, type, metadata') // Include metadata for file_path
-      .eq('id', artifactId)
+      .select('id, user_id, contact_id, type, metadata')
+      .eq('id', artifactId as any) // Type assertion for Supabase strict typing
       .single();
 
     if (fetchError) {
-      // Check if the error is because the artifact was not found
-      if (fetchError.code === 'PGRST116') { // PostgREST error for "No rows found"
+      if (fetchError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Artifact not found' }, { status: 404 });
       }
       console.error('Error fetching artifact:', fetchError);
       return NextResponse.json({ error: 'Failed to fetch artifact details.' }, { status: 500 });
     }
 
-    if (!artifact) { // Should be caught by PGRST116, but as a safeguard
+    if (!artifact) {
       return NextResponse.json({ error: 'Artifact not found' }, { status: 404 });
     }
 
@@ -58,13 +56,12 @@ export async function DELETE(
       const { data: contact, error: contactFetchError } = await supabase
         .from('contacts')
         .select('field_sources')
-        .eq('id', artifact.contact_id as string)
-        .eq('user_id', user.id) // Ensure we only check the contact owned by the user
+        .eq('id', artifact.contact_id as any) // Type assertion
+        .eq('user_id', user.id as any) // Type assertion
         .single();
 
       if (contactFetchError && contactFetchError.code !== 'PGRST116') {
         console.error('Error fetching contact for source check:', contactFetchError);
-        // Non-critical error, proceed but log it. Deletion safety relies more on suggestion check.
       }
       
       if (contact && contact.field_sources && typeof contact.field_sources === 'object') {
@@ -80,12 +77,12 @@ export async function DELETE(
     
     // 3b. If voice_memo, check contact_update_suggestions
     let isSourceInSuggestions = false;
-    if (artifact.type === 'voice_memo') { // Using string literal
+    if (artifact.type === 'voice_memo') {
       const { data: suggestions, error: suggestionsError } = await supabase
         .from('contact_update_suggestions')
         .select('id, status')
-        .eq('artifact_id', artifactId)
-        .or('status.eq.approved,status.eq.partial'); // Check for approved or partial suggestions
+        .eq('artifact_id', artifactId as any) // Type assertion
+        .or('status.eq.approved,status.eq.partial');
 
       if (suggestionsError) {
         console.error('Error checking contact_update_suggestions:', suggestionsError);
@@ -107,7 +104,7 @@ export async function DELETE(
     const { error: deleteArtifactError } = await supabase
       .from('artifacts')
       .delete()
-      .eq('id', artifactId);
+      .eq('id', artifactId as any); // Type assertion
 
     if (deleteArtifactError) {
       console.error('Error deleting artifact from table:', deleteArtifactError);
@@ -120,18 +117,16 @@ export async function DELETE(
       const filePath = (artifact.metadata as { file_path?: string }).file_path;
       if (filePath && typeof filePath === 'string') {
         const { error: deleteStorageError } = await supabase.storage
-          .from('voice_memos') // Assuming 'voice_memos' is your bucket name
+          .from('voice_memos')
           .remove([filePath]);
         
         if (deleteStorageError) {
-          // Log this error, but don't fail the whole operation if DB delete succeeded.
-          // The artifact record is gone, which is the primary goal. Orphaned storage is a cleanup task.
           console.error('Failed to delete voice memo file from storage, but artifact record deleted:', deleteStorageError);
         }
       }
     }
 
-    return new NextResponse(null, { status: 204 }); // Successfully deleted, no content to return
+    return new NextResponse(null, { status: 204 });
 
   } catch (error: any) {
     console.error('Unexpected error in DELETE /api/artifacts/[id]:', error);

@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import type { Database } from '@/lib/supabase/database.types';
-import { TranscriptionStatus } from '@/types/artifact';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({ 
-    cookies: () => cookieStore
+    cookies
   });
 
   const resolvedParams = await params;
@@ -26,7 +24,7 @@ export async function POST(
     const { data: artifact, error: fetchError } = await supabase
       .from('artifacts')
       .select('id, type, transcription_status, ai_parsing_status')
-      .eq('id', artifactId)
+      .eq('id', artifactId as any)
       .single();
 
     if (fetchError) {
@@ -49,8 +47,8 @@ export async function POST(
     // 2. Reset ai_parsing_status to 'pending'
     const { error: updatePendingError } = await supabase
       .from('artifacts')
-      .update({ ai_parsing_status: 'pending' })
-      .eq('id', artifactId);
+      .update({ ai_parsing_status: 'pending' } as any)
+      .eq('id', artifactId as any);
 
     if (updatePendingError) {
       console.error('Error setting artifact to pending for AI reprocessing:', updatePendingError);
@@ -60,14 +58,11 @@ export async function POST(
     // 3. "Touch" the transcription_status to re-trigger the database trigger
     const { error: touchError } = await supabase
       .from('artifacts')
-      .update({ transcription_status: 'completed' })
-      .eq('id', artifactId);
+      .update({ transcription_status: 'completed' } as any)
+      .eq('id', artifactId as any);
 
     if (touchError) {
       console.error('Error touching artifact for AI reprocessing trigger:', touchError);
-      // Note: Even if this specific update fails, the status is already pending.
-      // The trigger might not fire immediately, but the state is set for a future attempt or manual check.
-      // Depending on how critical immediate re-triggering is, this could be handled differently.
       return NextResponse.json({ error: `Failed to re-trigger AI parsing: ${touchError.message}` }, { status: 500 });
     }
 
