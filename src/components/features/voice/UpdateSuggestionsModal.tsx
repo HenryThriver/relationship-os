@@ -60,7 +60,7 @@ export const UpdateSuggestionsModal: React.FC<UpdateSuggestionsModalProps> = ({
   const getFieldName = (path: string): string => {
     const names: Record<string, string> = {
       'professional_context.goals': 'Professional Goals',
-      'professional_context.current_ventures': 'Current Role/Ventures', // Updated name for clarity
+      'professional_context.current_ventures': 'Current Role/Ventures',
       'professional_context.current_role_description': 'Role Description',
       'professional_context.key_responsibilities': 'Key Responsibilities',
       'professional_context.projects_involved': 'Projects Involved',
@@ -69,12 +69,36 @@ export const UpdateSuggestionsModal: React.FC<UpdateSuggestionsModalProps> = ({
       'personal_context.interests': 'Personal Interests',
       'personal_context.family_details.partner_name': 'Partner Name',
       'personal_context.family_details.children_names': 'Children Names',
+      'personal_context.family_details.children_details': 'Children Details',
+      'personal_context.family_details.extended_family': 'Extended Family',
       'personal_context.key_life_events': 'Key Life Events',
+      'personal_context.current_challenges': 'Current Challenges',
+      'personal_context.upcoming_changes': 'Upcoming Changes',
+      'personal_context.living_situation': 'Living Situation',
       'personal_context.hobbies': 'Hobbies',
+      'personal_context.travel_plans': 'Travel Plans',
+      'personal_context.lifestyle_details': 'Lifestyle Details',
+      'personal_context.values': 'Values',
+      'personal_context.motivations': 'Motivations',
+      'personal_context.communication_style': 'Communication Style',
       'personal_context.education': 'Education',
       'company': 'Company',
-      'title': 'Job Title'
-      // Add more mappings as your AI suggests more field_paths
+      'title': 'Job Title',
+      'professional_context.team_details': 'Team Details',
+      'professional_context.work_challenges': 'Work Challenges',
+      'professional_context.skill_development': 'Skill Development',
+      'professional_context.career_transitions': 'Career Transitions',
+      'professional_context.networking_objectives': 'Networking Objectives',
+      'professional_context.collaborations': 'Collaborations',
+      'professional_context.upcoming_projects': 'Upcoming Projects',
+      'professional_context.expertise_areas': 'Areas of Expertise',
+      'professional_context.industry_knowledge': 'Industry Knowledge',
+      'professional_context.mentions.colleagues': 'Colleagues Mentioned',
+      'professional_context.mentions.clients': 'Clients Mentioned',
+      'professional_context.mentions.competitors': 'Competitors Mentioned',
+      'professional_context.mentions.collaborators': 'Collaborators Mentioned',
+      'professional_context.mentions.mentors': 'Mentors Mentioned',
+      'professional_context.mentions.industry_contacts': 'Industry Contacts Mentioned',
     };
     // Simple title casing for paths not in the map
     return names[path] || path.split('.').pop()?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || path;

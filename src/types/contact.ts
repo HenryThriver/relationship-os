@@ -9,19 +9,47 @@ export interface ProfessionalAchievementItem {
   details?: string;
 }
 
+export interface Mentions {
+  colleagues?: string[];
+  clients?: string[];
+  competitors?: string[];
+  collaborators?: string[];
+  mentors?: string[];
+  industry_contacts?: string[];
+}
+
 export interface ProfessionalContext {
   current_role?: string;
   current_company?: string;
   goals?: string[]; // Professional goals
   background?: {
     focus_areas?: string; // e.g. "B2B SaaS, GTM Strategy, Product-Led Growth"
-    education?: string[]; // Brief list: "Stanford MBA", "UC Berkeley CS"
     previous_companies?: string[]; // List of notable past companies
     expertise_areas?: string[]; // e.g. ["AI/ML", "Data Analytics", "Cloud Infrastructure"]
   };
   current_ventures?: string; // For entrepreneurs or those with side projects
   speaking_topics?: string[];
   achievements?: ProfessionalAchievementItem[];
+
+  // New fields from AI prompt
+  current_role_description?: string;
+  key_responsibilities?: string[];
+  team_details?: string;
+  work_challenges?: string[];
+  networking_objectives?: string[];
+  skill_development?: string[];
+  career_transitions?: string[];
+  projects_involved?: string[];
+  collaborations?: string[];
+  upcoming_projects?: string[];
+  skills?: string[]; 
+  industry_knowledge?: string[];
+  mentions?: Mentions;
+  opportunities_to_help?: string[];
+  introduction_needs?: string[];
+  resource_needs?: string[];
+  pending_requests?: string[];
+  collaboration_opportunities?: string[];
 }
 
 // ----- Personal Context ----- 
@@ -57,6 +85,16 @@ export interface PersonalContext {
   communication_style?: string; // e.g. "Prefers email, direct and to the point"
   relationship_goal?: string; // User's goal for this specific relationship
   conversation_starters?: ConversationStarters;
+
+  // New fields based on expanded AI prompt and UI needs
+  key_life_events?: string[];
+  current_challenges?: string[];
+  upcoming_changes?: string[];
+  living_situation?: string;
+  hobbies?: string[];
+  travel_plans?: string[];
+  motivations?: string[];
+  education?: string[];
 }
 
 // ----- Core Contact Type ----- 

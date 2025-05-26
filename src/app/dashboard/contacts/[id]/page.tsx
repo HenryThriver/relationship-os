@@ -33,7 +33,7 @@ import { VoiceMemoDetailModal } from '@/components/features/voice/VoiceMemoDetai
 
 // Import hooks and types
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
-import { useVoiceMemos } from '@/lib/hooks/useVoiceMemos';
+import { useVoiceMemos, ProcessingStatus as VoiceMemoProcessingStatus } from '@/lib/hooks/useVoiceMemos';
 // Import useUpdateSuggestions hook
 import { useUpdateSuggestions } from '@/lib/hooks/useUpdateSuggestions';
 import { useArtifacts } from '@/lib/hooks/useArtifacts';
@@ -44,8 +44,13 @@ import type {
     POGArtifactContentStatus,
     AskArtifactContentStatus,
     PersonalContext as PersonalContextType,
-    VoiceMemoArtifact
+    VoiceMemoArtifact,
+    TranscriptionStatus
 } from '@/types';
+import { useToast } from '@/lib/contexts/ToastContext';
+import { ProcessingIndicator } from '@/components/features/voice/ProcessingIndicator';
+import { ProcessingStatusBar } from '@/components/features/voice/ProcessingStatusBar'; // Revert to alias import
+// import { ProcessingStatusBar } from '../../../../../components/features/voice/ProcessingStatusBar'; // Comment out relative path
 
 interface ContactProfilePageProps {
   // Empty interface for future props
@@ -79,6 +84,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const params = useParams();
   const contactId = params.id as string;
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
@@ -107,7 +113,10 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     voiceMemos, 
     isLoading: isLoadingVoiceMemos,
     isError: isVoiceMemosError, 
-    error: voiceMemosError 
+    error: voiceMemosError, 
+    processingCount,
+    getProcessingStatus,
+    getProcessingDuration
   } = useVoiceMemos({ contact_id: contactId });
 
   // Instantiate useUpdateSuggestions hook
@@ -322,25 +331,87 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     setIsReprocessingMemo(true);
     setAudioPlaybackError(null);
     try {
+      // Toast for starting reprocess is now in VoiceMemoDetailModal
       const response = await fetch(`/api/voice-memo/${artifactId}/reprocess`, {
         method: 'POST',
+        body: JSON.stringify({ contactId: contact?.id }) // Pass contactId if needed by API
       });
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || 'Failed to reprocess AI.');
       }
-      console.log('AI Reprocessing started');
-      queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
-      queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] });
+      // Toast for success/failure will be handled by real-time subscription or modal itself
+      // queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] }); // Already handled by subscription
+      // queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] }); // Already handled by subscription
       queryClient.invalidateQueries({ queryKey: ['update-suggestions', contactId] });
-      handleCloseVoiceMemoDetailModal();
+      // The modal now closes itself after a delay if onReprocess is successful
+      // handleCloseVoiceMemoDetailModal(); // Modal handles its own close on success
     } catch (error: any) {
-      console.error('Error reprocessing AI:', error);
+      console.error('Error reprocessing AI on page:', error);
       setAudioPlaybackError(error.message || 'Error reprocessing AI.');
+      // Toast for failure is now in VoiceMemoDetailModal
     } finally {
       setIsReprocessingMemo(false);
     }
-  }, [queryClient, contactId, handleCloseVoiceMemoDetailModal]);
+  }, [queryClient, contactId, contact?.id]); // Removed handleCloseVoiceMemoDetailModal as modal handles it
+
+  // Real-time completion/failure notifications
+  useEffect(() => {
+    if (!contactId || !supabase) return;
+
+    const channel = supabase
+      .channel(`db_artifacts_contact_${contactId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'artifacts',
+          filter: `contact_id=eq.${contactId}`,
+        },
+        (payload) => {
+          const oldData = payload.old as VoiceMemoArtifact | undefined;
+          const newData = payload.new as VoiceMemoArtifact;
+
+          if (newData.type === 'voice_memo') {
+            const oldStatus = oldData?.ai_parsing_status;
+            const newStatus = newData.ai_parsing_status;
+
+            // Check if AI parsing just completed
+            if (oldStatus !== 'completed' && newStatus === 'completed') {
+              showToast(
+                `Voice memo analysis complete for ${contact?.name || 'contact'}! New suggestions may be available.`,
+                'success',
+                { icon: "✨", duration: 6000 }
+              );
+            }
+            // Check if AI parsing just failed
+            else if (oldStatus !== 'failed' && newStatus === 'failed') {
+              showToast(
+                `Voice memo analysis failed for ${contact?.name || 'contact'}. Try reprocessing.`,
+                'error',
+                { icon: "⚠️", duration: 8000 }
+              );
+            }
+            // Query invalidation is handled by useVoiceMemos hook itself
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Subscribed to artifact updates for contact: ${contactId}`);
+        }
+        if (err) {
+          console.error(`Error subscribing to artifact updates for ${contactId}:`, err);
+        }
+      });
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(err => console.error('Error removing channel:', err));
+      }
+    };
+  }, [contactId, contact?.name, showToast, supabase]); // Added supabase to dependencies
 
   // All hooks have been called. Now we can have conditional returns.
   const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions;
@@ -381,6 +452,15 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           onSendPOG={handleSendPOG}
           onScheduleConnect={handleScheduleConnect}
         />
+        {/* Ensure ProcessingStatusBar is used if processingCount > 0 */}
+        {processingCount > 0 && (
+          <Box mt={1}>
+            <ProcessingStatusBar 
+              activeProcessingCount={processingCount}
+              contactName={contact.name || undefined} // Ensure contact.name is passed or fallback
+            />
+          </Box>
+        )}
       </Box>
 
       {/* Suggestions Panel */}
@@ -433,18 +513,29 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             )}
             {!isLoadingVoiceMemos && !isVoiceMemosError && voiceMemos.length > 0 && (
               <List dense>
-                {voiceMemos.map((memo: VoiceMemoArtifact) => (
-                  <ListItemButton 
-                    key={memo.id} 
-                    onClick={() => handleOpenVoiceMemoDetailModal(memo)}
-                    divider
-                  >
-                    <ListItemText 
-                      primary={`Recorded: ${new Date(memo.created_at).toLocaleString()}`}
-                      secondary={memo.transcription_status === 'completed' ? (memo.content || memo.transcription || 'Processed').substring(0,100)+'...' : `Status: ${memo.transcription_status}`}
-                    />
-                  </ListItemButton>
-                ))}
+                {voiceMemos.map((memo: VoiceMemoArtifact) => {
+                  const processingInfo = getProcessingStatus(memo.id);
+                  return (
+                    <ListItemButton 
+                      key={memo.id} 
+                      onClick={() => handleOpenVoiceMemoDetailModal(memo)}
+                      divider
+                    >
+                      <ListItemText 
+                        primary={`Recorded: ${new Date(memo.created_at).toLocaleString()}`}
+                        secondary={
+                          <ProcessingIndicator
+                            status={processingInfo.status}
+                            startTime={processingInfo.startedAt || undefined}
+                            showTimer={true}
+                            compact={true}
+                            message={processingInfo.status === 'completed' ? 'Completed' : processingInfo.status === 'failed' ? 'Failed' : processingInfo.status === 'processing' ? 'Processing...' : 'Pending'}
+                          />
+                        }
+                      />
+                    </ListItemButton>
+                  );
+                })}
               </List>
             )}
           </Paper>
@@ -489,6 +580,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           isReprocessing={isReprocessingMemo}
           audioPlaybackError={audioPlaybackError}
           currentPlayingUrl={playingAudioUrl}
+          processingStatus={getProcessingStatus(selectedVoiceMemoForDetail.id).status}
+          processingStartTime={getProcessingStatus(selectedVoiceMemoForDetail.id).startedAt}
+          contactName={contact?.name || undefined}
         />
       )}
     </Container>

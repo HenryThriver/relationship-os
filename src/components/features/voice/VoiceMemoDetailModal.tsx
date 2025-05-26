@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -18,6 +18,9 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReplayIcon from '@mui/icons-material/Replay';
 import { VoiceMemoArtifact } from '@/types'; // Assuming VoiceMemoArtifact is comprehensive
+import { useToast } from '@/lib/contexts/ToastContext'; // Added import
+import { ProcessingIndicator } from '@/components/features/voice/ProcessingIndicator'; // Import ProcessingIndicator
+import { ProcessingStatus as VoiceMemoProcessingStatus } from '@/lib/hooks/useVoiceMemos'; // Import status type
 
 interface VoiceMemoDetailModalProps {
   open: boolean;
@@ -31,6 +34,9 @@ interface VoiceMemoDetailModalProps {
   isReprocessing?: boolean; // Specific loading state for reprocess
   audioPlaybackError?: string | null;
   currentPlayingUrl?: string | null; // URL of the audio currently playing/loaded
+  processingStatus?: VoiceMemoProcessingStatus['status']; // Pass the computed status string
+  processingStartTime?: string | null; // Pass the start time for the timer
+  contactName?: string; // Optional for context
 }
 
 export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
@@ -40,15 +46,27 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
   playAudio,
   onDelete,
   onReprocess,
-  isLoading = false, // Default general loading
+  // isLoading = false, // Consider removing if not used or handled by specific flags
   isDeleting = false,
-  isReprocessing = false,
+  // isReprocessing: initialIsReprocessing = false, // Renamed to avoid conflict with internal state
   audioPlaybackError,
   currentPlayingUrl,
+  processingStatus,
+  processingStartTime,
+  contactName,
 }) => {
+  const { showToast } = useToast(); // Added useToast hook
   const [internalAudioUrl, setInternalAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  // Internal state for reprocessing to manage button and toast logic
+  const [isReprocessingInternal, setIsReprocessingInternal] = useState(false); 
+
+  // Sync internal reprocessing state if an external prop is provided and changes
+  // This might be overly complex if isReprocessing is purely driven by the button click within modal
+  // useEffect(() => {
+  //   setIsReprocessingInternal(initialIsReprocessing);
+  // }, [initialIsReprocessing]);
 
   if (!voiceMemo) return null;
 
@@ -73,14 +91,55 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => { // Made async to potentially await onDelete
     if (window.confirm('Are you sure you want to delete this voice memo? This action cannot be undone.')) {
-      onDelete(voiceMemo.id);
+      // Consider adding try-catch for onDelete and showing toast
+      try {
+        await onDelete(voiceMemo.id);
+        showToast('Voice memo deleted.', 'info');
+        onClose(); // Close modal on successful delete
+      } catch (error: any) {
+        console.error('Error deleting voice memo:', error);
+        showToast('Failed to delete voice memo.', 'error');
+      }
     }
   };
 
-  const handleReprocess = () => {
-    onReprocess(voiceMemo.id);
+  const handleReprocess = async () => { // Made async to match user prompt
+    if (!voiceMemo) return;
+    setIsReprocessingInternal(true);
+    setAudioError(null); // Clear previous audio errors if any
+    // If setAudioPlaybackError is passed as a prop, use it:
+    // setAudioPlaybackError?.(null);
+
+    try {
+      // Show immediate feedback toast
+      showToast("AI reprocessing started", "info", { 
+        icon: "⚡", // This will be a string, ensure ToastItem handles string icons or use MUI icons
+        duration: 4000 
+      });
+      
+      await onReprocess(voiceMemo.id);
+      
+      // Optional: show success toast, though the user prompt implies a different mechanism for completion
+      // showToast("Reprocessing request sent", "success"); 
+
+      // Brief delay to show feedback before closing
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Error reprocessing AI:', error);
+      // Set local audioError or use a prop if it's for a shared Alert component
+      setAudioError(error.message || 'Error reprocessing AI.'); 
+      showToast("Reprocessing failed", "error", {
+        icon: "⚠️", // String icon
+        duration: 6000
+      });
+    } finally {
+      setIsReprocessingInternal(false);
+    }
   };
 
   return (
@@ -90,6 +149,17 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
         <Typography variant="caption" display="block">
           Recorded: {new Date(voiceMemo.created_at).toLocaleString()} - Duration: {voiceMemo.duration_seconds ? `${voiceMemo.duration_seconds}s` : 'N/A'}
         </Typography>
+        {processingStatus && (
+          <Box sx={{ mt: 1 }}>
+            <ProcessingIndicator 
+              status={processingStatus}
+              startTime={processingStartTime || undefined}
+              showTimer={processingStatus === 'processing'}
+              compact={false} // Non-compact version for modal
+              message={processingStatus === 'completed' ? 'Analysis Complete' : processingStatus === 'failed' ? 'Analysis Failed' : processingStatus === 'processing' ? `Processing (for ${contactName || 'contact'})...` : 'Pending Analysis'}
+            />
+          </Box>
+        )}
       </DialogTitle>
       
       <DialogContent dividers>
@@ -106,7 +176,7 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
               variant="outlined" 
               startIcon={<PlayArrowIcon />} 
               onClick={handlePlayAudio} 
-              disabled={isReprocessing || isDeleting || isPlaying}
+              disabled={isReprocessingInternal || isDeleting || isPlaying}
             >
               Play Memo
             </Button>
@@ -141,17 +211,17 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
               color="secondary" 
               startIcon={<ReplayIcon />} 
               onClick={handleReprocess}
-              disabled={isReprocessing || isDeleting || voiceMemo.transcription_status !== 'completed'}
+              disabled={isReprocessingInternal || isDeleting || voiceMemo.transcription_status !== 'completed'}
             >
-              {isReprocessing ? <CircularProgress size={20} sx={{mr:1}}/> : null}
+              {isReprocessingInternal ? <CircularProgress size={20} sx={{mr:1}}/> : null}
               Reprocess AI
             </Button>
             <Button 
               variant="outlined" 
               color="error" 
               startIcon={<DeleteIcon />} 
-              onClick={handleDelete}
-              disabled={isReprocessing || isDeleting}
+              onClick={handleDelete} // Changed to async handleDelete
+              disabled={isReprocessingInternal || isDeleting}
             >
               {isDeleting ? <CircularProgress size={20} sx={{mr:1}}/> : null}
               Delete Memo
@@ -164,7 +234,7 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ p: '16px 24px' }}>
-        <Button onClick={onClose} disabled={isDeleting || isReprocessing}>Close</Button>
+        <Button onClick={onClose} disabled={isDeleting || isReprocessingInternal}>Close</Button>
       </DialogActions>
     </Dialog>
   );

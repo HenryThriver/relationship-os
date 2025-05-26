@@ -12,7 +12,24 @@ export const PersonalContextDisplay: React.FC<PersonalContextProps> = ({ persona
     return null;
   }
 
-  const { family, interests, values, milestones, anecdotes, communication_style, relationship_goal, conversation_starters } = personalContext;
+  const { 
+    family, 
+    interests, 
+    values, 
+    milestones, 
+    anecdotes, 
+    communication_style, 
+    relationship_goal, 
+    conversation_starters,
+    key_life_events,
+    current_challenges,
+    upcoming_changes,
+    living_situation,
+    hobbies,
+    travel_plans,
+    motivations,
+    education
+  } = personalContext;
 
   return (
     <Card sx={{ mb: 2 }}>
@@ -70,6 +87,18 @@ export const PersonalContextDisplay: React.FC<PersonalContextProps> = ({ persona
           </Box>
         )}
         
+        {/* Key Life Events - NEW */}
+        {key_life_events && key_life_events.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Key Life Events</Typography>
+            <List dense disablePadding>
+              {key_life_events.map((event: string, index: number) => (
+                <ListItem key={`kle-${index}`} sx={{pl:1}}><ListItemText primary={event} /></ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+
         {/* Milestones */}
         {milestones && milestones.length > 0 && (
           <Box mb={2}>
@@ -94,6 +123,86 @@ export const PersonalContextDisplay: React.FC<PersonalContextProps> = ({ persona
             <List dense disablePadding>
               {anecdotes.map((anecdote, index) => (
                 <ListItem key={index} sx={{pl:1}}><ListItemText primary={anecdote} /></ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+
+        {/* Current Challenges - NEW */}
+        {current_challenges && current_challenges.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Current Challenges</Typography>
+            <List dense disablePadding>
+              {current_challenges.map((challenge: string, index: number) => (
+                <ListItem key={`cc-${index}`} sx={{pl:1}}><ListItemText primary={challenge} /></ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+
+        {/* Upcoming Changes - NEW */}
+        {upcoming_changes && upcoming_changes.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Upcoming Changes</Typography>
+            <List dense disablePadding>
+              {upcoming_changes.map((change: string, index: number) => (
+                <ListItem key={`uc-${index}`} sx={{pl:1}}><ListItemText primary={change} /></ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+
+        {/* Living Situation - NEW */}
+        {living_situation && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Living Situation</Typography>
+            <Typography variant="body2">{living_situation}</Typography>
+          </Box>
+        )}
+
+        {/* Hobbies - NEW (similar to Interests) */}
+        {hobbies && hobbies.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Hobbies</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+              {hobbies.map((hobby: string, index: number) => (
+                <Chip key={`hobby-${index}`} label={hobby} size="small" />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Travel Plans - NEW */}
+        {travel_plans && travel_plans.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Travel Plans</Typography>
+            <List dense disablePadding>
+              {travel_plans.map((plan: string, index: number) => (
+                <ListItem key={`tp-${index}`} sx={{pl:1}}><ListItemText primary={plan} /></ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+
+        {/* Motivations - NEW */}
+        {motivations && motivations.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Motivations</Typography>
+            <List dense disablePadding>
+              {motivations.map((motivation: string, index: number) => (
+                <ListItem key={`motiv-${index}`} sx={{pl:1}}><ListItemText primary={motivation} /></ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+
+        {/* Education - NEW */}
+        {education && education.length > 0 && (
+          <Box mb={2}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>Education</Typography>
+            <List dense disablePadding>
+              {education.map((edu: string, index: number) => (
+                <ListItem key={`edu-${index}`} sx={{pl:1}}><ListItemText primary={edu} /></ListItem>
               ))}
             </List>
           </Box>

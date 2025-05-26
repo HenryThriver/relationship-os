@@ -81,6 +81,9 @@ export interface VoiceMemoArtifact extends ArtifactGlobal {
   transcription?: string | null;
   duration_seconds?: number | null;
   transcription_status: TranscriptionStatus;
+  ai_parsing_status?: string | null;
+  ai_processing_started_at?: string | null;
+  ai_processing_completed_at?: string | null;
   // content: string; // Inherited from ArtifactGlobal, can be used for a title/note
   // metadata?: Record<string, any> | null; // Inherited from ArtifactGlobal
 }

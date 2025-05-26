@@ -138,9 +138,33 @@ serve(async (req) => {
     }
 
     await updateArtifact(supabaseAdmin, record.id, updatePayload);
-
     console.log(`Transcription completed for artifact ${record.id}`);
-    return new Response(JSON.stringify({ message: 'Transcription successful', artifactId: record.id, transcription: transcriptionText }), {
+
+    // Now that transcription is complete, prepare and trigger AI parsing
+    console.log(`Preparing to trigger AI parsing for artifact ${record.id}`);
+    const aiParsingUpdatePayload = {
+      ai_parsing_status: 'pending',
+      ai_processing_started_at: new Date().toISOString(),
+      ai_processing_completed_at: null, // Ensure this is cleared for reprocessing scenarios
+    };
+    await updateArtifact(supabaseAdmin, record.id, aiParsingUpdatePayload);
+    console.log(`Artifact ${record.id} status updated for AI parsing.`);
+
+    // Invoke the parse-voice-memo Edge Function
+    const { data: functionData, error: functionError } = await supabaseAdmin.functions.invoke(
+      'parse-voice-memo',
+      { body: { artifactId: record.id } } 
+    );
+
+    if (functionError) {
+      console.error(`Error invoking parse-voice-memo Edge Function for ${record.id}:`, functionError);
+      // Optionally, update artifact to reflect this invocation error if critical
+      // await updateArtifact(supabaseAdmin, record.id, { metadata: { ...record.metadata, ai_invocation_error: functionError.message } });
+    } else {
+      console.log(`Successfully invoked parse-voice-memo Edge Function for ${record.id}. Response:`, functionData);
+    }
+
+    return new Response(JSON.stringify({ message: 'Transcription successful, AI parsing initiated', artifactId: record.id, transcription: transcriptionText }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

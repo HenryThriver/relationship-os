@@ -12,41 +12,89 @@ function setValueAtPath(obj: ContactContext, path: string, value: any, action: '
   let current = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
-    if (!current[key] || typeof current[key] !== 'object') {
-      current[key] = {};
+    // Ensure parent path exists and is an object. If it's an array, we might have an issue for object paths.
+    // This logic assumes paths like 'arrayKey.objectProperty' are not expected, but rather 'objectKey.arrayKey'
+    if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
+      current[key] = {}; // Initialize as object if not one
     }
     current = current[key];
   }
   const finalKey = keys[keys.length - 1];
 
-  // Simplified map for array fields based on the final key in the path
-  const arrayFieldFinalKeys: Record<string, boolean> = {
-    'goals': true, 'key_responsibilities': true, 'projects_involved': true, 'skills': true, 'challenges': true,
-    'interests': true, 'key_life_events': true, 'hobbies': true, 'education': true,
-    'children_names': true 
-  };
+  // Define field paths that are known to be arrays. 
+  // This helps in deciding how to handle 'add', 'update', 'remove' actions.
+  const arrayFieldPaths: Set<string> = new Set([
+    // Personal Context Arrays
+    'family.children',
+    'key_life_events',
+    'current_challenges',
+    'upcoming_changes',
+    'interests',
+    'hobbies',
+    'travel_plans',
+    'values',
+    'motivations',
+    // Professional Context Arrays
+    'key_responsibilities',
+    'work_challenges',
+    'goals',
+    'skill_development',
+    'career_transitions',
+    'networking_objectives',
+    'projects_involved',
+    'collaborations',
+    'upcoming_projects',
+    'skills',
+    'expertise_areas',
+    'industry_knowledge',
+    'mentions.colleagues',
+    'mentions.clients',
+    'mentions.competitors',
+    'mentions.collaborators',
+    'mentions.mentors',
+    'mentions.industry_contacts',
+    // Legacy array keys if still needed (review and remove if not)
+    // 'education' // if education was treated as an array of strings/objects
+  ]);
 
-  const isArrayField = arrayFieldFinalKeys[finalKey] === true;
+  const fullPathForArrayCheck = keys.join('.'); // Use the partial path relative to professional_context/personal_context
+  const isArrayField = arrayFieldPaths.has(fullPathForArrayCheck);
   
   if (isArrayField) {
-    let currentArray: any[] = Array.isArray(current[finalKey]) ? current[finalKey] : [];
-    const valuesToProcess = Array.isArray(value) ? value.map(String) : (value !== null && value !== undefined ? [String(value)] : []);
+    let currentArray: any[] = Array.isArray(current[finalKey]) ? [...current[finalKey]] : [];
 
     if (action === 'add') {
-      current[finalKey] = Array.from(new Set([...currentArray, ...valuesToProcess]));
-    } else if (action === 'remove') {
-      if (value === null || value === undefined) { // If value is null/undefined, implies clear the array or remove a specific null/undefined if it existed (latter is rare)
-        current[finalKey] = []; // Clearing the array for explicit null/undefined removal value
+      // If value is not an array, wrap it in an array for consistent processing
+      const valuesToAdd = Array.isArray(value) ? value : (value !== null && value !== undefined ? [value] : []);
+      // For arrays of objects, ensure no direct duplicates if an ID or unique key is present (not handled here, simple concat)
+      // For arrays of primitives, use Set to avoid duplicates if desired, otherwise simple concat.
+      // The prompt implies adding new items, so Set for primitives, direct add for objects (or more complex merge logic if needed)
+      if (valuesToAdd.every(item => typeof item === 'object' && item !== null)) {
+        current[finalKey] = [...currentArray, ...valuesToAdd]; // Add new objects
       } else {
-        current[finalKey] = currentArray.filter(item => !valuesToProcess.includes(String(item)));
+        // For primitive arrays, avoid duplicates by converting to string temporarily for Set uniqueness
+        const newSet = new Set([...currentArray.map(String), ...valuesToAdd.map(String)]);
+        current[finalKey] = Array.from(newSet);
+        // If original types need preservation (e.g. numbers), more care is needed than just String conversion
       }
-    } else { // 'update' for an array field means replacing the whole array
-      current[finalKey] = valuesToProcess;
+    } else if (action === 'remove') {
+      if (value === null || value === undefined) { // Implies clear the array
+        current[finalKey] = [];
+      } else {
+        // For removing items, especially objects, comparison needs to be robust.
+        // This basic filter might not work well for removing specific objects unless `value` is a primitive or an array of primitives.
+        // If `value` is an object to remove, deep comparison or an ID would be needed.
+        // For now, assumes `value` is an array of primitives to be removed.
+        const valuesToRemove = Array.isArray(value) ? value.map(String) : [String(value)];
+        current[finalKey] = currentArray.filter(item => !valuesToRemove.includes(String(item)));
+      }
+    } else { // 'update' for an array field means replacing the whole array with the new value(s)
+      current[finalKey] = Array.isArray(value) ? value : (value !== null && value !== undefined ? [value] : []);
     }
-  } else {
+  } else { // Field is not an array, simple set/delete
     if (action === 'remove') {
       delete current[finalKey];
-    } else if (action === 'update' || action === 'add') {
+    } else if (action === 'update' || action === 'add') { // 'add' on non-array is like 'update'
       current[finalKey] = value;
     }
   }

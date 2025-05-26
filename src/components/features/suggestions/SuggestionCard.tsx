@@ -66,8 +66,13 @@ export const SuggestionCard: React.FC<SuggestionCardProps> = ({
   };
 
   const formatValue = (value: any): string => {
-    if (Array.isArray(value)) {
-      return value.join(', ');
+    if (value === null || value === undefined) {
+      return 'N/A'; // Or an empty string, or "(empty)"
+    }
+    if (typeof value === 'object') {
+      // For both arrays and objects, stringify them for display.
+      // Arrays of simple items might still look okay with join, but complex objects need stringify.
+      return JSON.stringify(value, null, 2); 
     }
     return String(value);
   };

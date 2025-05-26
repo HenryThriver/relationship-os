@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 // import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Remove this
 import { supabase } from '@/lib/supabase/client'; // Import the shared client
 import { useQuery, useQueryClient, QueryKey } from '@tanstack/react-query';
 import { Database } from '@/lib/supabase/types_db';
-import { VoiceMemoArtifact, ArtifactGlobal } from '@/types/artifact';
+import { VoiceMemoArtifact, ArtifactGlobal, TranscriptionStatus } from '@/types/artifact';
 
 // const supabase = createClientComponentClient<Database>(); // Remove this line, use imported supabase
 
@@ -44,7 +44,24 @@ interface UseVoiceMemosOptions {
   initialData?: VoiceMemoArtifact[];
 }
 
-export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions) => {
+export interface ProcessingStatus {
+  status: 'idle' | 'processing' | 'completed' | 'failed';
+  startedAt?: string | null; // Changed from string to string | null to match VoiceMemoArtifact
+  completedAt?: string | null; // Changed from string to string | null
+  duration?: number; // in milliseconds
+}
+
+export interface UseVoiceMemosReturn {
+  voiceMemos: VoiceMemoArtifact[];
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  processingCount: number;
+  getProcessingStatus: (memoId: string) => ProcessingStatus;
+  getProcessingDuration: (memoId: string) => number; // returns milliseconds
+}
+
+export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions): UseVoiceMemosReturn => {
   const queryClient = useQueryClient();
   // QueryKey must be a list of serializable values
   const queryKey: QueryKey = ['voiceMemos', contact_id]; 
@@ -111,5 +128,58 @@ export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions)
     };
   }, [contact_id, queryClient, queryKey]);
 
-  return { voiceMemos, isLoading, isError, error };
+  const processingCount = useMemo(() => {
+    return voiceMemos.filter(memo => 
+      memo.transcription_status === 'processing' || 
+      (memo.transcription_status === 'completed' && memo.ai_parsing_status === 'processing') || 
+      (memo.transcription_status === 'completed' && memo.ai_parsing_status === 'pending' && memo.ai_processing_started_at && !memo.ai_processing_completed_at)
+    ).length;
+  }, [voiceMemos]);
+
+  const getProcessingStatus = useCallback((memoId: string): ProcessingStatus => {
+    const memo = voiceMemos.find(m => m.id === memoId);
+    if (!memo) return { status: 'idle' }; // Should not happen if called for existing memo
+
+    // Case 1: Transcription is processing or failed
+    if (memo.transcription_status === 'processing') {
+      return { status: 'processing', startedAt: memo.created_at }; // Use created_at as a rough start for transcription
+    }
+    if (memo.transcription_status === 'failed') {
+      return { status: 'failed' };
+    }
+
+    // Case 2: Transcription completed, now check AI parsing status
+    if (memo.transcription_status === 'completed') {
+      if (memo.ai_parsing_status === 'processing' || (memo.ai_parsing_status === 'pending' && memo.ai_processing_started_at && !memo.ai_processing_completed_at)) {
+        return { status: 'processing', startedAt: memo.ai_processing_started_at };
+      }
+      if (memo.ai_parsing_status === 'completed') {
+        return { 
+          status: 'completed', 
+          startedAt: memo.ai_processing_started_at, 
+          completedAt: memo.ai_processing_completed_at 
+        };
+      }
+      if (memo.ai_parsing_status === 'failed') {
+        return { status: 'failed', startedAt: memo.ai_processing_started_at, completedAt: memo.ai_processing_completed_at };
+      }
+    }
+    
+    // Default idle state (e.g. transcription complete, AI parsing not yet started or is pending without start time)
+    return { status: 'idle' };
+
+  }, [voiceMemos]);
+
+  const getProcessingDuration = useCallback((memoId: string): number => {
+    const status = getProcessingStatus(memoId);
+    if (status.status === 'processing' && status.startedAt) {
+      return Date.now() - new Date(status.startedAt).getTime();
+    }
+    if ((status.status === 'completed' || status.status === 'failed') && status.startedAt && status.completedAt) {
+      return new Date(status.completedAt).getTime() - new Date(status.startedAt).getTime();
+    }
+    return 0;
+  }, [getProcessingStatus]);
+
+  return { voiceMemos, isLoading, isError, error, processingCount, getProcessingStatus, getProcessingDuration };
 }; 
