@@ -5,7 +5,7 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2024-05-25
+## [0.4.0] - 2024-05-26
 
 ### Added
 - **LinkedIn Profile Modal & Re-scrape:**
@@ -41,10 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Re-scrape Logic:** Improved re-scrape trigger logic, including fetching `linkedin_url` from the `contacts` table as a fallback.
 - **Visual Bugs:** Fixed header cutoff in `LinkedInProfileModal` by applying `flexShrink: 0`.
 
-### Changed
-- Replaced YYYY-MM-DD in the changelog with today's date.
-
-## [0.3.0] - 2025-05-26
+## [0.3.0] - 2024-05-18
 
 ### Added
 - **Voice Memo Intelligence:**
@@ -78,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Addressed various issues in the AI suggestion application logic and data sourcing for array items.
 - Stabilized authentication and session management with the new `@supabase/ssr` setup.
 
-## [0.2.0] - 2025-05-25
+## [0.2.0] - 2024-05-11
 
 ### Added
 - Implemented Google OAuth authentication system with Supabase.
