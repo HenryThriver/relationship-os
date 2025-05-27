@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'; // Ensures the page is always dynamically rendered
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItemText, ListItemButton } from '@mui/material';
+import { Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItemText, ListItemButton, Button } from '@mui/material';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { default as nextDynamic } from 'next/dynamic';
@@ -16,6 +16,7 @@ import { ActionQueues, ActionItemStatus as ActionQueuesActionItemStatus } from '
 import { ReciprocityDashboard } from '@/components/features/contacts/ReciprocityDashboard';
 import { ContextSections } from '@/components/features/contacts/ContextSections';
 import { QuickAdd } from '@/components/features/contacts/QuickAdd';
+import { ArtifactModal } from '@/components/features/timeline/ArtifactModal';
 
 // Dynamically import VoiceRecorder
 const VoiceRecorder = nextDynamic(() => 
@@ -37,6 +38,7 @@ import { useVoiceMemos, ProcessingStatus as VoiceMemoProcessingStatus } from '@/
 // Import useUpdateSuggestions hook
 import { useUpdateSuggestions } from '@/lib/hooks/useUpdateSuggestions';
 import { useArtifacts } from '@/lib/hooks/useArtifacts';
+import { useArtifactModalData } from '@/lib/hooks/useArtifactModalData';
 import type { 
     ArtifactGlobal,
     POGArtifactContent,
@@ -45,12 +47,10 @@ import type {
     AskArtifactContentStatus,
     PersonalContext as PersonalContextType,
     VoiceMemoArtifact,
-    TranscriptionStatus
 } from '@/types';
 import { useToast } from '@/lib/contexts/ToastContext';
 import { ProcessingIndicator } from '@/components/features/voice/ProcessingIndicator';
 import { ProcessingStatusBar } from '@/components/features/voice/ProcessingStatusBar'; // Revert to alias import
-// import { ProcessingStatusBar } from '../../../../../components/features/voice/ProcessingStatusBar'; // Comment out relative path
 
 interface ContactProfilePageProps {
   // Empty interface for future props
@@ -96,10 +96,12 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const [selectedVoiceMemoForDetail, setSelectedVoiceMemoForDetail] = useState<VoiceMemoArtifact | null>(null);
   const [isVoiceMemoDetailModalOpen, setIsVoiceMemoDetailModalOpen] = useState(false);
 
+  // State for the general ArtifactModal
+  const [selectedArtifactForModal, setSelectedArtifactForModal] = useState<ArtifactGlobal | null>(null);
+  const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
+
   // Add loading states for modal actions
   const [isReprocessingMemo, setIsReprocessingMemo] = useState(false);
-
-  const [hasNewSuggestions, setHasNewSuggestions] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -120,6 +122,22 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     getProcessingStatus,
     getProcessingDuration
   } = useVoiceMemos({ contact_id: contactId });
+
+  // Instantiate useArtifactModalData hook
+  const {
+    artifactDetails,
+    relatedSuggestions,
+    displayedContactProfileUpdates,
+    contactName: artifactModalContactName,
+    isLoading: isLoadingArtifactModalData,
+    error: artifactModalDataError,
+    fetchArtifactData,
+    reprocessVoiceMemo,
+    isReprocessing: isReprocessingArtifactModal,
+    deleteArtifact: deleteArtifactModalFromHook,
+    isDeleting,
+    playAudio,
+  } = useArtifactModalData();
 
   // Effect to handle opening VoiceMemoDetailModal based on URL query params
   useEffect(() => {
@@ -242,7 +260,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     setPlayingAudioUrl(null);
   }, []);
 
-  const handleVoiceRecordingComplete = useCallback((artifact: any) => {
+  const handleVoiceRecordingComplete = useCallback((artifact: unknown) => {
     console.log('Voice memo created and processing started:', artifact);
     queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
     queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] });
@@ -270,9 +288,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       } else {
         throw new Error('Failed to get playable URL.');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error creating signed URL for playback:', e);
-      setAudioPlaybackError(e.message || 'Could not play audio.');
+      setAudioPlaybackError(e instanceof Error ? e.message : 'Could not play audio.');
       throw e; // Re-throw for modal to handle
     }
   }, []);
@@ -338,55 +356,52 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     }
   }, [searchParams, router]);
 
-  const handleDeleteVoiceMemo = useCallback(async (artifactId: string) => {
-    if (!selectedVoiceMemoForDetail) {
-      console.error('No voice memo selected for deletion.');
-      return;
-    }
-    try {
-      await deleteArtifact({
-        id: artifactId,
-        contactId: selectedVoiceMemoForDetail.contact_id,
-      });
-      console.log('Voice memo deleted successfully');
-      handleCloseVoiceMemoDetailModal();
-      queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
-    } catch (error: any) {
-      console.error('Failed to delete voice memo:', error);
-      const message = error.code === 'ARTIFACT_IS_SOURCE' 
-          ? error.message 
-          : 'Failed to delete voice memo. Please try again.';
-      setAudioPlaybackError(message);
-    }
-  }, [selectedVoiceMemoForDetail, deleteArtifact, handleCloseVoiceMemoDetailModal, queryClient, contactId]);
-
-  const handleReprocessAi = useCallback(async (artifactId: string) => {
-    setIsReprocessingMemo(true);
-    setAudioPlaybackError(null);
-    try {
-      // Toast for starting reprocess is now in VoiceMemoDetailModal
-      const response = await fetch(`/api/voice-memo/${artifactId}/reprocess`, {
-        method: 'POST',
-        body: JSON.stringify({ contactId: contact?.id }) // Pass contactId if needed by API
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to reprocess AI.');
+  const handleDeleteVoiceMemoFromDetailModal = useCallback(async (memoId: string) => {
+    if (window.confirm('Are you sure you want to delete this voice memo?')) {
+      try {
+        // Correctly call deleteArtifact from useArtifacts hook
+        await deleteArtifact({ id: memoId, contactId: contactId }); 
+        showToast('Voice memo deleted successfully', 'success');
+        setIsVoiceMemoDetailModalOpen(false); // Close modal after delete
+        setSelectedVoiceMemoForDetail(null);
+        // Invalidate queries for voice memos or general artifacts for this contact
+        queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
+        queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] }); // From useArtifacts key
+        queryClient.invalidateQueries({ queryKey: ['artifactTimeline', contactId] });
+      } catch (error: unknown) {
+         // Check for specific error code if deleteArtifact from useArtifacts provides it
+        if (error instanceof Error && (error as any).code === 'ARTIFACT_IS_SOURCE') {
+          showToast('Cannot delete: This voice memo is a source for contact profile data.', 'error');
+        } else if (error instanceof Error) {
+          showToast(`Error deleting: ${error.message}`, 'error');
+        } else {
+          showToast('An unknown error occurred during deletion.', 'error');
+        }
       }
-      // Toast for success/failure will be handled by real-time subscription or modal itself
-      // queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] }); // Already handled by subscription
-      // queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] }); // Already handled by subscription
-      queryClient.invalidateQueries({ queryKey: ['update-suggestions', contactId] });
-      // The modal now closes itself after a delay if onReprocess is successful
-      // handleCloseVoiceMemoDetailModal(); // Modal handles its own close on success
-    } catch (error: any) {
-      console.error('Error reprocessing AI on page:', error);
-      setAudioPlaybackError(error.message || 'Error reprocessing AI.');
-      // Toast for failure is now in VoiceMemoDetailModal
-    } finally {
-      setIsReprocessingMemo(false);
     }
-  }, [queryClient, contactId, contact?.id]); // Removed handleCloseVoiceMemoDetailModal as modal handles it
+  }, [deleteArtifact, contactId, showToast, queryClient]); // Added queryClient to dependencies
+
+  const handleReprocessVoiceMemoInDetailModal = useCallback(async (memoId: string) => {
+    setIsReprocessingMemo(true);
+    try {
+      await reprocessVoiceMemo(memoId); 
+      showToast('Reprocessing started', 'success');
+      queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
+      queryClient.invalidateQueries({ queryKey: ['artifactDetail', memoId] });
+      queryClient.invalidateQueries({ queryKey: ['relatedSuggestions', memoId] });
+      if (selectedVoiceMemoForDetail?.id === memoId) {
+        const { data: updatedMemo } = await supabase.from('artifacts').select('*').eq('id', memoId).single();
+        if (updatedMemo) setSelectedVoiceMemoForDetail(updatedMemo as VoiceMemoArtifact);
+      }
+    } catch (error: unknown) { 
+      if (error instanceof Error) {
+        showToast(`Error reprocessing: ${error.message}`, 'error');
+      } else {
+        showToast('An unknown error occurred during reprocessing.', 'error');
+      }
+    }
+    finally { setIsReprocessingMemo(false); }
+  }, [reprocessVoiceMemo, showToast, queryClient, contactId, selectedVoiceMemoForDetail?.id]);
 
   // Real-time completion/failure notifications
   useEffect(() => {
@@ -446,8 +461,68 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     };
   }, [contactId, contact?.name, showToast, supabase]); // Added supabase to dependencies
 
+  // Artifact Modal Handlers
+  const handleArtifactClick = useCallback((artifact: ArtifactGlobal) => {
+    setSelectedArtifactForModal(artifact); // Store the initially clicked artifact for quick display
+    fetchArtifactData(artifact.id, contactId); // Fetch full details and related data
+    setIsArtifactModalOpen(true);
+    setPlayingAudioUrl(null); 
+    setAudioPlaybackError(null);
+  }, [fetchArtifactData, contactId]);
+
+  const handleCloseArtifactModal = useCallback(() => {
+    setIsArtifactModalOpen(false);
+    setSelectedArtifactForModal(null); 
+    // Optionally clear artifactId in useArtifactModalData if it helps reset state
+  }, []);
+
+  const handleDeleteArtifactInModal = useCallback(async (artifactId: string) => {
+    try {
+      await deleteArtifactModalFromHook(artifactId, contactId);
+      showToast('Artifact deleted successfully.', 'success');
+      handleCloseArtifactModal(); // Close modal on success
+      queryClient.invalidateQueries({ queryKey: ['artifactTimeline', contactId] }); // Refresh timeline
+    } catch (error: unknown) {
+      console.error('Failed to delete artifact:', error);
+      if (error instanceof Error) {
+        showToast(`Error deleting artifact: ${error.message}`, 'error');
+      } else {
+        showToast('An unknown error occurred while deleting the artifact.', 'error');
+      }
+      // Error will also be available via artifactModalDataError in the modal
+    }
+  }, [deleteArtifactModalFromHook, contactId, showToast, handleCloseArtifactModal, queryClient]);
+
+  const handleReprocessArtifactInModal = useCallback(async (artifactId: string) => {
+    try {
+      await reprocessVoiceMemo(artifactId);
+      showToast('Artifact reprocessing started.', 'success');
+      // Data will refresh via useArtifactModalData hook's internal invalidations
+    } catch (error: unknown) {
+      console.error('Failed to reprocess artifact:', error);
+      if (error instanceof Error) {
+        showToast(`Error reprocessing artifact: ${error.message}`, 'error');
+      } else {
+        showToast('An unknown error occurred while reprocessing the artifact.', 'error');
+      }
+    }
+  }, [reprocessVoiceMemo, showToast]);
+
+  const handlePlayAudioInModal = useCallback(async (audioPath: string): Promise<string> => {
+    setAudioPlaybackError(null);
+    try {
+      const url = await playAudio(audioPath);
+      // The modal will handle setting its own audioUrl state
+      return url;
+    } catch (err: unknown) {
+      console.error('Failed to play audio from modal:', err);
+      setAudioPlaybackError(err instanceof Error ? err.message : 'Failed to play audio');
+      throw err; // Re-throw for modal to handle if needed
+    }
+  }, [playAudio]);
+
   // All hooks have been called. Now we can have conditional returns.
-  const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions;
+  const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions || isLoadingArtifactModalData;
 
   if (isLoading) {
     return <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Container>;
@@ -466,7 +541,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
       {/* Sticky Header Area */}
       <Box sx={{ position: 'sticky', top: { xs: 56, sm: 64, md: 0 }, zIndex: 10, backgroundColor: '#f3f4f6', pb: 1, mb:1 }}>
         <ContactHeader 
@@ -591,7 +666,12 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         </Box>
 
         <Box sx={{ flexGrow: 1, flexBasis: { md: '33%' } }}>
-          <ContextSections contactData={contact} contactId={contactId} /> 
+          {isClient && contact && !isLoadingContact && (
+            <ContextSections 
+              contactData={contact}
+              contactId={contactId}
+            />
+          )}
         </Box>
       </Box>
       
@@ -608,22 +688,37 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         </Typography>
       </Box>
 
-      {/* Placeholder for VoiceMemoDetailModal - to be created next */}
+      <ArtifactModal
+        artifact={artifactDetails || selectedArtifactForModal}
+        open={isArtifactModalOpen}
+        onClose={handleCloseArtifactModal}
+        contactId={contactId}
+        contactName={artifactModalContactName}
+        relatedSuggestions={relatedSuggestions}
+        contactFieldSources={displayedContactProfileUpdates}
+        onDelete={handleDeleteArtifactInModal}
+        onReprocess={handleReprocessArtifactInModal}
+        onPlayAudio={handlePlayAudioInModal}
+        isLoading={isLoadingArtifactModalData}
+        isDeleting={isDeleting}
+        isReprocessing={isReprocessingArtifactModal}
+        error={artifactModalDataError?.message || null}
+      />
+
       {selectedVoiceMemoForDetail && (
         <VoiceMemoDetailModal
           open={isVoiceMemoDetailModalOpen}
           onClose={handleCloseVoiceMemoDetailModal}
           voiceMemo={selectedVoiceMemoForDetail}
-          playAudio={playAudioFromModal}
-          onDelete={handleDeleteVoiceMemo}
-          onReprocess={handleReprocessAi}
-          isDeleting={isDeletingArtifact}
-          isReprocessing={isReprocessingMemo}
-          audioPlaybackError={audioPlaybackError}
-          currentPlayingUrl={playingAudioUrl}
-          processingStatus={getProcessingStatus(selectedVoiceMemoForDetail.id).status}
-          processingStartTime={getProcessingStatus(selectedVoiceMemoForDetail.id).startedAt}
+          onDelete={handleDeleteVoiceMemoFromDetailModal} 
+          onReprocess={handleReprocessVoiceMemoInDetailModal}
+          isReprocessing={isReprocessingMemo} 
           contactName={contact?.name || undefined}
+          playAudio={playAudio}
+          currentPlayingUrl={playingAudioUrl || undefined} 
+          audioPlaybackError={audioPlaybackError || undefined}
+          processingStatus={getProcessingStatus(selectedVoiceMemoForDetail.id)?.status}
+          processingStartTime={getProcessingStatus(selectedVoiceMemoForDetail.id)?.startedAt}
         />
       )}
     </Container>

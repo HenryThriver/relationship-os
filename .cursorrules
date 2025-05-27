@@ -102,6 +102,7 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - Connect to the cloud project at the beginning of each chat thread
 - When creating migrations, use "python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))'" to get the proper datetime to name the migration file
 - When applying migrations, apply them to the cloud instance where I am developing directly
+- If you ever have questions about the database structure, look through the migrations to see how the database is built
 - Use Row Level Security (RLS) for all tables
 - Create typed clients using generated types
 - Use real-time subscriptions sparingly

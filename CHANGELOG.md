@@ -8,53 +8,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2024-05-25
 
 ### Added
-- Initial database schema setup via Supabase migrations:
-  - `contacts` table with columns: id, user_id, name, email, company, title, linkedin_url, location, notes, created_at, updated_at.
-  - `artifacts` table with columns: id, contact_id, user_id, type (enum), content, metadata, timestamp, created_at.
-  - `artifact_type_enum` for artifact types.
-  - Helper function `handle_updated_at` for automatic `updated_at` timestamp updates.
-  - RLS policies for data isolation on `contacts` and `artifacts` tables, scoped to `auth.uid()`.
-- Generated TypeScript types (`types_db.ts`) for the new database schema.
-- Initial project setup with Next.js 15, TypeScript, and Tailwind CSS
-- Project documentation structure (CHANGELOG, ROADMAP, README)
-- Supabase integration with client configuration
-- Database schema for contacts and artifacts tables
-- TypeScript types for database entities
-- Authentication helpers and hooks
-- Row Level Security (RLS) policies for data isolation
-- Database setup documentation and SQL schema files
-- LinkedIn profile import feature:
-  - API route (`/api/linkedin/import`) to fetch profile data from RapidAPI.
-  - Frontend form (`LinkedInImportForm`) for URL input and data preview.
-  - Integration into "Add New Contact" page (`/dashboard/contacts/new`) to create contacts from LinkedIn profiles.
-  - Creates a `linkedin_profile` artifact with the raw API response.
-  - Updated `artifact_type_enum` to include `linkedin_profile`.
-  - Made `linkedin_url` on `contacts` table `NOT NULL`.
-  - Added `useArtifacts` hook for artifact creation.
-  - Placeholder page for individual contact details (`/dashboard/contacts/[id]`).
-
-### Changed
-- Refined `RapidLinkedInProfile` TypeScript types based on actual API sample response.
-- Updated LinkedIn import flow on "Add New Contact" page (`/dashboard/contacts/new`):
-  - Improved data mapping from LinkedIn profile to contact fields.
-  - Ensured the originally submitted LinkedIn URL is used for the contact record.
-  - Added a confirmation step to review fetched data before saving.
-  - Ensured the full raw API response is stored in the `linkedin_profile` artifact's metadata.
-  - Improved UI/UX of the import form and review section (icon, placeholder, button text & layout).
-- Corrected linter errors related to hook usage and prop types in the LinkedIn import feature.
-- **Routing Correction**: Consolidated contacts functionality under `/dashboard/contacts/*`. Main contacts list is now at `/dashboard/contacts`, and new contact page is at `/dashboard/contacts/new`.
-- Addressed hydration errors by adding `suppressHydrationWarning` to root layout and guiding user to disable problematic browser extensions.
+- **LinkedIn Profile Modal & Re-scrape:**
+  - Implemented `LinkedInProfileModal.tsx` to display LinkedIn profile artifacts with a design inspired by LinkedIn's native interface.
+  - Created `src/app/api/linkedin/rescrape/route.ts` API endpoint for re-scraping LinkedIn profiles, creating new artifacts.
+  - Developed `useLinkedInModal.ts` hook to manage re-scraping state and API calls.
+  - Enhanced `ArtifactModal.tsx` to conditionally render `LinkedInProfileModal` for `linkedin_profile` artifacts.
+  - Integrated modal into `ArtifactTimeline.tsx`.
+- **UI Enhancements & Styling:**
+  - Iteratively refined `LinkedInProfileModal` styles for header, profile picture, content sections (About, Experience, Education, Skills), buttons, and links, using MUI and Tailwind CSS.
+  - Added MUI icons and helper functions like `getInitials`.
+- **Data Handling & Mapping:**
+  - Updated API data mapping in `src/app/api/linkedin/rescrape/route.ts` to align RapidAPI fields with internal artifact metadata structure (e.g., `summary` to `about`).
+  - Added `formatDate` and `formatDuration` helpers.
 
 ### Fixed
-- Resolved Supabase client connection issues by ensuring correct environment variable loading.
-- Resolved 500 error on LinkedIn import API route by ensuring RapidAPI environment variables are correctly loaded.
-- Addressed Next.js client component errors related to MUI theme functions.
-- Fixed various module resolution and path aliasing issues.
+- **Linting & Code Quality:**
+  - Resolved numerous linter errors across various files, including:
+    - `src/components/features/linkedin/LinkedInProfileModal.tsx`
+    - `src/lib/hooks/useLinkedInModal.ts`
+    - `src/types/artifact.ts` (with `eslint-disable` for `metadata: any`)
+    - `src/types/rapidapi.ts`
+    - `src/app/api/linkedin/rescrape/route.ts`
+    - `src/app/api/linkedin/import/route.ts`
+    - `src/app/api/artifacts/[id]/route.ts`
+    - `src/app/api/suggestions/apply/route.ts`
+    - `src/app/api/voice-memo/[id]/delete/route.ts`
+    - `src/app/api/voice-memo/[id]/reprocess/route.ts`
+    - `src/app/dashboard/contacts/page.tsx` (removed unused MUI imports)
+    - `src/app/dashboard/contacts/[id]/page.tsx` (removed unused imports, typed `any` instances, fixed type mismatches for modal props, removed commented code).
+  - Standardized error handling in API routes (typed catch errors as `unknown` with `instanceof Error` checks).
+- **Data Display:** Addressed issues where some LinkedIn profile metadata fields (summary, experience, education) were not displaying in the modal by ensuring correct data fetching and propagation through RLS/select queries.
+- **Re-scrape Logic:** Improved re-scrape trigger logic, including fetching `linkedin_url` from the `contacts` table as a fallback.
+- **Visual Bugs:** Fixed header cutoff in `LinkedInProfileModal` by applying `flexShrink: 0`.
 
-### Removed
-- Temporary `src/app/(dashboard)/contacts/page.tsx` (minimal placeholder, functionality moved).
-  (Note: The directory `src/app/(dashboard)/contacts/[id]` and `src/app/(dashboard)/contacts/new` and their contents should also be removed if they were not already deleted as part of the move to `/dashboard/contacts/*`)
-- Removed temporary debugging `console.log` from Supabase client.
+### Changed
+- Replaced YYYY-MM-DD in the changelog with today's date.
+
+## [0.3.0] - 2025-05-26
+
+### Added
+- **Voice Memo Intelligence:**
+  - Implemented AI-powered analysis of voice memos to extract contact information.
+  - System for suggesting updates to contact profiles based on voice memo content.
+  - UI for reviewing, applying, or rejecting these AI-generated suggestions.
+  - Real-time status indicators (`ProcessingIndicator`, `ProcessingStatusBar`) for voice memo transcription and AI analysis.
+  - `VoiceMemoDetailModal` for viewing memo details, transcription, and initiating reprocessing.
+- **Granular Source Attribution System:**
+  - Added `field_sources` to contacts, mapping specific fields to their originating artifacts (e.g., a voice memo, email).
+  - Updated AI suggestion application process to populate these granular source links.
+  - `SourcedField` UI component to visually indicate sourced data and provide hover tooltips with source details (type, title, excerpt, timestamp).
+  - Clickable links in tooltips to navigate directly to the source artifact.
+  - Centralized configuration (`sourceConfig.ts`) for source types, icons, and navigation.
+  - Integrated source attribution throughout `PersonalContextDisplay` and `ProfessionalContextDisplay`.
+- **Enhanced Contact Profile & Data Management:**
+  - Significantly expanded `personal_context` and `professional_context` schemas with more detailed fields.
+  - Robust TanStack Query hooks for managing contacts (`useContactProfile`), voice memos (`useVoiceMemos`), update suggestions (`useUpdateSuggestions`), and artifacts (`useArtifacts`).
+  - Improved UI for displaying comprehensive personal and professional context.
+- **Core Technology & Authentication:**
+  - Migrated to `@supabase/ssr` for enhanced Next.js compatibility and server-side rendering capabilities with Supabase.
+  - Refactored authentication flow, removing deprecated auth helpers.
+
+### Changed
+- Refined `SourcedField` UI to use a less obtrusive icon-only display for better visual clarity.
+- Improved TanStack Query cache invalidation strategies for voice memo processing and suggestion application, ensuring UI consistency.
+
+### Fixed
+- Resolved type errors related to `education` field handling (allowing both string and array).
+- Fixed HTML nesting errors in voice memo status display within lists.
+- Addressed various issues in the AI suggestion application logic and data sourcing for array items.
+- Stabilized authentication and session management with the new `@supabase/ssr` setup.
 
 ## [0.2.0] - 2025-05-25
 
@@ -68,31 +90,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added basic dashboard home page (`/dashboard`) with placeholder stats.
 - Added placeholder contacts page (`/dashboard/contacts`).
 - Integrated Material-UI (MUI) v5 for UI components and styling.
-- Configured MUI `ThemeProvider` with a custom theme and `CssBaseline`.
-- Ensured Next.js 14 App Router compatibility for MUI theme handling by creating `ThemeRegistry.tsx`.
-- Set up automatic redirection based on authentication status (e.g., from `/` to `/dashboard` or `/auth/login`).
-
-### Changed
-- Updated root layout (`/app/layout.tsx`) to include `AuthProvider` and `ThemeRegistry`.
-- Modified `src/lib/supabase/client.ts` for robust environment variable handling.
-
-### Fixed
-- Resolved Supabase client connection issues by ensuring correct environment variable loading.
-- Addressed Next.js client component errors related to MUI theme functions.
-- Fixed various module resolution and path aliasing issues.
-
-### Removed
-- Removed temporary debugging `console.log` from Supabase client.
-
-## [0.1.0] - 2025-05-24
-
-### Added
-- Initial Next.js project scaffolding
-- TypeScript configuration
-- Tailwind CSS setup
-- ESLint configuration
-- Basic project structure
-
-### Notes
-- Project initialized with create-next-app
-- Ready for Relationship OS development to begin 
+- Configured MUI `ThemeProvider` with a custom theme and `

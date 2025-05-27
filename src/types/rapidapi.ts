@@ -20,7 +20,7 @@ interface LinkedInLanguage {
   proficiency?: string;
 }
 
-interface LinkedInDate {
+export interface LinkedInDate {
   year?: number;
   month?: number;
   day?: number;
@@ -89,7 +89,7 @@ interface LinkedInCertification {
 }
 
 interface LinkedInProject { // Structure unknown from sample, basic placeholder
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface LinkedInVolunteering {
@@ -146,6 +146,6 @@ export interface LinkedInImportApiResponse {
   success: boolean;
   data?: RapidLinkedInProfile;
   error?: string;
-  rawResponse?: any; 
+  rawResponse?: unknown;
   inputLinkedinUrl?: string; // Add this to carry the original URL through the API response
 } 

@@ -158,7 +158,7 @@ export const useSourceAttribution = (contactId: string): UseSourceAttributionRet
     const config = SOURCE_CONFIG[sourceTypeKey] || SOURCE_CONFIG.default;
     
     if (config && config.routePattern) {
-      let route = config.routePattern
+      const route = config.routePattern
         .replace('[contactId]', contactId)
         .replace('[artifactId]', artifactId);
       
