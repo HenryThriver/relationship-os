@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Re-scrape Logic:** Improved re-scrape trigger logic, including fetching `linkedin_url` from the `contacts` table as a fallback.
 - **Visual Bugs:** Fixed header cutoff in `LinkedInProfileModal` by applying `flexShrink: 0`.
 
-## [0.3.0] - 2024-05-18
+## [0.3.0] - 2024-05-25
 
 ### Added
 - **Voice Memo Intelligence:**
@@ -75,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Addressed various issues in the AI suggestion application logic and data sourcing for array items.
 - Stabilized authentication and session management with the new `@supabase/ssr` setup.
 
-## [0.2.0] - 2024-05-11
+## [0.2.0] - 2024-05-24
 
 ### Added
 - Implemented Google OAuth authentication system with Supabase.
