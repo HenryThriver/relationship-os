@@ -11,30 +11,72 @@ export interface ArtifactGlobal {
   user_id: string;
   type: ArtifactType; // Use the more comprehensive ArtifactType
   content: string; 
-  metadata?: Record<string, any> | null; 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata?: Record<string, any> | null; // Reverted to 'any' to fix extension errors
   timestamp: string; 
   created_at: string;
   updated_at: string;
 }
 
 // --- LinkedIn Artifact --- 
+// Based on RapidLinkedInProfile structure mentioned in plan
+export interface LinkedInPosition {
+  company: string;
+  title: string;
+  duration?: string;
+  description?: string;
+  companyName?: string; // from RapidAPI structure
+  date1?: string; // from RapidAPI structure (start date)
+  date2?: string; // from RapidAPI structure (end date)
+}
+
+export interface LinkedInEducation {
+  school: string;
+  degree?: string;
+  field?: string;
+  years?: string;
+  schoolName?: string; // from RapidAPI structure
+  degreeName?: string; // from RapidAPI structure
+  date1?: string; // from RapidAPI structure (start date)
+  date2?: string; // from RapidAPI structure (end date)
+}
+
+export interface LinkedInSkill {
+  name: string;
+  // other skill properties if available
+}
+
+export interface LinkedInGeo {
+  city?: string;
+  country?: string;
+  full?: string;
+}
+
+export interface LinkedInImage {
+  url?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface LinkedInArtifactContent {
   profile_url?: string;
   headline?: string;
-  about?: string;
-  experience?: Array<{
-    company: string;
-    title: string;
-    duration?: string;
-    description?: string;
-  }>;
-  education?: Array<{
-    school: string;
-    degree?: string;
-    field?: string;
-    years?: string;
-  }>;
-  scraped_at: string; // ISO date string
+  about?: string;         // Corresponds to summary
+  experience?: LinkedInPosition[]; 
+  education?: LinkedInEducation[];
+  scraped_at: string;   // ISO date string
+  
+  // Fields from RapidLinkedInProfile to be included
+  firstName?: string;
+  lastName?: string;
+  name?: string; // Optional: if you store a combined name
+  profilePicture?: string; // URL for the profile picture
+  backgroundImage?: LinkedInImage[]; // Added for banner image
+  skills?: LinkedInSkill[];
+  geo?: LinkedInGeo;
+  // Add any other fields from RapidLinkedInProfile that are stored in metadata
+  company?: string; // Current company, often at top level in some scrapers
+  location?: string; // General location string, if different from geo.full
 }
 
 export interface LinkedInArtifact extends ArtifactGlobal {
@@ -136,6 +178,6 @@ export type TypedArtifact =
   | NoteArtifact      // Added
   | ArtifactGlobal; // Fallback for generic artifacts
 
-// It might be useful to have types for what's stored in the 'artifacts' table directly
+// It might be useful to have what's stored in the 'artifacts' table directly
 export type DatabaseArtifactInsert = Database['public']['Tables']['artifacts']['Insert'];
 export type DatabaseArtifactRow = Database['public']['Tables']['artifacts']['Row']; 

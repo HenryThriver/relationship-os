@@ -32,7 +32,7 @@ interface VoiceMemoDetailModalProps {
   isLoading?: boolean; // General loading state for modal actions
   isDeleting?: boolean; // Specific loading state for delete
   isReprocessing?: boolean; // Specific loading state for reprocess
-  audioPlaybackError?: string | null;
+  audioPlaybackError?: string | undefined; // Changed from string | null to string | undefined
   currentPlayingUrl?: string | null; // URL of the audio currently playing/loaded
   processingStatus?: VoiceMemoProcessingStatus['status']; // Pass the computed status string
   processingStartTime?: string | null; // Pass the start time for the timer

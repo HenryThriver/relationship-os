@@ -18,7 +18,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImpor
   let requestBody: LinkedInImportApiRequestBody;
   try {
     requestBody = await req.json();
-  } catch (error) {
+  } catch (error) { // eslint-disable-line @typescript-eslint/no-unused-vars
     return NextResponse.json({ success: false, error: 'Invalid request body.' }, { status: 400 });
   }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImpor
       try {
         const errorJson = JSON.parse(responseText);
         apiError = errorJson.message || errorJson.error || response.statusText;
-      } catch (e) { /* Ignore parsing error, use statusText */ }
+      } catch (e) { /* Ignore parsing error, use statusText */ } // eslint-disable-line @typescript-eslint/no-unused-vars
       
       return NextResponse.json(
         { success: false, error: `Failed to fetch data from LinkedIn API: ${apiError}`, rawResponse: responseText, inputLinkedinUrl: linkedinUrl }, 
@@ -73,14 +73,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImpor
 
     return NextResponse.json({ success: true, data: data, rawResponse: data, inputLinkedinUrl: linkedinUrl }, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed error: any to error: unknown
     console.error('Error calling RapidAPI or processing response:', error);
     // It's important to pass linkedinUrl here as well if the catch block is reached after it's defined.
     // If the error occurs before linkedinUrl is extracted from the body, it will be undefined.
-    const requestBody = await req.json().catch(() => ({})); // Safely try to parse body again or default
-    const originalUrl = requestBody.linkedinUrl || (typeof linkedinUrl !== 'undefined' ? linkedinUrl : undefined);
+    const parsedRequestBody = await req.json().catch(() => ({linkedinUrl: undefined})); // Safely try to parse body again or default
+    const originalUrl = parsedRequestBody.linkedinUrl || (typeof linkedinUrl !== 'undefined' ? linkedinUrl : undefined);
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
     return NextResponse.json(
-      { success: false, error: error.message || 'An unexpected error occurred', inputLinkedinUrl: originalUrl }, 
+      { success: false, error: message, inputLinkedinUrl: originalUrl }, 
       { status: 500 }
     );
   }

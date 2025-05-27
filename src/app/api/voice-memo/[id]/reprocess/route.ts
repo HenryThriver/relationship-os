@@ -83,8 +83,9 @@ export async function POST(
     console.log(`Artifact ${artifactId} marked for reprocessing. AI processing started at: ${updatePayload.ai_processing_started_at}`);
     return NextResponse.json({ message: 'AI reprocessing initiated and Edge Function invoked.', artifact_id: artifactId });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error during AI reprocessing initiation:', error);
-    return NextResponse.json({ error: error.message || 'An unexpected error occurred' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 

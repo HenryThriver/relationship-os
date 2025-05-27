@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import type { Database } from '@/lib/supabase/database.types';
 
 export async function DELETE(
   request: NextRequest,
@@ -21,8 +20,10 @@ export async function DELETE(
     const { data: approvedSuggestions, error: suggestionCheckError } = await supabase
       .from('contact_update_suggestions')
       .select('id')
-      .eq('artifact_id', artifactIdToDelete as any) // Type assertion
-      .in('status', ['approved', 'partial'] as any) // Type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .eq('artifact_id', artifactIdToDelete as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .in('status', ['approved', 'partial'] as any)
       .limit(1);
 
     if (suggestionCheckError) {
@@ -41,7 +42,8 @@ export async function DELETE(
     const { data: artifacts, error: fetchError } = await supabase
       .from('artifacts')
       .select('id, type, audio_file_path')
-      .eq('id', artifactIdToDelete as any); // Type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .eq('id', artifactIdToDelete as any);
 
     if (fetchError) {
       console.error('Error fetching artifact for deletion:', fetchError);
@@ -64,7 +66,8 @@ export async function DELETE(
     const { error: deleteArtifactError } = await supabase
       .from('artifacts')
       .delete()
-      .eq('id', artifactIdToDelete as any); // Type assertion
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .eq('id', artifactIdToDelete as any);
 
     if (deleteArtifactError) {
       console.error('Error deleting artifact record:', deleteArtifactError);
@@ -84,8 +87,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Voice memo successfully deleted.', artifact_id: artifactIdToDelete });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error during voice memo deletion:', error);
-    return NextResponse.json({ error: error.message || 'An unexpected error occurred' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 

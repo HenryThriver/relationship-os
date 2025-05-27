@@ -4,7 +4,7 @@ import { ContactUpdateSuggestion, UpdateSuggestionRecord } from '@/types/suggest
 import { Database, Json } from '@/lib/supabase/database.types'; // Assuming this is your main generated types
 
 // Helper type for context fields
-type ContactContext = { [key: string]: any }; // Using any for easier deep manipulation
+type ContactContext = { [key: string]: unknown }; // Changed any to unknown
 
 // Define arrayFieldPaths at the module level so it can be accessed by the POST handler
 const arrayFieldPaths: Set<string> = new Set([
@@ -40,7 +40,7 @@ const arrayFieldPaths: Set<string> = new Set([
 ]);
 
 // Helper function to set a value at a nested path
-function setValueAtPath(obj: ContactContext, path: string, value: any, action: 'add' | 'update' | 'remove') {
+function setValueAtPath(obj: ContactContext, path: string, value: unknown, action: 'add' | 'update' | 'remove') {
   const keys = path.split('.');
   let current = obj;
   for (let i = 0; i < keys.length - 1; i++) {
@@ -50,7 +50,7 @@ function setValueAtPath(obj: ContactContext, path: string, value: any, action: '
     if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
       current[key] = {}; // Initialize as object if not one
     }
-    current = current[key];
+    current = current[key] as ContactContext;
   }
   const finalKey = keys[keys.length - 1];
 
@@ -58,7 +58,7 @@ function setValueAtPath(obj: ContactContext, path: string, value: any, action: '
   const isArrayField = arrayFieldPaths.has(fullPathForArrayCheck);
   
   if (isArrayField) {
-    let currentArray: any[] = Array.isArray(current[finalKey]) ? [...current[finalKey]] : [];
+    const currentArray: unknown[] = Array.isArray(current[finalKey]) ? [...current[finalKey] as unknown[]] : [];
 
     if (action === 'add') {
       // If value is not an array, wrap it in an array for consistent processing
@@ -169,20 +169,24 @@ export async function POST(request: NextRequest) {
         pathWithinContext = fullSuggestedPath.replace('professional_context.', '');
         mainContextKey = 'professional_context';
         contextObjectToUpdate = contact.professional_context as ContactContext;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
         contactUpdates.professional_context = JSON.parse(JSON.stringify(contact.professional_context)) as Json;
       } else if (fullSuggestedPath.startsWith('personal_context.')) {
         pathWithinContext = fullSuggestedPath.replace('personal_context.', '');
         mainContextKey = 'personal_context';
         contextObjectToUpdate = contact.personal_context as ContactContext;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
         contactUpdates.personal_context = JSON.parse(JSON.stringify(contact.personal_context)) as Json;
       } else {
         // Direct contact field update (e.g., 'company', 'title')
         const directFieldKey = fullSuggestedPath as keyof Database['public']['Tables']['contacts']['Row'];
         if (s.action === 'remove') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (contactUpdates as any)[directFieldKey] = null;
         } else { // 'add' or 'update'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (contactUpdates as any)[directFieldKey] = s.suggested_value;
         }
         // Source the direct field - already granular
@@ -215,17 +219,17 @@ export async function POST(request: NextRequest) {
         } else if (s.action === 'add' && isArrayFieldTarget) {
           // AI suggested an 'add' to an array.
           // After setValueAtPath, get the current state of that array from the (potentially) modified contact object.
-          let finalArrayState: any[] = [];
+          let finalArrayState: unknown[] = [];
           let tempCurrent = contact[mainContextKey] as ContactContext; // Start with the correct context object
           const keysToTargetArray = pathWithinContext.split('.');
           try {
             for (let i = 0; i < keysToTargetArray.length; i++) {
-              tempCurrent = tempCurrent[keysToTargetArray[i]];
+              tempCurrent = tempCurrent[keysToTargetArray[i]] as ContactContext;
             }
             if(Array.isArray(tempCurrent)) {
               finalArrayState = tempCurrent;
             }
-          } catch (e) {
+          } catch (e) { // eslint-disable-line @typescript-eslint/no-unused-vars
             console.warn(`[ApplySuggestions API] Could not resolve path to array for sourcing: ${pathWithinContext} in ${mainContextKey}`);
             finalArrayState = []; // Fallback to empty if path resolution fails
           }
@@ -291,13 +295,11 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', suggestionId);
 
-    return NextResponse.json({ success: true, message: 'Updates applied successfully.' });
+    return NextResponse.json({ success: true, message: 'Updates applied and suggestion marked as reviewed.' });
 
-  } catch (error: any) {
-    console.error('Apply suggestions API error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to apply suggestions' }, 
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    console.error('Error applying suggestions:', error);
+    const message = error instanceof Error ? error.message : 'An unexpected server error occurred';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 

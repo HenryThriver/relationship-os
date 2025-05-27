@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import type { Database } from '@/lib/supabase/database.types';
 
 export async function DELETE(
   request: NextRequest,
@@ -26,6 +25,7 @@ export async function DELETE(
     const { data: artifact, error: fetchError } = await supabase
       .from('artifacts')
       .select('id, user_id, contact_id, type, metadata')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .eq('id', artifactId as any) // Type assertion for Supabase strict typing
       .single();
 
@@ -53,7 +53,9 @@ export async function DELETE(
       const { data: contact, error: contactFetchError } = await supabase
         .from('contacts')
         .select('field_sources')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .eq('id', artifact.contact_id as any) // Type assertion
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .eq('user_id', user.id as any) // Type assertion
         .single();
 
@@ -78,6 +80,7 @@ export async function DELETE(
       const { data: suggestions, error: suggestionsError } = await supabase
         .from('contact_update_suggestions')
         .select('id, status')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .eq('artifact_id', artifactId as any) // Type assertion
         .or('status.eq.approved,status.eq.partial');
 
@@ -101,6 +104,7 @@ export async function DELETE(
     const { error: deleteArtifactError } = await supabase
       .from('artifacts')
       .delete()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .eq('id', artifactId as any); // Type assertion
 
     if (deleteArtifactError) {
@@ -125,8 +129,9 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error in DELETE /api/artifacts/[id]:', error);
-    return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 

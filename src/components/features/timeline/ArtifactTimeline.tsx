@@ -9,6 +9,9 @@ import { EnhancedTimelineStats } from './EnhancedTimelineStats';
 import { ArtifactModal } from './ArtifactModal';
 import { TimelineSkeleton } from './TimelineSkeleton';
 import type { ArtifactGlobal, ArtifactType, GroupedArtifact } from '@/types';
+import { useArtifactModalData } from '@/lib/hooks/useArtifactModalData';
+import { useToast } from '@/lib/contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ArtifactTimelineProps {
   contactId: string;
@@ -34,7 +37,25 @@ const timelineContainerSx = {
 export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId }) => {
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactGlobal | null>(null);
   const [filterTypes, setFilterTypes] = useState<ArtifactType[]>([]);
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
   
+  const {
+    artifactDetails,
+    relatedSuggestions,
+    displayedContactProfileUpdates,
+    contactName,
+    contactLinkedInUrl,
+    isLoading: isLoadingArtifactModalData,
+    error: artifactModalDataError,
+    fetchArtifactData,
+    reprocessVoiceMemo,
+    isReprocessing: isReprocessingArtifactModal,
+    deleteArtifact: deleteArtifactModal,
+    isDeleting: isDeletingArtifactModal,
+    playAudio,
+  } = useArtifactModalData();
+
   const { 
     data: timelineData,
     isLoading, 
@@ -44,6 +65,40 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
   const groupedArtifacts = timelineData?.groupedArtifacts;
   const stats = timelineData?.stats;
   const allFetchedArtifacts = timelineData?.allArtifacts;
+
+  const handleTimelineItemClick = (artifact: ArtifactGlobal) => {
+    setSelectedArtifact(artifact);
+    fetchArtifactData(artifact.id, contactId);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedArtifact(null);
+  };
+
+  const handleDeleteInModal = async (artifactId: string) => {
+    try {
+      await deleteArtifactModal(artifactId, contactId);
+      showToast('Artifact deleted successfully.', 'success');
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('Failed to delete artifact from timeline modal:', error);
+      showToast(`Error deleting artifact: ${error.message}`, 'error');
+    }
+  };
+
+  const handleReprocessInModal = async (artifactId: string) => {
+    try {
+      await reprocessVoiceMemo(artifactId);
+      showToast('Artifact reprocessing started.', 'success');
+    } catch (error: any) {
+      console.error('Failed to reprocess artifact from timeline modal:', error);
+      showToast(`Error reprocessing artifact: ${error.message}`, 'error');
+    }
+  };
+
+  const handlePlayAudioInModal = async (audioPath: string): Promise<string> => {
+    return playAudio(audioPath);
+  };
 
   if (isLoading) {
     return <TimelineSkeleton />;
@@ -131,7 +186,7 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
                 key={artifact.id}
                 artifact={artifact}
                 position={index % 2 === 0 ? 'left' : 'right'}
-                onClick={setSelectedArtifact}
+                onClick={handleTimelineItemClick}
               />
             ))}
           </Box>
@@ -139,9 +194,21 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
       </Box>
 
       <ArtifactModal
-        artifact={selectedArtifact}
+        artifact={artifactDetails || selectedArtifact}
         open={!!selectedArtifact}
-        onClose={() => setSelectedArtifact(null)}
+        onClose={handleCloseModal}
+        contactId={contactId}
+        contactName={contactName}
+        contactLinkedInUrl={contactLinkedInUrl}
+        relatedSuggestions={relatedSuggestions}
+        contactFieldSources={displayedContactProfileUpdates}
+        onDelete={handleDeleteInModal}
+        onReprocess={handleReprocessInModal}
+        onPlayAudio={handlePlayAudioInModal}
+        isLoading={isLoadingArtifactModalData}
+        isDeleting={isDeletingArtifactModal}
+        isReprocessing={isReprocessingArtifactModal}
+        error={artifactModalDataError?.message || null}
       />
     </Box>
   );

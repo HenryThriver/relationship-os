@@ -39,11 +39,10 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     badgeLabel: 'Email',
     getPreview: (content) => truncateText(content?.subject || 'Email content'),
   },
-  // Tentative types based on ExtendedArtifactType, assuming ArtifactType will include them
   linkedin_interaction: {
     icon: FiLink,
     color: '#0077B5', // LinkedIn Blue
-    badgeLabel: 'LinkedIn',
+    badgeLabel: 'LinkedIn Interaction',
     getPreview: (content) => truncateText(content?.message || content?.interaction_type || 'LinkedIn interaction'),
   },
   prompt_set: {
@@ -64,9 +63,63 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     badgeLabel: 'Loop',
     getPreview: (content) => `Status: ${content?.status || 'N/A'}. Owner: ${content?.owner || 'N/A'}`,
   },
-  // Fallback for any unknown artifact types
+  call: {
+    icon: FiFileText, // Placeholder icon
+    color: 'grey.700',
+    badgeLabel: 'Call',
+    getPreview: (content) => truncateText(content?.summary || 'Call details'),
+  },
+  linkedin_message: {
+    icon: FiLink,
+    color: '#0077B5',
+    badgeLabel: 'LinkedIn Message',
+    getPreview: (content) => truncateText(content?.message || 'LinkedIn message'),
+  },
+  linkedin_post: {
+    icon: FiLink,
+    color: '#0077B5',
+    badgeLabel: 'LinkedIn Post',
+    getPreview: (content) => truncateText(content?.post_content || 'LinkedIn post'),
+  },
+  file: {
+    icon: FiFileText,
+    color: 'grey.700',
+    badgeLabel: 'File',
+    getPreview: (content) => truncateText(content?.filename || 'File details'),
+  },
+  other: {
+    icon: FiFileText,
+    color: 'grey.700',
+    badgeLabel: 'Other',
+    getPreview: (content) => truncateText(content?.description || 'Other artifact'),
+  },
+  linkedin_profile: {
+    icon: FiLink,
+    color: '#0077B5',
+    badgeLabel: 'LinkedIn Profile',
+    getPreview: (content) => truncateText(content?.headline || 'LinkedIn profile data'),
+  },
+  pog: {
+    icon: FiFileText, // Or a specific POG icon
+    color: 'info.light',
+    badgeLabel: 'POG',
+    getPreview: (content) => truncateText(content?.description || 'POG details'),
+  },
+  ask: {
+    icon: FiFileText, // Or a specific Ask icon
+    color: 'warning.light',
+    badgeLabel: 'Ask',
+    getPreview: (content) => truncateText(content?.request_description || 'Ask details'),
+  },
+  milestone: {
+    icon: FiTarget, // Or a specific Milestone icon
+    color: 'success.dark',
+    badgeLabel: 'Milestone',
+    getPreview: (content) => truncateText(content?.description || 'Milestone details'),
+  },
+  // Fallback for any unknown artifact types (shouldn't be hit if all ArtifactType members are covered)
   default: {
-    icon: FiFileText, // Default icon
+    icon: FiFileText,
     color: 'grey.500',
     badgeLabel: 'Artifact',
     getPreview: (content) => typeof content === 'string' ? truncateText(content) : 'No preview available',
@@ -87,10 +140,11 @@ export const getArtifactConfig = (type: ArtifactType | string | undefined): Arti
   return ARTIFACT_CONFIG.default;
 };
 
-// Export all artifact types for use in filters, etc.
-// This should ideally come directly from the ArtifactType definition itself
-// or be generated from the keys of ARTIFACT_CONFIG (excluding 'default')
-export const ALL_ARTIFACT_TYPES = Object.keys(ARTIFACT_CONFIG).filter(k => k !== 'default') as ArtifactType[];
+// More type-safe derivation of ALL_ARTIFACT_TYPES
+const allConfigKeys = Object.keys(ARTIFACT_CONFIG);
+export const ALL_ARTIFACT_TYPES: ArtifactType[] = allConfigKeys.filter(
+  (key): key is ArtifactType => key !== 'default'
+);
 
 // You might also want to export the ARTIFACT_CONFIG directly if needed elsewhere
 // export { ARTIFACT_CONFIG }; 
