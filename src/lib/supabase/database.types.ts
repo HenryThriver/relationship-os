@@ -37,6 +37,8 @@ export type Database = {
       artifacts: {
         Row: {
           ai_parsing_status: string | null
+          ai_processing_completed_at: string | null
+          ai_processing_started_at: string | null
           audio_file_path: string | null
           contact_id: string
           content: string
@@ -60,6 +62,8 @@ export type Database = {
         }
         Insert: {
           ai_parsing_status?: string | null
+          ai_processing_completed_at?: string | null
+          ai_processing_started_at?: string | null
           audio_file_path?: string | null
           contact_id: string
           content: string
@@ -83,6 +87,8 @@ export type Database = {
         }
         Update: {
           ai_parsing_status?: string | null
+          ai_processing_completed_at?: string | null
+          ai_processing_started_at?: string | null
           audio_file_path?: string | null
           contact_id?: string
           content?: string
@@ -260,6 +266,169 @@ export type Database = {
         }
         Relationships: []
       }
+      loop_analytics: {
+        Row: {
+          completion_time_days: number | null
+          contact_id: string
+          created_at: string | null
+          id: string
+          loop_artifact_id: string
+          loop_type: string
+          reciprocity_impact: number | null
+          status_transitions: Json
+          success_score: number | null
+          user_id: string
+        }
+        Insert: {
+          completion_time_days?: number | null
+          contact_id: string
+          created_at?: string | null
+          id?: string
+          loop_artifact_id: string
+          loop_type: string
+          reciprocity_impact?: number | null
+          status_transitions?: Json
+          success_score?: number | null
+          user_id: string
+        }
+        Update: {
+          completion_time_days?: number | null
+          contact_id?: string
+          created_at?: string | null
+          id?: string
+          loop_artifact_id?: string
+          loop_type?: string
+          reciprocity_impact?: number | null
+          status_transitions?: Json
+          success_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loop_analytics_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_analytics_loop_artifact_id_fkey"
+            columns: ["loop_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loop_suggestions: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          created_loop_id: string | null
+          id: string
+          source_artifact_id: string
+          status: string
+          suggestion_data: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          created_loop_id?: string | null
+          id?: string
+          source_artifact_id: string
+          status?: string
+          suggestion_data: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          created_loop_id?: string | null
+          id?: string
+          source_artifact_id?: string
+          status?: string
+          suggestion_data?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loop_suggestions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_suggestions_created_loop_id_fkey"
+            columns: ["created_loop_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_suggestions_source_artifact_id_fkey"
+            columns: ["source_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loop_templates: {
+        Row: {
+          completion_criteria: string[] | null
+          created_at: string | null
+          default_actions: Json
+          default_status: string
+          default_title_template: string | null
+          description: string | null
+          follow_up_schedule: number[] | null
+          id: string
+          loop_type: string
+          name: string
+          reciprocity_direction: string
+          typical_duration: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completion_criteria?: string[] | null
+          created_at?: string | null
+          default_actions?: Json
+          default_status?: string
+          default_title_template?: string | null
+          description?: string | null
+          follow_up_schedule?: number[] | null
+          id?: string
+          loop_type: string
+          name: string
+          reciprocity_direction?: string
+          typical_duration?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completion_criteria?: string[] | null
+          created_at?: string | null
+          default_actions?: Json
+          default_status?: string
+          default_title_template?: string | null
+          description?: string | null
+          follow_up_schedule?: number[] | null
+          id?: string
+          loop_type?: string
+          name?: string
+          reciprocity_direction?: string
+          typical_duration?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       next_connections: {
         Row: {
           agenda: Json | null
@@ -332,6 +501,7 @@ export type Database = {
         | "ask"
         | "milestone"
         | "voice_memo"
+        | "loop"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -464,6 +634,7 @@ export const Constants = {
         "ask",
         "milestone",
         "voice_memo",
+        "loop",
       ],
     },
   },

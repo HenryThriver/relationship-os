@@ -1267,6 +1267,94 @@ Last update: 5/27/2025
 
 ---
 
+### ArtifactTimeline.tsx
+
+- **Purpose:**
+  Main timeline component that displays artifacts in a beautiful alternating card layout with central timeline line, enhanced visual hierarchy, and modal integration.
+
+- **Props:**
+  ```ts
+  interface ArtifactTimelineProps {
+    contactId: string;
+  }
+  ```
+
+- **Component:**
+  ```ts
+  export const ArtifactTimeline: React.FC<ArtifactTimelineProps>
+  ```
+  - Fetches artifacts using `useArtifactTimeline` hook with filtering support.
+  - Renders alternating timeline cards with central timeline line and enhanced styling.
+  - Groups artifacts by date with formatted section headers.
+  - Handles modal state management for artifact details.
+  - Shows loading skeleton, empty states, and error handling.
+  - Integrates filters and stats components for comprehensive timeline experience.
+
+- **Features:**
+  - Beautiful alternating left/right card layout
+  - Central timeline line with connecting dots
+  - Enhanced visual hierarchy with colors and shadows
+  - Responsive design for mobile and desktop
+  - Modal integration for detailed artifact views
+
+---
+
+### EnhancedTimelineItem.tsx
+
+- **Purpose:**
+  Individual timeline card component with position-aware rendering, enhanced styling, and smooth animations.
+
+- **Props:**
+  ```ts
+  interface EnhancedTimelineItemProps {
+    artifact: ArtifactGlobal;
+    position: 'left' | 'right';
+    onClick: () => void;
+  }
+  ```
+
+- **Component:**
+  ```ts
+  export const EnhancedTimelineItem: React.FC<EnhancedTimelineItemProps>
+  ```
+  - Renders artifact cards with alternating left/right positioning.
+  - Uses artifact configuration for consistent icons, colors, and previews.
+  - Includes timeline dots, connector lines, and hover animations.
+  - Shows artifact type, timestamp, preview content, and status indicators.
+  - Responsive design with mobile-optimized layout.
+
+- **Features:**
+  - Position-aware rendering (left/right alternating)
+  - Timeline dots with artifact type colors
+  - Connector lines linking to central timeline
+  - Smooth hover animations and transitions
+  - Rich preview content with emoji status indicators
+  - Click-to-view functionality with clear visual cues
+
+---
+
+### TimelineSkeleton.tsx
+
+- **Purpose:**
+  Loading skeleton component that matches the alternating timeline layout for better perceived performance.
+
+- **Component:**
+  ```ts
+  export const TimelineSkeleton: React.FC
+  ```
+  - Provides skeleton placeholders for title, stats, filters, and timeline cards.
+  - Matches the alternating left/right layout of actual timeline items.
+  - Uses MUI Skeleton components with proper sizing and spacing.
+  - Responsive design that adapts to different screen sizes.
+
+- **Features:**
+  - Alternating skeleton cards matching real timeline layout
+  - Proper spacing and sizing for realistic loading experience
+  - Responsive design for mobile and desktop
+  - Smooth loading transitions
+
+---
+
 ## src/components/features/voice
 
 ### VoiceMemoDetailModal.tsx

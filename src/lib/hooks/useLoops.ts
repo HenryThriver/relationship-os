@@ -105,7 +105,7 @@ export const useLoops = (contactId: string) => {
               id: crypto.randomUUID(),
               status: LoopStatus.IDEA, 
               action_type: ta.action_type,
-              notes: ta.description_template || '',
+              notes: ta.default_notes_template || '',
               created_at: new Date().toISOString(),
             }));
           }
@@ -202,16 +202,43 @@ export const useLoops = (contactId: string) => {
         throw new Error('Failed to parse current loop content');
       }
 
+      const nowISO = new Date().toISOString();
+      const newActionType = getActionTypeForStatus(newStatus);
+      
+      const newAction: LoopAction = {
+        id: crypto.randomUUID(),
+        status: newStatus, // The status this action represents achieving
+        action_type: newActionType,
+        notes: `Status changed to ${newStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+        created_at: nowISO,
+        completed_at: nowISO, // Mark as completed as this action signifies the status change itself
+      };
+
+      const updatedActions = [...(currentContent.actions || []), newAction];
+      
+      const statusTimestampField = getStatusTimestampField(newStatus);
+
       const updatedContent: LoopArtifactContent = {
         ...currentContent,
         status: newStatus,
+        actions: updatedActions,
+        ...(statusTimestampField && { [statusTimestampField]: nowISO }),
+        // Potentially update next_action_due if applicable, or clear it if loop is final
       };
       
-      const updatePayload = { content: JSON.stringify(updatedContent) };
+      // If the loop is entering a terminal state, clear next_action_due
+      if ([LoopStatus.COMPLETED, LoopStatus.ABANDONED, LoopStatus.DECLINED].includes(newStatus)) {
+        delete updatedContent.next_action_due;
+      }
+      
+      const updatePayload: TablesUpdate<'artifacts'> = { 
+        content: JSON.stringify(updatedContent), // Let Supabase client handle stringified JSON for jsonb
+        updated_at: nowISO,
+      };
 
       const { data: updatedLoop, error: updateError } = await supabase
         .from('artifacts')
-        .update(updatePayload as any)
+        .update(updatePayload as any) // Re-adding 'as any' due to persistent Supabase type issue for 'loop' enum
         .eq('id', loopId)
         .select<'*', Tables<'artifacts'>>('*')
         .single();
@@ -219,11 +246,21 @@ export const useLoops = (contactId: string) => {
       if (updateError) throw updateError;
       if (!updatedLoop) throw new Error('Failed to update loop, no data returned.');
 
+      // Re-parse content from DB response for consistency
+      let parsedUpdatedContent: LoopArtifactContent;
+      try {
+        parsedUpdatedContent = JSON.parse(updatedLoop.content) as LoopArtifactContent;
+      } catch (e) {
+        console.error('Failed to parse loop content after update:', e, updatedLoop.content);
+        // Fallback to the content we intended to set, though DB state is authoritative
+        parsedUpdatedContent = updatedContent; 
+      }
+
       return {
         ...updatedLoop,
-        type: 'loop',
-        content: updatedContent,
-        metadata: updatedLoop.metadata,
+        type: 'loop', // Ensure type is correctly asserted
+        content: parsedUpdatedContent,
+        metadata: updatedLoop.metadata, // Ensure metadata is passed
       } as LoopArtifact;
     },
     onSuccess: (data) => {
@@ -363,24 +400,129 @@ export const useLoops = (contactId: string) => {
     }
   });
   
-  function getActionTypeForStatus(status: LoopStatus): LoopAction['action_type'] { 
-    switch (status) {
-      case LoopStatus.OFFERED:
-      case LoopStatus.ACCEPTED:
-        return 'follow_up';
-      case LoopStatus.IN_PROGRESS:
-        return 'check_in';
-      case LoopStatus.PENDING_APPROVAL:
-        return 'approval_request';
-      case LoopStatus.DELIVERED:
-        return 'delivery'; 
-      case LoopStatus.FOLLOWING_UP:
-          return 'follow_up';
-      case LoopStatus.COMPLETED:
-        return 'completion'; 
-      default:
-        return 'check_in'; 
+  // Complete loop with outcome data
+  const completeLoopMutation = useMutation<
+    LoopArtifact,
+    Error,
+    { 
+      loopId: string; 
+      outcomeData: {
+        outcome: 'successful' | 'unsuccessful' | 'partial';
+        satisfaction_score?: number; // 1-5
+        lessons_learned?: string;
+      }
     }
+  >({
+    mutationFn: async ({ loopId, outcomeData }) => {
+      const { data: currentLoopResult, error: fetchError } = await supabase
+        .from('artifacts')
+        .select<'id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata', SelectedArtifactFieldsForMutation>('id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata')
+        .eq('id', loopId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!currentLoopResult) throw new Error('Loop not found for completion');
+      if (currentLoopResult.type !== 'loop') throw new Error('Cannot complete a non-loop artifact.');
+
+      let currentContent: LoopArtifactContent;
+      try {
+        currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
+      } catch (e) {
+        console.error('Failed to parse current loop content for completion:', e, currentLoopResult.content);
+        throw new Error('Failed to parse current loop content for completion');
+      }
+
+      const nowISO = new Date().toISOString();
+      const newStatus = LoopStatus.COMPLETED;
+      
+      const completionAction: LoopAction = {
+        id: crypto.randomUUID(),
+        status: newStatus,
+        action_type: 'completion', // Specific action type for this event
+        notes: `Loop marked as completed. Outcome: ${outcomeData.outcome}. ${outcomeData.lessons_learned || ''}`.trim(),
+        created_at: nowISO,
+        completed_at: nowISO,
+      };
+
+      const updatedActions = [...(currentContent.actions || []), completionAction];
+      
+      const updatedContent: LoopArtifactContent = {
+        ...currentContent,
+        status: newStatus,
+        actions: updatedActions,
+        completed_at: nowISO, // Set top-level completed_at
+        outcome: outcomeData.outcome,
+        satisfaction_score: outcomeData.satisfaction_score,
+        lessons_learned: outcomeData.lessons_learned,
+      };
+      
+      delete updatedContent.next_action_due; // Clear next_action_due on completion
+
+      const updatePayload: TablesUpdate<'artifacts'> = { 
+        content: JSON.stringify(updatedContent),
+        updated_at: nowISO,
+      };
+
+      const { data: updatedLoop, error: updateError } = await supabase
+        .from('artifacts')
+        .update(updatePayload as any) 
+        .eq('id', loopId)
+        .select<'*', Tables<'artifacts'>>('*')
+        .single();
+
+      if (updateError) throw updateError;
+      if (!updatedLoop) throw new Error('Failed to complete loop, no data returned.');
+
+      let parsedUpdatedContent: LoopArtifactContent;
+      try {
+        parsedUpdatedContent = JSON.parse(updatedLoop.content) as LoopArtifactContent;
+      } catch (e) {
+        console.error('Failed to parse loop content after completion:', e, updatedLoop.content);
+        parsedUpdatedContent = updatedContent; 
+      }
+
+      return {
+        ...updatedLoop,
+        type: 'loop',
+        content: parsedUpdatedContent,
+        metadata: updatedLoop.metadata,
+      } as LoopArtifact;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['loops', contactId] });
+      queryClient.invalidateQueries({ queryKey: ['loop', data.id] }); // Invalidate specific loop query if used
+      showToast('Loop completed successfully!', 'success');
+    },
+    onError: (error) => {
+      showToast(`Failed to complete loop: ${error.message}`, 'error');
+      console.error('Complete loop error:', error);
+    }
+  });
+
+  function getActionTypeForStatus(status: LoopStatus): LoopAction['action_type'] {
+    const actionMap: Partial<Record<LoopStatus, LoopAction['action_type']>> = {
+      [LoopStatus.OFFERED]: 'offer',
+      [LoopStatus.RECEIVED]: 'offer',
+      [LoopStatus.ACCEPTED]: 'completion',
+      [LoopStatus.DECLINED]: 'completion',
+      [LoopStatus.IN_PROGRESS]: 'check_in',
+      [LoopStatus.PENDING_APPROVAL]: 'approval_request',
+      [LoopStatus.DELIVERED]: 'delivery',
+      [LoopStatus.FOLLOWING_UP]: 'follow_up',
+      [LoopStatus.COMPLETED]: 'completion',
+      [LoopStatus.ABANDONED]: 'completion'
+    };
+    return actionMap[status] || 'check_in';
+  }
+
+  function getStatusTimestampField(status: LoopStatus): keyof LoopArtifactContent | null {
+    const timestampMap: Partial<Record<LoopStatus, keyof LoopArtifactContent>> = {
+      [LoopStatus.OFFERED]: 'offered_at',
+      [LoopStatus.ACCEPTED]: 'accepted_at',
+      [LoopStatus.DELIVERED]: 'delivered_at',
+      [LoopStatus.COMPLETED]: 'completed_at',
+    };
+    return timestampMap[status] || null;
   }
 
   const addDefaultNextActionMutation = useMutation<
@@ -423,5 +565,7 @@ export const useLoops = (contactId: string) => {
     isUpdatingLoopAction: updateActionMutation.isPending,
     addDefaultNextAction: addDefaultNextActionMutation.mutateAsync,
     isAddingDefaultNextAction: addDefaultNextActionMutation.isPending,
+    completeLoop: completeLoopMutation.mutateAsync,
+    isCompletingLoop: completeLoopMutation.isPending,
   };
 }; 

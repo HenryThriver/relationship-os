@@ -295,16 +295,77 @@ export type Database = {
           },
         ]
       }
+      loop_suggestions: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          created_loop_id: string | null
+          id: string
+          source_artifact_id: string
+          status: string
+          suggestion_data: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          created_loop_id?: string | null
+          id?: string
+          source_artifact_id: string
+          status?: string
+          suggestion_data: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          created_loop_id?: string | null
+          id?: string
+          source_artifact_id?: string
+          status?: string
+          suggestion_data?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loop_suggestions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_suggestions_created_loop_id_fkey"
+            columns: ["created_loop_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_suggestions_source_artifact_id_fkey"
+            columns: ["source_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loop_templates: {
         Row: {
           completion_criteria: string[] | null
           created_at: string | null
           default_actions: Json
+          default_status: string
+          default_title_template: string | null
           description: string | null
           follow_up_schedule: number[] | null
           id: string
           loop_type: string
           name: string
+          reciprocity_direction: string
           typical_duration: number | null
           updated_at: string | null
           user_id: string
@@ -313,11 +374,14 @@ export type Database = {
           completion_criteria?: string[] | null
           created_at?: string | null
           default_actions?: Json
+          default_status?: string
+          default_title_template?: string | null
           description?: string | null
           follow_up_schedule?: number[] | null
           id?: string
           loop_type: string
           name: string
+          reciprocity_direction?: string
           typical_duration?: number | null
           updated_at?: string | null
           user_id: string
@@ -326,11 +390,14 @@ export type Database = {
           completion_criteria?: string[] | null
           created_at?: string | null
           default_actions?: Json
+          default_status?: string
+          default_title_template?: string | null
           description?: string | null
           follow_up_schedule?: number[] | null
           id?: string
           loop_type?: string
           name?: string
+          reciprocity_direction?: string
           typical_duration?: number | null
           updated_at?: string | null
           user_id?: string

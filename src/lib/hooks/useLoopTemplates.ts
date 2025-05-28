@@ -1,196 +1,167 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
-import { LoopTemplate, LoopType, LoopTemplateAction } from '@/types/artifact';
-import { Database, Json } from '../supabase/types_db';
+import { LoopTemplate, LoopTemplateAction, LoopType, LoopStatus } from '@/types/artifact';
+import { Database } from '@/lib/supabase/types_db';
 import { useToast } from '@/lib/contexts/ToastContext';
 
-// Define the shape of data coming from/going to the 'loop_templates' table
-// This can be more specific if we want to map DB column names to different interface keys
-type LoopTemplateRow = Database['public']['Tables']['loop_templates']['Row'];
+// Type the Supabase client with our Database schema
+const supabaseTyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient<Database>;
+
+// Use the correct Row type from the generated types
+type LoopTemplateDBRow = Database['public']['Tables']['loop_templates']['Row'];
 type LoopTemplateInsert = Database['public']['Tables']['loop_templates']['Insert'];
 type LoopTemplateUpdate = Database['public']['Tables']['loop_templates']['Update'];
 
-// Helper to safely parse default_actions from Json | null
-const parseDefaultActions = (jsonInput: Json | null): LoopTemplateAction[] | null => {
-  if (jsonInput === null || jsonInput === undefined) return null;
-
-  let actionsArray: any;
-  if (typeof jsonInput === 'string') {
-    try {
-      actionsArray = JSON.parse(jsonInput);
-    } catch (e) {
-      console.error('Failed to parse default_actions JSON string:', e, jsonInput);
-      return null; // Or return empty array / throw error
-    }
-  } else {
-    actionsArray = jsonInput; // Assumes it's already in array/object form if not a string
-  }
-
-  if (Array.isArray(actionsArray)) {
-    // Perform a runtime check or a more careful mapping if needed for production robustness
-    // For now, we'll cast, assuming the structure matches LoopTemplateAction[]
-    return actionsArray as LoopTemplateAction[]; 
-  }
-  console.warn('default_actions was not an array after parsing/accessing:', actionsArray);
-  return null; // Or empty array
-};
-
-const mapRowToLoopTemplate = (row: LoopTemplateRow): LoopTemplate => {
-  return {
-    id: row.id,
-    user_id: row.user_id,
-    name: row.name,
-    loop_type: row.loop_type as unknown as LoopType, // Cast from string to enum
-    description: row.description,
-    default_actions: parseDefaultActions(row.default_actions),
-    typical_duration_days: row.typical_duration,
-    follow_up_schedule_days: row.follow_up_schedule as number[] | null, // Assuming DB returns number[] or null
-    completion_criteria: row.completion_criteria as string[] | null, // Assuming DB returns string[] or null
-    created_at: row.created_at || new Date().toISOString(), // Fallback if null from DB
-    updated_at: row.updated_at || new Date().toISOString(), // Fallback if null from DB
-  };
-};
+const mapRowToLoopTemplate = (row: LoopTemplateDBRow): LoopTemplate => ({
+  id: row.id,
+  user_id: row.user_id,
+  name: row.name,
+  loop_type: row.loop_type as LoopType,
+  description: row.description,
+  default_title_template: row.default_title_template,
+  default_status: row.default_status as LoopStatus,
+  reciprocity_direction: row.reciprocity_direction as 'giving' | 'receiving',
+  default_actions: row.default_actions as LoopTemplateAction[] | null,
+  typical_duration: row.typical_duration, // Match DB column name
+  follow_up_schedule: row.follow_up_schedule as number[] | null, // Match DB column name
+  completion_criteria: row.completion_criteria as string[] | null,
+  created_at: row.created_at || '',
+  updated_at: row.updated_at || '',
+});
 
 export const useLoopTemplates = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const queryKey = ['loopTemplates'];
 
-  // Fetch all loop templates for the current user
-  const { data: templates, isLoading, isError, refetch } = useQuery<
-    LoopTemplate[],
-    Error
-  >({
-    queryKey: ['loopTemplates'],
+  const { data: loopTemplates = [], isLoading, error } = useQuery<LoopTemplate[], Error>({
+    queryKey,
     queryFn: async () => {
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) throw new Error('User not authenticated');
+      const { data: userResponse, error: userError } = await supabaseTyped.auth.getUser();
+      if (userError || !userResponse.user) throw userError || new Error('User not authenticated.');
 
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabaseTyped
         .from('loop_templates')
         .select('*')
-        .eq('user_id', userSession.user.id)
+        .eq('user_id', userResponse.user.id)
         .order('name', { ascending: true });
 
-      if (error) throw error;
-      // If data is null (e.g. RLS prevents access), supabase client might return null instead of empty array
-      return (data || []).map(mapRowToLoopTemplate);
+      if (fetchError) throw fetchError;
+      return data ? data.map(mapRowToLoopTemplate) : [];
     },
   });
 
-  // Create new loop template
-  const createTemplateMutation = useMutation<
-    LoopTemplate,
-    Error,
-    Omit<LoopTemplate, 'id' | 'user_id' | 'created_at' | 'updated_at'>
-  >({
-    mutationFn: async (templateData) => {
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) throw new Error('User not authenticated');
+  type CreateLoopTemplateArgs = Omit<LoopTemplate, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
-      const insertData: LoopTemplateInsert = {
-        name: templateData.name,
-        user_id: userSession.user.id,
-        loop_type: templateData.loop_type as string, // DB expects string for enum
-        description: templateData.description,
-        default_actions: templateData.default_actions 
-          ? JSON.stringify(templateData.default_actions) 
-          : null,
-        typical_duration: templateData.typical_duration_days,
-        follow_up_schedule: templateData.follow_up_schedule_days,
-        completion_criteria: templateData.completion_criteria,
-        // created_at and updated_at have db defaults
+  const createLoopTemplateMutation = useMutation<LoopTemplate, Error, CreateLoopTemplateArgs>({
+    mutationFn: async (newTemplateData: CreateLoopTemplateArgs) => {
+      const { data: userResponse, error: userError } = await supabaseTyped.auth.getUser();
+      if (userError || !userResponse.user) throw userError || new Error('User not authenticated.');
+
+      const templateToInsert: LoopTemplateInsert = {
+        user_id: userResponse.user.id,
+        name: newTemplateData.name,
+        loop_type: newTemplateData.loop_type,
+        description: newTemplateData.description,
+        default_title_template: newTemplateData.default_title_template,
+        default_status: newTemplateData.default_status,
+        reciprocity_direction: newTemplateData.reciprocity_direction,
+        default_actions: newTemplateData.default_actions as any, // JSONB handling
+        typical_duration: newTemplateData.typical_duration, // Match DB column
+        follow_up_schedule: newTemplateData.follow_up_schedule, // Match DB column
+        completion_criteria: newTemplateData.completion_criteria,
       };
 
-      const { data, error } = await supabase
+      const { data, error: insertError } = await supabaseTyped
         .from('loop_templates')
-        .insert(insertData)
+        .insert(templateToInsert)
         .select()
         .single();
 
-      if (error || !data) throw error || new Error('Failed to create template, no data returned.');
+      if (insertError) throw insertError;
+      if (!data) throw new Error('Failed to create loop template, no data returned.');
       return mapRowToLoopTemplate(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loopTemplates'] });
+      queryClient.invalidateQueries({ queryKey });
       showToast('Loop template created successfully!', 'success');
     },
-    onError: (error) => {
-      showToast(`Failed to create loop template: ${error.message}`, 'error');
+    onError: (err: Error) => {
+      showToast(`Failed to create loop template: ${err.message}`, 'error');
     },
   });
 
-  // Update existing loop template
-  const updateTemplateMutation = useMutation<
-    LoopTemplate,
-    Error,
-    Partial<Omit<LoopTemplate, 'user_id' | 'created_at'> & { id: string }>
-  >({
-    mutationFn: async (templateData) => {
-      const { id, ...updateFields } = templateData;
-      
-      const updatePayload: Partial<LoopTemplateUpdate> = { // Use Partial for update payload
-        name: updateFields.name,
-        loop_type: updateFields.loop_type as string | undefined,
-        description: updateFields.description,
-        typical_duration: updateFields.typical_duration_days,
-        follow_up_schedule: updateFields.follow_up_schedule_days,
-        completion_criteria: updateFields.completion_criteria,
+  type UpdateLoopTemplateArgs = Partial<Omit<LoopTemplate, 'user_id' | 'created_at'>> & { id: string };
+
+  const updateLoopTemplateMutation = useMutation<LoopTemplate, Error, UpdateLoopTemplateArgs>({
+    mutationFn: async (updateData: UpdateLoopTemplateArgs) => {
+      const { id, ...templateUpdate } = updateData;
+
+      const updatePayload: LoopTemplateUpdate = {
         updated_at: new Date().toISOString(),
       };
 
-      if (updateFields.hasOwnProperty('default_actions')) {
-        updatePayload.default_actions = updateFields.default_actions 
-          ? JSON.stringify(updateFields.default_actions) 
-          : null;
-      }
+      // Only include fields that are being updated
+      if (templateUpdate.name !== undefined) updatePayload.name = templateUpdate.name;
+      if (templateUpdate.loop_type !== undefined) updatePayload.loop_type = templateUpdate.loop_type;
+      if (templateUpdate.description !== undefined) updatePayload.description = templateUpdate.description;
+      if (templateUpdate.default_title_template !== undefined) updatePayload.default_title_template = templateUpdate.default_title_template;
+      if (templateUpdate.default_status !== undefined) updatePayload.default_status = templateUpdate.default_status;
+      if (templateUpdate.reciprocity_direction !== undefined) updatePayload.reciprocity_direction = templateUpdate.reciprocity_direction;
+      if (templateUpdate.default_actions !== undefined) updatePayload.default_actions = templateUpdate.default_actions as any;
+      if (templateUpdate.typical_duration !== undefined) updatePayload.typical_duration = templateUpdate.typical_duration;
+      if (templateUpdate.follow_up_schedule !== undefined) updatePayload.follow_up_schedule = templateUpdate.follow_up_schedule;
+      if (templateUpdate.completion_criteria !== undefined) updatePayload.completion_criteria = templateUpdate.completion_criteria;
       
-      const { data, error } = await supabase
+      const { data, error: updateError } = await supabaseTyped
         .from('loop_templates')
         .update(updatePayload)
         .eq('id', id)
         .select()
         .single();
 
-      if (error || !data) throw error || new Error('Failed to update template, no data returned.');
+      if (updateError) throw updateError;
+      if (!data) throw new Error('Failed to update loop template, no data returned.');
       return mapRowToLoopTemplate(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loopTemplates'] });
+    onSuccess: (updatedTemplate: LoopTemplate) => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.setQueryData([...queryKey, updatedTemplate.id], updatedTemplate);
       showToast('Loop template updated successfully!', 'success');
     },
-    onError: (error) => {
-      showToast(`Failed to update loop template: ${error.message}`, 'error');
+    onError: (err: Error) => {
+      showToast(`Failed to update loop template: ${err.message}`, 'error');
     },
   });
 
-  // Delete loop template
-  const deleteTemplateMutation = useMutation<void, Error, string>({
-    mutationFn: async (templateId) => {
-      const { error } = await supabase
+  const deleteLoopTemplateMutation = useMutation<void, Error, string>({
+    mutationFn: async (templateId: string) => {
+      const { error: deleteError } = await supabaseTyped
         .from('loop_templates')
         .delete()
         .eq('id', templateId);
-      if (error) throw error;
+
+      if (deleteError) throw deleteError;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loopTemplates'] });
+    onSuccess: (_data: void, templateId: string) => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.removeQueries({ queryKey: [...queryKey, templateId] });
       showToast('Loop template deleted successfully!', 'success');
     },
-    onError: (error) => {
-      showToast(`Failed to delete loop template: ${error.message}`, 'error');
+    onError: (err: Error) => {
+      showToast(`Failed to delete loop template: ${err.message}`, 'error');
     },
   });
 
   return {
-    templates,
+    loopTemplates,
     isLoading,
-    isError,
-    refetchTemplates: refetch,
-    createTemplate: createTemplateMutation.mutate,
-    updateTemplate: updateTemplateMutation.mutate,
-    deleteTemplate: deleteTemplateMutation.mutate,
-    isCreatingTemplate: createTemplateMutation.isPending,
-    isUpdatingTemplate: updateTemplateMutation.isPending,
-    isDeletingTemplate: deleteTemplateMutation.isPending,
+    error,
+    createLoopTemplate: createLoopTemplateMutation.mutateAsync,
+    updateLoopTemplate: updateLoopTemplateMutation.mutateAsync,
+    deleteLoopTemplate: deleteLoopTemplateMutation.mutateAsync,
+    isCreating: createLoopTemplateMutation.isPending, // Use isPending instead of isLoading
+    isUpdating: updateLoopTemplateMutation.isPending,
+    isDeleting: deleteLoopTemplateMutation.isPending,
   };
 }; 

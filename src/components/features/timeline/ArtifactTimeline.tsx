@@ -1,114 +1,74 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
-import { useArtifactTimeline } from '@/lib/hooks/useArtifactTimeline';
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Alert,
+  Divider
+} from '@mui/material';
+
 import { EnhancedTimelineItem } from './EnhancedTimelineItem';
 import { EnhancedTimelineFilters } from './EnhancedTimelineFilters';
-import { EnhancedTimelineStats } from './EnhancedTimelineStats';
-import { ArtifactModal } from './ArtifactModal';
+import { EnhancedTimelineStats, TimelineStatsData } from './EnhancedTimelineStats';
 import { TimelineSkeleton } from './TimelineSkeleton';
 import type { ArtifactGlobal, ArtifactType, GroupedArtifact } from '@/types';
-import { useArtifactModalData } from '@/lib/hooks/useArtifactModalData';
-import { useToast } from '@/lib/contexts/ToastContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { useArtifactTimeline } from '@/lib/hooks/useArtifactTimeline';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { ALL_ARTIFACT_TYPES } from '@/config/artifactConfig';
 
 interface ArtifactTimelineProps {
   contactId: string;
+  onArtifactClick?: (artifact: ArtifactGlobal) => void;
 }
 
-// Define the sx prop for the timeline container as per the plan
-const timelineContainerSx = {
-  position: 'relative',
-  pt: 4,
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    left: { xs: '30px', md: '50%' }, // Left aligned on mobile
-    top: 0,
-    bottom: 0,
-    width: '3px',
-    background: 'linear-gradient(to bottom, #e3f2fd 0%, #2196f3 50%, #e3f2fd 100%)',
-    transform: { xs: 'none', md: 'translateX(-50%)' },
-    zIndex: 1
-  }
+const defaultStats: TimelineStatsData = {
+  totalArtifacts: 0,
+  firstArtifactDate: null,
+  lastArtifactDate: null,
+  artifactTypeCounts: ALL_ARTIFACT_TYPES.reduce((acc, type) => {
+    acc[type] = 0;
+    return acc;
+  }, {} as Record<ArtifactType, number>),
+  averageTimeBetweenDays: 0,
 };
 
-export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId }) => {
-  const [selectedArtifact, setSelectedArtifact] = useState<ArtifactGlobal | null>(null);
+export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({
+  contactId,
+  onArtifactClick
+}) => {
   const [filterTypes, setFilterTypes] = useState<ArtifactType[]>([]);
-  const { showToast } = useToast();
-  const queryClient = useQueryClient();
-  
-  const {
-    artifactDetails,
-    relatedSuggestions,
-    displayedContactProfileUpdates,
-    contactName,
-    contactLinkedInUrl,
-    isLoading: isLoadingArtifactModalData,
-    error: artifactModalDataError,
-    fetchArtifactData,
-    reprocessVoiceMemo,
-    isReprocessing: isReprocessingArtifactModal,
-    deleteArtifact: deleteArtifactModal,
-    isDeleting: isDeletingArtifactModal,
-    playAudio,
-  } = useArtifactModalData();
 
-  const { 
+  const {
     data: timelineData,
-    isLoading, 
-    error,
+    isLoading,
+    isError,
   } = useArtifactTimeline(contactId, { filterTypes });
 
-  const groupedArtifacts = timelineData?.groupedArtifacts;
-  const stats = timelineData?.stats;
-  const allFetchedArtifacts = timelineData?.allArtifacts;
-
-  const handleTimelineItemClick = (artifact: ArtifactGlobal) => {
-    setSelectedArtifact(artifact);
-    fetchArtifactData(artifact.id, contactId);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedArtifact(null);
-  };
-
-  const handleDeleteInModal = async (artifactId: string) => {
-    try {
-      await deleteArtifactModal(artifactId, contactId);
-      showToast('Artifact deleted successfully.', 'success');
-      handleCloseModal();
-    } catch (error: any) {
-      console.error('Failed to delete artifact from timeline modal:', error);
-      showToast(`Error deleting artifact: ${error.message}`, 'error');
-    }
-  };
-
-  const handleReprocessInModal = async (artifactId: string) => {
-    try {
-      await reprocessVoiceMemo(artifactId);
-      showToast('Artifact reprocessing started.', 'success');
-    } catch (error: any) {
-      console.error('Failed to reprocess artifact from timeline modal:', error);
-      showToast(`Error reprocessing artifact: ${error.message}`, 'error');
-    }
-  };
-
-  const handlePlayAudioInModal = async (audioPath: string): Promise<string> => {
-    return playAudio(audioPath);
+  const artifacts = timelineData?.allArtifacts || [];
+  const groupedArtifacts = timelineData?.groupedArtifacts || [];
+  const stats = timelineData?.stats || defaultStats;
+  
+  const formatDateGroupLabel = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    if (isThisWeek(date)) return format(date, 'EEEE');
+    return format(date, 'MMMM d, yyyy');
   };
 
   if (isLoading) {
     return <TimelineSkeleton />;
   }
-  
-  if (error) {
-    return <Alert severity="error" sx={{m:2}}>{error.message || "Failed to load timeline."}</Alert>;
+
+  if (isError) {
+    return (
+      <Alert severity="error">Failed to load timeline. Please try again.</Alert>
+    );
   }
 
-  if (!allFetchedArtifacts || allFetchedArtifacts.length === 0) {
+  if (!timelineData?.allArtifacts || timelineData.allArtifacts.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary', maxWidth: '600px', mx: 'auto' }}>
         <Typography sx={{ fontSize: '3rem', mb: 2 }}>📭</Typography>
@@ -120,12 +80,9 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
     );
   }
   
-  if (!groupedArtifacts || groupedArtifacts.length === 0) {
+  if (timelineData.allArtifacts.length > 0 && groupedArtifacts.length === 0) {
     return (
-      <Box sx={{ maxWidth: '900px', mx: 'auto', backgroundColor: '#f8f9fa', minHeight: 'calc(100vh - 120px)', p: 3 }}>
-        <Typography variant="h4" sx={{ mb: 3, color: '#333', fontWeight: 'bold', textAlign:'center' }}>
-          Artifact Timeline
-        </Typography>
+      <Box sx={{ maxWidth: '900px', mx: 'auto', backgroundColor: '#f8f9fa', minHeight: 'auto', p: 3 }}>
         {stats && <EnhancedTimelineStats stats={stats} />}
         <EnhancedTimelineFilters 
           filterTypes={filterTypes}
@@ -143,29 +100,45 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
   }
 
   return (
-    <Box sx={{ maxWidth: '900px', mx: 'auto', backgroundColor: '#f8f9fa', minHeight: 'calc(100vh - 120px)', p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3, color: '#333', fontWeight: 'bold', textAlign:'center' }}>
+    <Box sx={{ maxWidth: '900px', mx: 'auto', backgroundColor: '#f8f9fa', minHeight: '100vh', p: 3 }}>
+      <Typography variant="h4" sx={{ mb: 3, color: '#333', fontWeight: 'bold' }}>
         Artifact Timeline
       </Typography>
       
       {stats && <EnhancedTimelineStats stats={stats} />}
+      
       <EnhancedTimelineFilters 
         filterTypes={filterTypes}
         onFilterChange={setFilterTypes}
       />
-      
-      {/* Timeline Container */}
-      <Box sx={timelineContainerSx}>
-        {groupedArtifacts.map((group: GroupedArtifact) => (
-          <Box key={group.date} sx={{mb: 2}}>
+
+      {/* Enhanced Timeline Container with Central Line */}
+      <Box sx={{ 
+        position: 'relative',
+        pt: 4,
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          left: { xs: '30px', md: '50%' },
+          top: 0,
+          bottom: 0,
+          width: '3px',
+          background: 'linear-gradient(to bottom, #e3f2fd 0%, #2196f3 50%, #e3f2fd 100%)',
+          transform: { xs: 'none', md: 'translateX(-50%)' },
+          zIndex: 1
+        }
+      }}>
+        {groupedArtifacts.map((group: GroupedArtifact, groupIndex: number) => (
+          <Box key={`${group.date}-${groupIndex}`}>
+            {/* Enhanced Date Label */}
             <Typography 
               variant="h6" 
               sx={{ 
                 textAlign: 'center', 
-                mb: 3,
+                mb: 2,
                 backgroundColor: '#2196f3',
                 color: 'white',
-                py: 0.5,
+                py: 1,
                 px: 2,
                 borderRadius: '20px',
                 display: 'inline-block',
@@ -173,12 +146,12 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: 10,
-                fontSize: '0.85rem',
+                fontSize: '0.9rem',
                 fontWeight: 600,
-                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                boxShadow: '0 2px 8px rgba(33, 150, 243, 0.3)'
               }}
             >
-              {group.dateLabel}
+              {group.dateLabel || formatDateGroupLabel(group.date)}
             </Typography>
             
             {group.artifacts.map((artifact, index) => (
@@ -186,30 +159,12 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({ contactId })
                 key={artifact.id}
                 artifact={artifact}
                 position={index % 2 === 0 ? 'left' : 'right'}
-                onClick={handleTimelineItemClick}
+                onClick={() => onArtifactClick?.(artifact)}
               />
             ))}
           </Box>
         ))}
       </Box>
-
-      <ArtifactModal
-        artifact={artifactDetails || selectedArtifact}
-        open={!!selectedArtifact}
-        onClose={handleCloseModal}
-        contactId={contactId}
-        contactName={contactName}
-        contactLinkedInUrl={contactLinkedInUrl}
-        relatedSuggestions={relatedSuggestions}
-        contactFieldSources={displayedContactProfileUpdates}
-        onDelete={handleDeleteInModal}
-        onReprocess={handleReprocessInModal}
-        onPlayAudio={handlePlayAudioInModal}
-        isLoading={isLoadingArtifactModalData}
-        isDeleting={isDeletingArtifactModal}
-        isReprocessing={isReprocessingArtifactModal}
-        error={artifactModalDataError?.message || null}
-      />
     </Box>
   );
 }; 

@@ -112,70 +112,95 @@ serve(async (req: Request) => {
     console.log(`Processing artifact ${fetchedArtifactRecord.id} for contact ${contact.id}`);
 
     // Call OpenAI for parsing
-    const suggestions = await parseWithOpenAI(fetchedArtifactRecord.transcription, contact);
+    // The response from parseWithOpenAI will now be an object: { contact_updates: [], suggested_loops: [] }
+    const aiParseResult = await parseWithOpenAI(fetchedArtifactRecord.transcription, contact);
 
-    if (suggestions === null) { // Explicitly check for null
+    if (aiParseResult === null) {
       console.error(`AI parsing failed for artifact ${fetchedArtifactRecord.id}. parseWithOpenAI returned null.`);
       await supabase.from('artifacts').update({ 
           ai_parsing_status: 'failed', 
           ai_processing_completed_at: new Date().toISOString() 
       }).eq('id', fetchedArtifactRecord.id);
-      // Ensure the catch block below gets this error to return a proper 500 response
       throw new Error('AI parsing failed, parseWithOpenAI returned null.'); 
     }
 
-    if (suggestions.length === 0) {
-      await supabase
-        .from('artifacts')
-        .update({ 
-          ai_parsing_status: 'completed', 
-          ai_processing_completed_at: new Date().toISOString() 
-        })
-        .eq('id', fetchedArtifactRecord.id);
-      
-      console.log(`No suggestions found for artifact ${fetchedArtifactRecord.id}. Marked as completed.`);
-      return new Response(JSON.stringify({ success: true, message: 'No suggestions generated.', suggestions_count: 0 }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    const contactUpdateSuggestions = aiParseResult.contact_updates || [];
+    const loopSuggestions = aiParseResult.suggested_loops || [];
+    const userId = contact.user_id; // Assuming contact object has user_id
+
+    let suggestionsStoredCount = 0;
+    let loopsSuggestedCount = 0;
+
+    // Store contact update suggestions (if any)
+    if (contactUpdateSuggestions.length > 0) {
+      const { error: insertSuggestionsError } = await supabase
+        .from('contact_update_suggestions')
+        .insert({
+          artifact_id: fetchedArtifactRecord.id,
+          contact_id: fetchedArtifactRecord.contact_id,
+          user_id: userId,
+          suggested_updates: { suggestions: contactUpdateSuggestions }, // Ensure this matches expected structure
+          field_paths: contactUpdateSuggestions.map(s => s.field_path),
+          confidence_scores: Object.fromEntries(contactUpdateSuggestions.map(s => [s.field_path, s.confidence]))
+        });
+
+      if (insertSuggestionsError) {
+        console.error(`Error inserting contact update suggestions for artifact ${fetchedArtifactRecord.id}:`, insertSuggestionsError);
+        // Potentially throw or handle differently, for now, we continue to process loop suggestions
+      } else {
+        suggestionsStoredCount = contactUpdateSuggestions.length;
+        console.log(`${suggestionsStoredCount} contact update suggestions stored for artifact ${fetchedArtifactRecord.id}.`);
+      }
     }
 
-    // Store suggestions
-    const { error: insertSuggestionsError } = await supabase
-      .from('contact_update_suggestions')
-      .insert({
-        artifact_id: fetchedArtifactRecord.id,
-        contact_id: fetchedArtifactRecord.contact_id,
-        user_id: contact.user_id,
-        suggested_updates: { suggestions },
-        field_paths: suggestions.map(s => s.field_path),
-        confidence_scores: Object.fromEntries(suggestions.map(s => [s.field_path, s.confidence]))
-      });
+    // Store loop suggestions (if any)
+    if (loopSuggestions.length > 0) {
+      const validLoopSuggestions = loopSuggestions
+        .filter(suggestion => suggestion.confidence >= 0.7) // As per roadmap
+        .map(suggestion => ({
+          user_id: userId,
+          contact_id: fetchedArtifactRecord.contact_id,
+          source_artifact_id: fetchedArtifactRecord.id,
+          suggestion_data: suggestion, // Store the whole suggestion object (type, title, description, etc.)
+          status: 'pending', // Default status
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
 
-    if (insertSuggestionsError) {
-      console.error(`Error inserting suggestions for artifact ${fetchedArtifactRecord.id}:`, insertSuggestionsError);
-      await supabase.from('artifacts').update({ ai_parsing_status: 'failed', ai_processing_completed_at: new Date().toISOString() }).eq('id', fetchedArtifactRecord.id);
-      throw new Error(`Failed to store suggestions: ${insertSuggestionsError.message}`);
+      if (validLoopSuggestions.length > 0) {
+        const { error: loopSuggestionsError } = await supabase
+          .from('loop_suggestions')
+          .insert(validLoopSuggestions);
+
+        if (loopSuggestionsError) {
+          console.error('Error storing loop suggestions:', loopSuggestionsError);
+          // Potentially throw or handle differently
+        } else {
+          loopsSuggestedCount = validLoopSuggestions.length;
+          console.log(`${loopsSuggestedCount} loop suggestions stored for artifact ${fetchedArtifactRecord.id}.`);
+        }
+      }
     }
     
-    console.log(`${suggestions.length} suggestions stored for artifact ${fetchedArtifactRecord.id}.`);
-
-    // Update artifact status to 'completed'
+    // Update artifact status to 'completed' only if no major errors occurred during suggestion storage
+    // Consider more nuanced error handling if partial success is possible/desired
     const { error: updateToCompletedError } = await supabase
       .from('artifacts')
       .update({ 
         ai_parsing_status: 'completed',
-        ai_processing_completed_at: new Date().toISOString() // Set completion time
+        ai_processing_completed_at: new Date().toISOString()
       })
       .eq('id', fetchedArtifactRecord.id);
 
     if (updateToCompletedError) {
-      console.error(`Error updating artifact ${fetchedArtifactRecord.id} to completed status after storing suggestions:`, updateToCompletedError);
+      console.error(`Error updating artifact ${fetchedArtifactRecord.id} to completed status:`, updateToCompletedError);
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `${suggestions.length} suggestions stored.`,
-      suggestions_count: suggestions.length 
+      message: `Processing complete. ${suggestionsStoredCount} contact updates, ${loopsSuggestedCount} loop suggestions.`,
+      contact_suggestions_count: suggestionsStoredCount,
+      loop_suggestions_count: loopsSuggestedCount
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
@@ -200,16 +225,60 @@ serve(async (req: Request) => {
   }
 })
 
-async function parseWithOpenAI(transcription: string, contact: any): Promise<Array<{field_path: string; action: 'add' | 'update' | 'remove'; suggested_value: any; confidence: number; reasoning: string}> | null> {
-  // Ensure OPENAI_API_KEY is available
+// Define expected AI Response structure
+interface AiSuggestion {
+  field_path: string;
+  action: 'add' | 'update' | 'remove';
+  suggested_value: any;
+  confidence: number;
+  reasoning: string;
+}
+
+interface SuggestedLoop {
+  type: string; // Corresponds to LoopType values e.g., "introduction", "referral"
+  title: string;
+  description: string;
+  current_status: string; // Corresponds to LoopStatus values e.g., "idea", "queued"
+  reciprocity_direction: 'giving' | 'receiving';
+  confidence: number;
+  reasoning: string;
+}
+
+interface AiParseResult {
+  contact_updates: AiSuggestion[];
+  suggested_loops: SuggestedLoop[];
+}
+
+async function parseWithOpenAI(transcription: string, contact: any): Promise<AiParseResult | null> {
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openAIApiKey) {
     console.error('OPENAI_API_KEY is not set in environment variables.');
     throw new Error('OpenAI API key is missing.');
   }
 
+  const LOOP_DETECTION_PROMPT_SNIPPET = `
+In addition to contact updates, analyze this transcription for potential relationship loops (ongoing multi-step interactions).
+
+Look for mentions of:
+- Offers to help, introduce, refer, share resources
+- Requests for help, introductions, referrals, advice
+- Follow-ups needed on previous offers/requests
+- Commitments made that need tracking
+
+For each potential loop identified, provide:
+- type: introduction|referral|resource_share|advice_offer|advice_request|collaboration_proposal (match LoopType values)
+- title: Brief descriptive title
+- description: What specifically needs to happen
+- current_status: idea|queued|offered|received|accepted|in_progress|delivered|following_up (match LoopStatus values)
+- reciprocity_direction: giving|receiving
+- confidence: 0.0-1.0
+- reasoning: Detailed explanation for the suggestion.
+`;
+
+  // Keep the existing contact update prompt part largely the same
+  // but ensure the overall response format is the new one.
   const promptContent = `
-RELATIONSHIP INTELLIGENCE EXTRACTION
+RELATIONSHIP INTELLIGENCE EXTRACTION V2 (With Loop Detection)
 
 Contact Name: ${contact.name || 'Unknown'}
 Contact Company: ${contact.company || 'Unknown'}
@@ -225,11 +294,11 @@ Voice Memo Transcription:
 "${transcription}"
 
 EXTRACTION INSTRUCTIONS:
+You are an expert relationship intelligence analyst. 
+1. Extract ALL meaningful updates from this voice memo for the contact's profile. Be thorough.
+2. ${LOOP_DETECTION_PROMPT_SNIPPET}
 
-You are an expert relationship intelligence analyst. Extract ALL meaningful updates from this voice memo that would help build a comprehensive profile of this contact. Be thorough and systematic - capture both explicit statements and reasonable inferences.
-
-VALID FIELD PATHS:
-
+VALID FIELD PATHS FOR CONTACT UPDATES:
 PERSONAL CONTEXT:
 - "personal_context.family.partner" (object: { "name": "string", "relationship": "partner" | "spouse" | etc., "details"?: "string" }, action: 'update' to replace the entire object)
 - "personal_context.family.children" (array of objects: [{ "name": "string", "relationship": "child" | "son" | "daughter", "details"?: "string" }], action: 'add' for each new child object)
@@ -248,207 +317,126 @@ PERSONAL CONTEXT:
 PROFESSIONAL CONTEXT:
 - "company" (string)
 - "title" (string)
-- "professional_context.current_role_description" (string)
-- "professional_context.key_responsibilities" (array of strings, action: 'add')
-- "professional_context.team_details" (string)
-- "professional_context.work_challenges" (array of strings, action: 'add')
-- "professional_context.goals" (array of strings, action: 'add')
-- "professional_context.networking_objectives" (array of strings, action: 'add')
-- "professional_context.skill_development" (array of strings, action: 'add')
-- "professional_context.career_transitions" (array of strings, action: 'add')
-- "professional_context.projects_involved" (array of strings, action: 'add')
-- "professional_context.collaborations" (array of strings, action: 'add')
-- "professional_context.upcoming_projects" (array of strings, action: 'add')
-- "professional_context.skills" (array of strings, action: 'add')
-- "professional_context.expertise_areas" (array of strings, action: 'add')
-- "professional_context.industry_knowledge" (array of strings, action: 'add')
-- "professional_context.mentions.colleagues" (array of strings, action: 'add')
-- "professional_context.mentions.clients" (array of strings, action: 'add')
-- "professional_context.mentions.competitors" (array of strings, action: 'add')
-- "professional_context.mentions.collaborators" (array of strings, action: 'add')
-- "professional_context.mentions.mentors" (array of strings, action: 'add')
-- "professional_context.mentions.industry_contacts" (array of strings, action: 'add')
+- "professional_context.current_role.responsibilities" (array of strings, action: 'add')
+- "professional_context.current_role.projects" (array of objects: [{ "name": "string", "status": "active" | "completed" | "planned", "details"?: "string" }], action: 'add')
+- "professional_context.current_role.key_achievements" (array of strings, action: 'add')
+- "professional_context.team.manager" (string)
+- "professional_context.team.direct_reports" (array of strings, action: 'add')
+- "professional_context.industry_insights" (array of strings, action: 'add')
+- "professional_context.career_goals" (array of strings, action: 'add')
+- "professional_context.professional_development" (array of strings, action: 'add')
+- "professional_context.networking_activities" (array of strings, action: 'add')
 
-RELATIONSHIP & LOOP CONTEXT:
-- "professional_context.opportunities_to_help" (array of strings - ways you could add value, action: 'add')
-- "professional_context.introduction_needs" (array of strings - people they need to meet, action: 'add')
-- "professional_context.resource_needs" (array of strings - info/tools they need, action: 'add')
-- "professional_context.pending_requests" (array of strings - things you've asked them to do, action: 'add')
-- "professional_context.collaboration_opportunities" (array of strings, action: 'add')
+GENERAL FIELDS:
+- "name" (string, if a correction or full name is mentioned)
+- "email" (string, if mentioned as primary or update)
+- "phone" (string, if mentioned)
+- "linkedin_url" (string, if mentioned)
+- "location.city" (string)
+- "location.state" (string)
+- "location.country" (string)
+- "next_steps" (array of strings for general todos related to this contact, action: 'add')
+- "summary_of_conversation" (string, brief overview of key topics discussed)
+- "key_pain_points_discussed" (array of strings, action: 'add')
+- "opportunities_identified" (array of strings, action: 'add')
+- "shared_interests_discovered" (array of strings, action: 'add')
 
-EXTRACTION RULES:
+RESPONSE FORMAT (JSON Object):
+Provide your response as a single JSON object with two top-level keys: "contact_updates" and "suggested_loops".
+- "contact_updates": An array of objects. Each object MUST have "field_path", "action" ("add", "update", or "remove"), "suggested_value", "confidence" (0.0-1.0), and "reasoning".
+- "suggested_loops": An array of objects as described in the loop detection section. If no loops, return an empty array.
 
-1. COMPREHENSIVE CAPTURE: Extract every piece of information that adds to understanding this person
-2. INFER INTELLIGENTLY: Include reasonable inferences from context (e.g., if they mention "my wife Sarah," extract partner name: "Sarah")
-3. PRESERVE NUANCE: Capture the emotional context and implications, not just facts
-4. IDENTIFY OPPORTUNITIES: Look for ways you could add value or areas for collaboration
-5. TRACK COMMITMENTS: Note any promises, follow-ups, or pending items mentioned
-6. CONSIDER TIMING: Factor in urgency, seasonality, and life transitions
-
-CONFIDENCE SCORING:
-- 0.9-1.0: Explicitly stated facts
-- 0.7-0.8: Strong inferences from context
-- 0.5-0.6: Reasonable assumptions based on implications
-
-RESPONSE FORMAT:
-Return a JSON array of suggestion objects. Each object must follow this exact format:
+Example Response:
 {
-  "field_path": "string", 
-  "action": "add" | "update" | "remove",
-  "suggested_value": "string, array (of strings or objects), or object. Structure must match the target field_path type.",
-  "confidence": number (0.0 to 1.0),
-  "reasoning": "string explaining why this update is suggested and the source in the memo"
+  "contact_updates": [
+    {
+      "field_path": "title",
+      "action": "update",
+      "suggested_value": "Senior Director of Marketing",
+      "confidence": 0.9,
+      "reasoning": "Contact mentioned their new title is 'Senior Director of Marketing'."
+    },
+    {
+      "field_path": "personal_context.hobbies",
+      "action": "add",
+      "suggested_value": "Marathon running",
+      "confidence": 0.75,
+      "reasoning": "Contact spoke about training for an upcoming marathon."
+    }
+  ],
+  "suggested_loops": [
+    {
+      "type": "introduction",
+      "title": "Introduce Sarah to Mike for marketing collaboration",
+      "description": "Sarah mentioned needing help with B2B marketing, Mike has expertise in this area.",
+      "current_status": "idea",
+      "reciprocity_direction": "giving",
+      "confidence": 0.85,
+      "reasoning": "Clear match between Sarah's need and Mike's expertise mentioned in conversation."
+    }
+  ]
 }
 
-EXAMPLES:
-
-If memo says "My wife Sarah and I are moving to Boston next month because of my new job at TechCorp. Our son, Leo, is excited to start at his new school there.":
-[
-  {
-    "field_path": "personal_context.family.partner",
-    "action": "update", 
-    "suggested_value": { "name": "Sarah", "relationship": "wife" },
-    "confidence": 0.95,
-    "reasoning": "Explicitly mentioned 'my wife Sarah' in the conversation."
-  },
-  {
-    "field_path": "personal_context.family.children",
-    "action": "add",
-    "suggested_value": { "name": "Leo", "relationship": "son", "details": "Will be starting a new school in Boston." },
-    "confidence": 0.9,
-    "reasoning": "Mentioned 'Our son, Leo' and his upcoming school change."
-  },
-  {
-    "field_path": "personal_context.key_life_events", 
-    "action": "add",
-    "suggested_value": "Moving to Boston for new job",
-    "confidence": 0.9,
-    "reasoning": "Major life transition mentioned - relocation for career."
-  },
-  {
-    "field_path": "personal_context.upcoming_changes",
-    "action": "add", 
-    "suggested_value": "Relocation to Boston next month",
-    "confidence": 0.9,
-    "reasoning": "Specific upcoming change with timeline."
-  },
-  {
-    "field_path": "company",
-    "action": "update",
-    "suggested_value": "TechCorp", 
-    "confidence": 0.85,
-    "reasoning": "Mentioned new job at TechCorp."
-  },
-  {
-    "field_path": "professional_context.career_transitions",
-    "action": "add",
-    "suggested_value": "Job change to TechCorp",
-    "confidence": 0.8,
-    "reasoning": "Career transition implied by new job mention."
-  }
-]
-
-If no relevant updates are found, return an empty array [].
-Ensure the output is valid JSON.
-
-CRITICAL: Your entire response must be ONLY the JSON array, starting with \`[\` and ending with \`]\`. Do NOT include any other text, explanations, or markdown formatting like triple backticks.
-
-Example for removing from an array (less common, be specific): { "field_path": "professional_context.projects_involved", "action": "remove", "suggested_value": "Old Project X", "confidence": 0.7, "reasoning": "Memo states Old Project X has concluded." }
+If no updates or loops are found, return empty arrays for the respective keys.
+Focus on accuracy and completeness. Only suggest updates or loops if reasonably confident.
+Be careful with data types. For "add" actions to arrays, "suggested_value" should be the item to add, not the whole array.
+For "update" on an object like "personal_context.family.partner", suggested_value is the entire new object.
+Do not Hallucinate. If information is not present, do not create it.
+Do not include fields in "contact_updates" or "suggested_loops" if confidence is below 0.5.
 `;
 
-  // Log the exact prompt being sent to OpenAI
-  console.log("---- START OpenAI Prompt Content ----");
-  console.log(promptContent);
-  console.log("---- END OpenAI Prompt Content ----");
-
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Changed to gpt-4o
-        messages: [
-          {
-            role: "system",
-            content: "You are an AI assistant that extracts relationship intelligence from voice memo transcriptions to suggest updates to a contact's profile. Follow the user's instructions precisely regarding format and field paths. Be conservative and only suggest updates explicitly mentioned or strongly implied."
-          },
-          {
-            role: "user",
-            content: promptContent
-          }
-        ],
+        model: 'gpt-4-turbo-preview', // Or your preferred model
+        messages: [{ role: 'user', content: promptContent }],
+        response_format: { type: "json_object" }, // Ensure JSON mode
         temperature: 0.2, // Lower temperature for more deterministic output
-      })
+      }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`OpenAI API error: ${response.status} ${response.statusText}`, errorBody);
-      throw new Error(`OpenAI API request failed with status ${response.status}: ${errorBody}`);
+    if (!res.ok) {
+      const errorBody = await res.text();
+      console.error(`OpenAI API error: ${res.status} ${res.statusText}`, errorBody);
+      throw new Error(`OpenAI API request failed: ${res.status} ${res.statusText}. Body: ${errorBody}`);
     }
 
-    const result = await response.json();
+    const data = await res.json();
     
-    if (!result.choices || result.choices.length === 0 || !result.choices[0].message || !result.choices[0].message.content) {
-      console.warn('OpenAI response missing expected content structure:', result);
-      return null;
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error('Invalid response structure from OpenAI:', data);
+      return null; // Or throw new Error('Invalid response structure from OpenAI');
     }
     
-    const content = result.choices[0].message.content;
+    const suggestionsJson = data.choices[0].message.content;
+    // console.log("OpenAI Raw Response:", suggestionsJson); // For debugging
 
-    // Log the raw content string received from OpenAI
-    console.log("---- START OpenAI Raw Response Content ----");
-    console.log(content);
-    console.log("---- END OpenAI Raw Response Content ----");
-
-    // The AI is asked to return a JSON *array* directly.
-    // If response_format: { type: "json_object" } is used, OpenAI wraps this in a JSON object.
-    // e.g. { "suggestions": [...] } or similar. We need to adjust parsing accordingly or ensure the prompt asks for a direct array.
-    // For now, assuming the content string IS the JSON array string.
     try {
-      const parsedContent = JSON.parse(content);
-      let suggestionsArray: any[] = [];
-      if (Array.isArray(parsedContent)) {
-        suggestionsArray = parsedContent;
-        console.log('OpenAI returned a direct array of suggestions.');
-      } else if (parsedContent && typeof parsedContent === 'object' && parsedContent !== null && Array.isArray(parsedContent.suggestions)) {
-        suggestionsArray = parsedContent.suggestions;
-        console.log('OpenAI returned suggestions wrapped in a {suggestions: []} object.');
-      } else if (parsedContent && typeof parsedContent === 'object' && parsedContent !== null && 'field_path' in parsedContent) {
-        // Handle case where OpenAI returns a single suggestion object directly due to response_format: {type: "json_object"} and only one suggestion
-        console.log('OpenAI returned a single suggestion object directly. Wrapping in an array.');
-        suggestionsArray = [parsedContent];
-      } else {
-        console.error('OpenAI content was not a direct array, not {suggestions: []}, nor a single suggestion object. Content:', JSON.stringify(parsedContent));
-        // If not in an expected format, treat as no valid suggestions.
-        // This will result in an empty array being returned, and the calling function will mark ai_parsing_status as 'completed'.
+      const parsedResult = JSON.parse(suggestionsJson) as AiParseResult;
+      // Validate structure further if needed
+      if (typeof parsedResult.contact_updates === 'undefined' || typeof parsedResult.suggested_loops === 'undefined') {
+          console.error('OpenAI response missing contact_updates or suggested_loops key:', parsedResult);
+          // Attempt to salvage if one part is present
+          return {
+            contact_updates: parsedResult.contact_updates || [],
+            suggested_loops: parsedResult.suggested_loops || [],
+          };
       }
-      
-      // Validate that each item in suggestionsArray has the required fields
-      const validSuggestions = suggestionsArray.filter(s => 
-        s && typeof s === 'object' &&
-        typeof s.field_path === 'string' &&
-        typeof s.action === 'string' && ['add', 'update', 'remove'].includes(s.action) &&
-        s.hasOwnProperty('suggested_value') && // value can be null
-        typeof s.confidence === 'number' &&
-        typeof s.reasoning === 'string'
-      );
-
-      if (validSuggestions.length !== suggestionsArray.length) {
-        console.warn('Some suggestions were filtered out due to missing required fields or invalid structure. Original count:', suggestionsArray.length, 'Valid count:', validSuggestions.length);
-      }
-
-      return validSuggestions;
+      return parsedResult;
     } catch (e) {
-      console.error('Failed to parse OpenAI response content as JSON:', e, "Content was:", content);
-      return null; // Return null on parsing error
+      console.error('Error parsing OpenAI JSON response:', e, suggestionsJson);
+      return null; // Or throw e to indicate parsing failure
     }
+
   } catch (error) {
     console.error('Error in parseWithOpenAI:', error);
-    throw error; // Re-throw to be caught by the main handler
+    // Do not throw here, let the caller handle the null response and update artifact status
+    return null; 
   }
 }
 

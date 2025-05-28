@@ -22,11 +22,12 @@ import {
 } from '@mui/icons-material';
 
 import { getArtifactConfig } from '@/config/artifactConfig';
-import type { ArtifactGlobal, LinkedInArtifact, VoiceMemoArtifact } from '@/types';
+import type { ArtifactGlobal, LinkedInArtifact, VoiceMemoArtifact, LoopArtifact, LoopStatus, LoopArtifactContent } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { UpdateSuggestionRecord } from '@/types/suggestions';
 import { formatFieldPathForDisplay } from '@/lib/utils/formatting';
 import { LinkedInProfileModal } from '@/components/features/linkedin/LinkedInProfileModal';
+import { EnhancedLoopModal } from '../loops/EnhancedLoopModal';
 
 interface ArtifactModalProps {
   artifact: ArtifactGlobal | null;
@@ -44,6 +45,11 @@ interface ArtifactModalProps {
   isDeleting?: boolean;
   isReprocessing?: boolean;
   error?: string | null;
+  onLoopStatusUpdate?: (loopId: string, newStatus: LoopStatus) => Promise<void>;
+  onLoopEdit?: (loopId: string, updates: Partial<LoopArtifactContent>) => Promise<void>;
+  onLoopDelete?: (loopId: string) => Promise<void>;
+  onLoopShare?: (loopId: string) => Promise<void>;
+  onLoopComplete?: (loopId: string, outcome: any) => Promise<void>;
 }
 
 const modalStyle = {
@@ -119,6 +125,11 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
   isDeleting,
   isReprocessing,
   error,
+  onLoopStatusUpdate,
+  onLoopEdit,
+  onLoopDelete,
+  onLoopShare,
+  onLoopComplete,
 }) => {
   if (!artifact) return null;
 
@@ -165,6 +176,22 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
         contactId={contactId}
         contactName={contactName}
         contactLinkedInUrl={contactLinkedInUrl}
+      />
+    );
+  }
+
+  if (artifact.type === 'loop') {
+    return (
+      <EnhancedLoopModal
+        open={open}
+        onClose={onClose}
+        artifact={artifact as LoopArtifact}
+        contactName={contactName || 'Contact'}
+        onStatusUpdate={onLoopStatusUpdate || (async () => console.warn('onLoopStatusUpdate not provided'))}
+        onEdit={onLoopEdit || (async () => console.warn('onLoopEdit not provided'))}
+        onDelete={onLoopDelete || (async () => console.warn('onLoopDelete not provided'))}
+        onShare={onLoopShare || (async () => console.warn('onLoopShare not provided'))}
+        onComplete={onLoopComplete || (async () => console.warn('onLoopComplete not provided'))}
       />
     );
   }

@@ -22,7 +22,7 @@ export interface TimelineStatsData {
   totalArtifacts: number;
   firstArtifactDate: string | null; // Formatted string
   lastArtifactDate: string | null; // Formatted string
-  artifactTypeCounts: Partial<Record<ArtifactType, number>>;
+  artifactTypeCounts: Record<ArtifactType, number>;
   averageTimeBetweenDays: number; // Average number of days between interaction days
 }
 

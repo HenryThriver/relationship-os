@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import type { ArtifactGlobal, ArtifactType, GroupedArtifact, TimelineStatsData } from '@/types';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
+import { ALL_ARTIFACT_TYPES } from '@/config/artifactConfig';
 
 interface UseArtifactTimelineOptions {
   filterTypes?: ArtifactType[];
@@ -39,7 +40,10 @@ const calculateTimelineStats = (artifacts: ArtifactGlobal[]): TimelineStatsData 
       totalArtifacts: 0,
       firstArtifactDate: null,
       lastArtifactDate: null,
-      artifactTypeCounts: {},
+      artifactTypeCounts: ALL_ARTIFACT_TYPES.reduce((acc, type) => {
+        acc[type] = 0;
+        return acc;
+      }, {} as Record<ArtifactType, number>),
       averageTimeBetweenDays: 0,
     };
   }
@@ -48,10 +52,18 @@ const calculateTimelineStats = (artifacts: ArtifactGlobal[]): TimelineStatsData 
   const firstArtifactDate = format(parseISO(sortedArtifacts[0].timestamp), 'MMM d, yyyy');
   const lastArtifactDate = format(parseISO(sortedArtifacts[sortedArtifacts.length - 1].timestamp), 'MMM d, yyyy');
   
-  const artifactTypeCounts = artifacts.reduce((acc, artifact) => {
-    acc[artifact.type] = (acc[artifact.type] || 0) + 1;
+  // Initialize with all artifact types set to 0
+  const artifactTypeCounts = ALL_ARTIFACT_TYPES.reduce((acc, type) => {
+    acc[type] = 0;
     return acc;
-  }, {} as Record<ArtifactType, number>); 
+  }, {} as Record<ArtifactType, number>);
+
+  // Count actual artifacts
+  artifacts.forEach(artifact => {
+    if (artifactTypeCounts.hasOwnProperty(artifact.type)) {
+      artifactTypeCounts[artifact.type]++;
+    }
+  });
 
   let totalDaysDifference = 0;
   let interactionPairs = 0;

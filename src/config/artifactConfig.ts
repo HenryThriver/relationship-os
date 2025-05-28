@@ -1,8 +1,10 @@
 import type { ArtifactTimelineConfig } from '@/types/timeline';
 import type { ArtifactType } from '@/types/artifact'; // The main ArtifactType
 import {
-  FiFileText, FiMic, FiUsers, FiMail, FiLink, FiClipboard, FiTarget, FiRefreshCw 
+  FiFileText, FiMic, FiUsers, FiMail, FiLink, FiClipboard, FiTarget, FiRefreshCw, FiBell, FiBriefcase, FiCheckCircle, FiGift, FiHelpCircle, FiMessageSquare, FiThumbsUp, FiZap
 } from 'react-icons/fi';
+import { ArtifactGlobal, LoopArtifactContent, LoopStatus } from '@/types'; // Added LoopArtifactContent and LoopStatus
+import { Loop as LoopIcon } from '@mui/icons-material'; // Added for new loop config
 
 // Helper to truncate text for previews
 const truncateText = (text: string, maxLength = 100): string => {
@@ -58,10 +60,43 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     getPreview: (content) => truncateText(content?.description || 'Goal details'),
   },
   loop: {
-    icon: FiRefreshCw,
-    color: '#6A0DAD', // Purple for loops
+    icon: LoopIcon, // Updated Icon
+    color: '#9C27B0', // Purple for loops
     badgeLabel: 'Loop',
-    getPreview: (content) => `Status: ${content?.status || 'N/A'}. Owner: ${content?.owner || 'N/A'}`,
+    getPreview: (contentArg) => { // Changed from artifact: ArtifactGlobal
+      const content = contentArg as LoopArtifactContent;
+      
+      if (!content) return 'Loop artifact';
+      
+      // Build concise but informative preview
+      const title = content.title || 'Untitled Loop';
+      // Ensure status is treated as string for key access, and provide default
+      const status = content.status ? String(content.status).toLowerCase() : 'idea';
+      const direction = content.reciprocity_direction || 'giving';
+      
+      // Status indicators
+      const statusEmoji: Record<string, string> = {
+        'idea': '💡',
+        'queued': '📋', 
+        'offered': '🤝',
+        'received': '📨',
+        'accepted': '✅',
+        'declined': '❌',
+        'in_progress': '⚡',
+        'pending_approval': '⏳',
+        'delivered': '🎯',
+        'following_up': '👀',
+        'completed': '🎉',
+        'abandoned': '🚫'
+      };
+      const currentStatusEmoji = statusEmoji[status] || '🔄';
+      
+      // Direction context
+      const directionText = direction === 'giving' ? 'Offering' : 'Requesting';
+      
+      // Build preview: "💡 Offering: Introduction to Sarah (idea)"
+      return `${currentStatusEmoji} ${directionText}: ${title} (${status.replace('_', ' ')})`;
+    }
   },
   call: {
     icon: FiFileText, // Placeholder icon
@@ -146,5 +181,4 @@ export const ALL_ARTIFACT_TYPES: ArtifactType[] = allConfigKeys.filter(
   (key): key is ArtifactType => key !== 'default'
 );
 
-// You might also want to export the ARTIFACT_CONFIG directly if needed elsewhere
-// export { ARTIFACT_CONFIG }; 
+export default ARTIFACT_CONFIG; 

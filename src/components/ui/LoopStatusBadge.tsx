@@ -30,6 +30,17 @@ export const LoopStatusBadge: React.FC<LoopStatusBadgeProps> = ({
 }) => {
   const config = STATUS_CONFIG[status];
   
+  if (!config) {
+    return (
+      <Chip
+        label="Unknown Status"
+        color="default"
+        size={size}
+        variant={variant}
+      />
+    );
+  }
+  
   return (
     <Chip
       label={config.label}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Link, List, ListItem, ListItemText } from '@mui/material';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
-import { ExperienceItem, EducationItem } from '@/app/dashboard/contacts/[id]/page';
+import { ExperienceItem, EducationItem } from '@/types';
 
 export interface GoalItem {
     id: string;
@@ -107,8 +107,8 @@ export const ProfessionalSnapshotCard: React.FC<ProfessionalSnapshotCardProps> =
                     {experience.map((exp, index) => (
                     <ListItem key={index} disableGutters sx={{ mb: 0.5}}>
                         <ListItemText 
-                          primary={exp.title}
-                          secondary={`${exp.company || ''}${exp.company && exp.duration ? ' · ' : ''}${exp.duration || ''}`}
+                          primary={exp.role}
+                          secondary={`${exp.company || ''}${exp.company && (exp.endDate || exp.isCurrent) ? ' · ' : ''}${exp.isCurrent ? 'Current' : exp.endDate || ''}`}
                           primaryTypographyProps={{ sx: listItemPrimaryTextSx }}
                           secondaryTypographyProps={{ sx: listItemSecondaryTextSx }}
                         />
@@ -125,7 +125,7 @@ export const ProfessionalSnapshotCard: React.FC<ProfessionalSnapshotCardProps> =
                     {education.map((edu, index) => (
                     <ListItem key={index} disableGutters sx={{ mb: 0.5}}>
                         <ListItemText 
-                          primary={edu.school}
+                          primary={edu.institution}
                           secondary={`${edu.degree || ''}`}
                           primaryTypographyProps={{ sx: listItemPrimaryTextSx }}
                           secondaryTypographyProps={{ sx: listItemSecondaryTextSx }}

@@ -1,8 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Paper } from '@mui/material';
-import type { TimelineStatsData } from '@/types'; // Import the correct type
+import { Box, Typography, Paper, Grid, Chip } from '@mui/material';
+import { differenceInDays } from 'date-fns';
+import { ArtifactType } from '@/types';
+
+// Export this interface
+export interface TimelineStatsData {
+  totalArtifacts: number;
+  firstArtifactDate: string | null;
+  lastArtifactDate: string | null;
+  artifactTypeCounts: Record<ArtifactType, number>;
+  averageTimeBetweenDays: number;
+  // Consider adding more, e.g. most common type, specific loop stats, etc.
+}
 
 // Interface for the props expects TimelineStatsData from our types
 interface EnhancedTimelineStatsProps {
@@ -10,101 +21,70 @@ interface EnhancedTimelineStatsProps {
 }
 
 export const EnhancedTimelineStats: React.FC<EnhancedTimelineStatsProps> = ({ stats }) => {
-  // Handle null stats gracefully
-  if (!stats) {
-    // Optionally render a loading state or nothing
+  if (!stats || stats.totalArtifacts === 0) {
     return (
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2, mb: 3 }}>
-        {[...Array(4)].map((_, index) => (
-          <Paper key={index} elevation={1} sx={{ p: 2.5, textAlign: 'center', borderRadius: '12px', opacity: 0.5 }}>
-            <Typography sx={{ fontSize: '28px', fontWeight: 'bold', color: 'grey.400', mb: 0.5 }}>...</Typography>
-            <Typography sx={{ fontSize: '12px', color: 'grey.600' }}>Loading...</Typography>
-          </Paper>
-        ))}
-      </Box>
+      <Paper elevation={2} sx={{ p: 2, mb: 3, textAlign: 'center', backgroundColor: 'grey.100' }}>
+        <Typography variant="body2" color="text.secondary">
+          No artifact data to display statistics.
+        </Typography>
+      </Paper>
     );
   }
 
-  // Determine most active type from stats.artifactTypeCounts
-  let mostActiveTypeLabel = 'N/A';
-  if (stats.artifactTypeCounts && Object.keys(stats.artifactTypeCounts).length > 0) {
-    mostActiveTypeLabel = Object.entries(stats.artifactTypeCounts).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
-    // Simple formatting for the label
-    mostActiveTypeLabel = mostActiveTypeLabel.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  } else {
-    mostActiveTypeLabel = 'None';
-  }
+  const { 
+    totalArtifacts,
+    firstArtifactDate,
+    lastArtifactDate,
+    artifactTypeCounts,
+    averageTimeBetweenDays 
+  } = stats;
 
-  const statItems = [
-    {
-      value: stats.totalArtifacts,
-      label: 'Total Artifacts',
-      color: '#2196f3'
-    },
-    {
-      // Example: If your TimelineStatsData had a "thisMonth" count, you'd use stats.thisMonth
-      // For now, let's use a placeholder or a different stat like average days
-      value: stats.averageTimeBetweenDays > 0 ? `${stats.averageTimeBetweenDays.toFixed(1)}d` : 'N/A',
-      label: 'Avg. Cadence',
-      color: '#28a745'
-    },
-    {
-      // Placeholder for "Per Week Avg" - this would need calculation in useArtifactTimeline if desired
-      value: 'N/A', 
-      label: 'Per Week Avg',
-      color: '#ffc107'
-    },
-    {
-      value: mostActiveTypeLabel,
-      label: 'Most Active',
-      color: '#6f42c1',
-      isText: true
-    }
-  ];
+  const engagementDuration = firstArtifactDate && lastArtifactDate 
+    ? differenceInDays(new Date(lastArtifactDate), new Date(firstArtifactDate))
+    : 0;
 
   return (
-    <Box sx={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-      gap: 2,
-      mb: 3
-    }}>
-      {statItems.map((item, index) => (
-        <Paper
-          key={index}
-          elevation={1}
-          sx={{
-            p: 2.5,
-            textAlign: 'center',
-            borderRadius: '12px',
-            border: '1px solid #e9ecef',
-            backgroundColor: 'white',
-            transition: 'transform 0.2s ease',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }
-          }}
-        >
-          <Typography sx={{
-            fontSize: item.isText ? '16px' : '28px',
-            fontWeight: 'bold',
-            color: item.color,
-            mb: 0.5
-          }}>
-            {item.value}
-          </Typography>
-          <Typography sx={{
-            fontSize: '12px',
-            color: '#6c757d',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-            letterSpacing: '0.5px'
-          }}>
-            {item.label}
-          </Typography>
-        </Paper>
-      ))}
-    </Box>
+    <Paper elevation={2} sx={{ p: 2.5, mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2, color: 'primary.main'}}>
+        Timeline Snapshot
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box textAlign="center" p={1} bgcolor="primary.light" borderRadius={1}>
+            <Typography variant="h4" fontWeight="bold" color="primary.contrastText">{totalArtifacts}</Typography>
+            <Typography variant="caption" color="primary.contrastText">Total Artifacts</Typography>
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box textAlign="center" p={1} bgcolor="secondary.light" borderRadius={1}>
+            <Typography variant="h4" fontWeight="bold" color="secondary.contrastText">
+              {engagementDuration}
+            </Typography>
+            <Typography variant="caption" color="secondary.contrastText">Engagement (Days)</Typography>
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box textAlign="center" p={1} bgcolor="success.light" borderRadius={1}>
+            <Typography variant="h4" fontWeight="bold" color="success.contrastText">
+              {averageTimeBetweenDays > 0 ? averageTimeBetweenDays.toFixed(1) : 'N/A'}
+            </Typography>
+            <Typography variant="caption" color="success.contrastText">Avg. Days Between</Typography>
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box textAlign="center" p={1} bgcolor="info.light" borderRadius={1} sx={{height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+             <Typography variant="subtitle2" fontWeight="bold" color="info.contrastText" gutterBottom>
+                Types
+             </Typography>
+            <Box display="flex" flexWrap="wrap" justifyContent="center" gap={0.5}>
+              {Object.entries(artifactTypeCounts).slice(0,3).map(([type, count]) => (
+                <Chip key={type} label={`${type}: ${count}`} size="small" sx={{bgcolor: 'background.paper'}} />
+              ))}
+              {Object.keys(artifactTypeCounts).length > 3 && <Chip label="..." size="small" sx={{bgcolor: 'background.paper'}}/>}
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
+    </Paper>
   );
 }; 

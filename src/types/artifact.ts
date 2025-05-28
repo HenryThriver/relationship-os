@@ -212,12 +212,20 @@ export interface LoopAction {
   created_at: string;
 }
 
+export interface LoopCompletionOutcome {
+  outcome: 'successful' | 'unsuccessful' | 'partial';
+  satisfaction_score?: number; // e.g., 1-5
+  lessons_learned?: string;
+}
+
 export interface LoopArtifactContent {
   type: LoopType;
   status: LoopStatus;
   title: string;
   description: string;
-  context?: string;
+  
+  // Existing context field, ensure it's properly placed
+  context?: string;                    // Why this loop matters
   
   // Participants
   initiator: 'user' | 'contact';
@@ -248,8 +256,23 @@ export interface LoopArtifactContent {
   contact_feedback?: {
     rating: number;
     comments?: string;
-    received_at: string;
+    received_at: string; 
   };
+
+  // Enhanced metadata
+  expected_timeline?: number;          // Expected duration in days
+  urgency?: 'low' | 'medium' | 'high'; // Priority level
+  estimated_value?: number;            // 1-5 scale of importance
+  success_criteria?: string[];         // What defines success
+  inspiration_source?: string;         // What triggered this loop (voice memo, meeting, etc.)
+  
+  // Template data
+  template_id?: string;
+  template_used?: boolean;
+  
+  // Relationship context
+  relationship_depth?: 'new' | 'developing' | 'established' | 'close';
+  previous_loop_success?: boolean;
 }
 
 export interface LoopArtifact extends ArtifactGlobal<LoopArtifactContent> { 
@@ -260,8 +283,9 @@ export interface LoopArtifact extends ArtifactGlobal<LoopArtifactContent> {
 // --- Loop Template --- NEW (Phase 2.3)
 export interface LoopTemplateAction { // Structure for actions within a template
   action_type: LoopAction['action_type'];
-  description_template?: string; // e.g., "Follow up regarding {{topic}}"
+  default_notes_template?: string; // e.g., "Follow up regarding {{topic}}" (renamed from description_template)
   default_offset_days?: number; // e.g., 7 days after previous action completion or loop start
+  default_assignee?: 'user' | 'contact'; // Added as per roadmap
   // Other template-specific action properties
 }
 
@@ -271,9 +295,12 @@ export interface LoopTemplate {
   name: string;
   loop_type: LoopType; // From existing LoopType enum
   description?: string | null;
+  default_title_template?: string | null; // Added
+  default_status: LoopStatus; // Added
+  reciprocity_direction: 'giving' | 'receiving'; // Added
   default_actions?: LoopTemplateAction[] | null; // JSONB in DB, maps to array of structured actions
-  typical_duration_days?: number | null;
-  follow_up_schedule_days?: number[] | null;
+  typical_duration?: number | null; // Changed from typical_duration_days to match DB
+  follow_up_schedule?: number[] | null; // Changed from follow_up_schedule_days to match DB
   completion_criteria?: string[] | null;
   created_at: string;
   updated_at: string;

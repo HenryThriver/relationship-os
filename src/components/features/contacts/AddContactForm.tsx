@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useContacts } from '@/lib/hooks/useContacts';
 import { Button, TextField, Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 interface AddContactFormProps {
   onSuccess?: (contactId: string) => void; // Callback on successful creation
@@ -11,6 +12,7 @@ interface AddContactFormProps {
 export const AddContactForm = ({ onSuccess }: AddContactFormProps) => {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const { createContact, isCreatingContact, createContactError } = useContacts();
+  const { user } = useAuth();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -19,8 +21,15 @@ export const AddContactForm = ({ onSuccess }: AddContactFormProps) => {
       alert('LinkedIn URL cannot be empty.');
       return;
     }
+    if (!user?.id) {
+      alert('User not authenticated.');
+      return;
+    }
     try {
-      const newContact = await createContact(linkedinUrl);
+      const newContact = await createContact({
+        linkedin_url: linkedinUrl.trim(),
+        user_id: user.id
+      });
       setLinkedinUrl('');
       if (onSuccess) {
         onSuccess(newContact.id);

@@ -5,6 +5,53 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-05-28
+
+### Added
+- **Enhanced Timeline UI with Alternating Cards:**
+  - Implemented beautiful alternating timeline design with central timeline line and enhanced visual hierarchy.
+  - Created `EnhancedTimelineItem` component with position-aware rendering (left/right alternating cards).
+  - Added timeline dots, connector lines, and smooth hover animations for better user experience.
+  - Developed `TimelineSkeleton` component for improved loading states with alternating card placeholders.
+  - Enhanced artifact configuration with rich emoji-based status indicators and consistent styling.
+  - Maintained existing modal functionality while upgrading visual presentation.
+
+- **Loop Architecture & Modal System:**
+  - Enhanced `EnhancedLoopModal` with comprehensive loop management features.
+  - Integrated loop-specific handlers for status updates, editing, deletion, sharing, and completion.
+  - Added graceful error handling for undefined loop properties to prevent runtime crashes.
+  - Implemented consistent "simple cards + modal details" pattern across all artifact types.
+
+- **Database Schema & Type Safety:**
+  - Connected to cloud Supabase database and regenerated TypeScript types for latest schema.
+  - Resolved type mismatches in `LoopSuggestions`, `useLoops` hook, and LinkedIn service.
+  - Fixed property access issues in contact profile display and professional snapshot cards.
+  - Added proper type casting for JSON fields to ensure database compatibility.
+
+### Fixed
+- **Runtime Error Resolution:**
+  - Fixed `TypeError: Cannot read properties of undefined (reading 'label')` in `LoopStatusBadge`.
+  - Resolved `TypeError: Cannot read properties of undefined (reading 'replace')` in `EnhancedLoopModal`.
+  - Added null checks and fallbacks for all potentially undefined properties.
+
+- **Type System Improvements:**
+  - Updated `LoopSuggestionFromDB` interface to match actual database schema.
+  - Fixed `LoopTemplateAction` property access (`default_notes_template` vs `description_template`).
+  - Resolved contact profile photo access to use LinkedIn data properly.
+  - Fixed `AddContactForm` to pass proper `ContactInsert` object structure.
+
+- **Code Quality & Development Experience:**
+  - Added `supabase/functions/**/*` to TypeScript exclusions to eliminate irrelevant Deno errors.
+  - Cleaned up linting errors and improved type safety across the application.
+  - Enhanced error handling and graceful degradation throughout the timeline system.
+
+### Changed
+- **Timeline Interaction Pattern:**
+  - Simplified timeline to use consistent card-based design for all artifact types.
+  - Moved complex loop-specific UI to dedicated modals for better UX consistency.
+  - Updated `ArtifactTimeline` to use unified `EnhancedTimelineItem` component.
+  - Improved modal state management and query invalidation patterns.
+
 ## [0.4.0] - 2024-05-26
 
 ### Added
@@ -58,33 +105,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Centralized configuration (`sourceConfig.ts`) for source types, icons, and navigation.
   - Integrated source attribution throughout `PersonalContextDisplay` and `ProfessionalContextDisplay`.
 - **Enhanced Contact Profile & Data Management:**
-  - Significantly expanded `personal_context` and `professional_context` schemas with more detailed fields.
-  - Robust TanStack Query hooks for managing contacts (`useContactProfile`), voice memos (`useVoiceMemos`), update suggestions (`useUpdateSuggestions`), and artifacts (`useArtifacts`).
-  - Improved UI for displaying comprehensive personal and professional context.
-- **Core Technology & Authentication:**
-  - Migrated to `@supabase/ssr` for enhanced Next.js compatibility and server-side rendering capabilities with Supabase.
-  - Refactored authentication flow, removing deprecated auth helpers.
-
-### Changed
-- Refined `SourcedField` UI to use a less obtrusive icon-only display for better visual clarity.
-- Improved TanStack Query cache invalidation strategies for voice memo processing and suggestion application, ensuring UI consistency.
-
-### Fixed
-- Resolved type errors related to `education` field handling (allowing both string and array).
-- Fixed HTML nesting errors in voice memo status display within lists.
-- Addressed various issues in the AI suggestion application logic and data sourcing for array items.
-- Stabilized authentication and session management with the new `@supabase/ssr` setup.
-
-## [0.2.0] - 2024-05-24
-
-### Added
-- Implemented Google OAuth authentication system with Supabase.
-- Created login page (`/auth/login`) with Google Sign-In button.
-- Implemented OAuth callback handler (`/auth/callback`).
-- Developed `AuthContext` for managing authentication state globally.
-- Created `ProtectedRoute` HOC to secure dashboard routes.
-- Built responsive `DashboardLayout` with sidebar navigation and user profile menu.
-- Added basic dashboard home page (`/dashboard`) with placeholder stats.
-- Added placeholder contacts page (`/dashboard/contacts`).
-- Integrated Material-UI (MUI) v5 for UI components and styling.
-- Configured MUI `ThemeProvider` with a custom theme and `
+  - Significantly expanded `

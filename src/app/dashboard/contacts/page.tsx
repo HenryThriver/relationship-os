@@ -86,7 +86,7 @@ export default function ContactsPage(): React.JSX.Element {
                   }}
                 >
                   <ListItemAvatar>
-                    <Avatar src={contact.profile_photo_url || undefined} >
+                    <Avatar src={(contact.linkedin_data as any)?.profilePicture || undefined} >
                       {contact.name ? contact.name.charAt(0).toUpperCase() : 'C'}
                     </Avatar>
                   </ListItemAvatar>

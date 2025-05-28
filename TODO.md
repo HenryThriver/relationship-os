@@ -28,7 +28,7 @@ _(Goal: All artifact types should inform contact profiles, POGs, Asks, Conversat
 -   [ ] **Podcast Imports:**
     -   [ ] Import podcast episodes (e.g., via RSS or direct audio file) as audio artifacts.
 -   [ ] **Video Imports (General):**
-    -   [ ] Import YouTube videos as artifacts.
+    -   [ ] Import YouTube videos as arteifacts.
     -   [ ] Import other video files (webinars, local video files) as artifacts.
 -   [ ] **Audio Imports (General):**
     -   [ ] Import generic audio files (beyond podcasts) as artifacts.

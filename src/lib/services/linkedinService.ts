@@ -73,10 +73,10 @@ export const processLinkedInProfile = (apiResponse: any, contactId: string): {
       speaking_topics: [], 
       achievements: [], 
       goals: [], // Goals are not usually on a public LinkedIn profile
-    } as ProfessionalContext, // Cast to ensure it matches the type, even if some fields are empty arrays
+    } as any, // Cast to Json for database compatibility
     
     // The linkedin_data field on the Contact record itself
-    linkedin_data: linkedinArtifactContent 
+    linkedin_data: linkedinArtifactContent as any // Cast to Json for database compatibility
   };
 
   return { contactUpdates, linkedinArtifact };
