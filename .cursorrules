@@ -137,6 +137,7 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - Keep commits small and focused
 - Write descriptive commit messages
 - Use feature branches for new functionality
+- After an update has been completed and merged into main, update the CHANGELOG.md and index.md files to reflect the current state
 
 Remember: 
 - Always prioritize user experience and data privacy
