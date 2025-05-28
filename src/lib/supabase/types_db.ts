@@ -241,6 +241,102 @@ export type Database = {
         }
         Relationships: []
       }
+      loop_analytics: {
+        Row: {
+          completion_time_days: number | null
+          contact_id: string
+          created_at: string | null
+          id: string
+          loop_artifact_id: string
+          loop_type: string
+          reciprocity_impact: number | null
+          status_transitions: Json
+          success_score: number | null
+          user_id: string
+        }
+        Insert: {
+          completion_time_days?: number | null
+          contact_id: string
+          created_at?: string | null
+          id?: string
+          loop_artifact_id: string
+          loop_type: string
+          reciprocity_impact?: number | null
+          status_transitions?: Json
+          success_score?: number | null
+          user_id: string
+        }
+        Update: {
+          completion_time_days?: number | null
+          contact_id?: string
+          created_at?: string | null
+          id?: string
+          loop_artifact_id?: string
+          loop_type?: string
+          reciprocity_impact?: number | null
+          status_transitions?: Json
+          success_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loop_analytics_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_analytics_loop_artifact_id_fkey"
+            columns: ["loop_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loop_templates: {
+        Row: {
+          completion_criteria: string[] | null
+          created_at: string | null
+          default_actions: Json
+          description: string | null
+          follow_up_schedule: number[] | null
+          id: string
+          loop_type: string
+          name: string
+          typical_duration: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completion_criteria?: string[] | null
+          created_at?: string | null
+          default_actions?: Json
+          description?: string | null
+          follow_up_schedule?: number[] | null
+          id?: string
+          loop_type: string
+          name: string
+          typical_duration?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completion_criteria?: string[] | null
+          created_at?: string | null
+          default_actions?: Json
+          description?: string | null
+          follow_up_schedule?: number[] | null
+          id?: string
+          loop_type?: string
+          name?: string
+          typical_duration?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       next_connections: {
         Row: {
           agenda: Json | null
@@ -313,6 +409,7 @@ export type Database = {
         | "ask"
         | "milestone"
         | "voice_memo"
+        | "loop"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -442,6 +539,7 @@ export const Constants = {
         "ask",
         "milestone",
         "voice_memo",
+        "loop",
       ],
     },
   },

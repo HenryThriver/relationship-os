@@ -18,6 +18,9 @@ import { ContextSections } from '@/components/features/contacts/ContextSections'
 import { QuickAdd } from '@/components/features/contacts/QuickAdd';
 import { ArtifactModal } from '@/components/features/timeline/ArtifactModal';
 
+// Import LoopDashboard
+import { LoopDashboard } from '@/components/features/loops/LoopDashboard';
+
 // Dynamically import VoiceRecorder
 const VoiceRecorder = nextDynamic(() => 
   import('@/components/features/voice-memos/VoiceRecorder').then(mod => mod.VoiceRecorder),
@@ -47,6 +50,9 @@ import type {
     AskArtifactContentStatus,
     PersonalContext as PersonalContextType,
     VoiceMemoArtifact,
+    POGArtifact,
+    AskArtifact,
+    LinkedInArtifactContent,
 } from '@/types';
 import { useToast } from '@/lib/contexts/ToastContext';
 import { ProcessingIndicator } from '@/components/features/voice/ProcessingIndicator';
@@ -305,13 +311,12 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const pogs: ActionItemLike[] = useMemo(() => {
     if (!contact?.artifacts) return [];
     return contact.artifacts
-      .filter(art => art.type === 'pog')
-      .map((art: ArtifactGlobal): ActionItemLike => {
-        const metadata = art.metadata as POGArtifactContent | undefined;
+      .filter((art): art is POGArtifact => art.type === 'pog')
+      .map((art: POGArtifact): ActionItemLike => {
         return {
           id: art.id,
-          content: metadata?.description || art.content,
-          status: mapPOGStatusToActionQueueStatus(metadata?.status),
+          content: art.metadata?.description || art.content || 'No description',
+          status: mapPOGStatusToActionQueueStatus(art.metadata?.status),
           type: 'pog' as const,
         };
       });
@@ -320,13 +325,12 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const asks: ActionItemLike[] = useMemo(() => {
     if (!contact?.artifacts) return [];
     return contact.artifacts
-      .filter(art => art.type === 'ask')
-      .map((art: ArtifactGlobal): ActionItemLike => {
-        const metadata = art.metadata as AskArtifactContent | undefined;
+      .filter((art): art is AskArtifact => art.type === 'ask')
+      .map((art: AskArtifact): ActionItemLike => {
         return {
           id: art.id,
-          content: metadata?.request_description || art.content,
-          status: mapAskStatusToActionQueueStatus(metadata?.status),
+          content: art.metadata?.request_description || art.content || 'No description',
+          status: mapAskStatusToActionQueueStatus(art.metadata?.status),
           type: 'ask' as const,
         };
       });
@@ -529,7 +533,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   if (contactError) {
-    return <Container sx={{ py: 4 }}><Alert severity="error">{contactError.message || "Failed to load contact information."}</Alert></Container>;
+    return <Container sx={{ py: 4 }}><Alert severity="error">{(contactError as Error).message || "Failed to load contact information."}</Alert></Container>;
   }
 
   if (suggestionsError) {
@@ -541,36 +545,82 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
-      {/* Sticky Header Area */}
-      <Box sx={{ position: 'sticky', top: { xs: 56, sm: 64, md: 0 }, zIndex: 10, backgroundColor: '#f3f4f6', pb: 1, mb:1 }}>
-        <ContactHeader 
-           name={contact.name || 'Unnamed Contact'} 
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {isLoadingContact && <CircularProgress />}
+      {contactError && <Alert severity="error">Failed to load contact details: {(contactError as Error).message}</Alert>}
+      
+      {contact && (
+        <Box>
+          <ContactHeader 
+            name={contact.name || 'Unnamed Contact'}
             title={contact.title}
             company={contact.company}
-            profilePhotoUrl={contact.profile_photo_url}
-            connectDate={contact.last_contacted_date ? new Date(contact.last_contacted_date) : undefined}
             connectCadence={connectCadenceText}
-            suggestionCount={pendingCount}
-            suggestionPriority={suggestionPriority}
-            onRecordNote={handleRecordNote}
-            onSendPOG={handleSendPOG}
-            onScheduleConnect={handleScheduleConnect}
-            onViewSuggestions={handleViewSuggestions}
+            connectDate={contact.last_interaction_date ? new Date(contact.last_interaction_date) : undefined}
             personalContext={personalContextForHeader}
-        />
-        {/* Ensure ProcessingStatusBar is used if processingCount > 0 */}
-        {processingCount > 0 && (
-          <Box mt={1}>
-            <ProcessingStatusBar 
-              activeProcessingCount={processingCount}
-              contactName={contact.name || undefined} // Ensure contact.name is passed or fallback
-            />
-          </Box>
-        )}
-      </Box>
+            profilePhotoUrl={(contact.linkedin_data as unknown as LinkedInArtifactContent)?.profilePicture || undefined}
+            location={contact.location}
+            relationshipScore={contact.relationship_score}
+          />
 
-      {/* Suggestions Panel */}
+          <ProcessingStatusBar 
+            activeProcessingCount={processingCount} 
+            contactName={contact.name || undefined} 
+          />
+
+          <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <NextConnection 
+                contactId={contactId} 
+              />
+              
+              <ActionQueues 
+                pogs={pogs}
+                asks={asks}
+                onUpdateStatus={handleUpdateStatus}
+                onBrainstormPogs={handleBrainstormPogs}
+              />
+
+              <ReciprocityDashboard 
+                outstandingCommitments={undefined}
+              />
+
+              {/* Loop System Integration Point */}
+              <LoopDashboard 
+                contactId={contactId} 
+                contactName={contact.name || 'Contact'} 
+              />
+
+              <ContextSections 
+                contactData={contact}
+                contactId={contactId}
+              />
+            </Box>
+            
+            <Box sx={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: '70px' }}>
+              {isClient && <VoiceRecorder 
+                contactId={contactId} 
+              />}
+              <QuickAdd 
+                onAddNote={handleQuickAddNote}
+                onAddMeeting={handleQuickAddMeeting}
+                onAddPOG={handleQuickAddPOG}
+                onAddAsk={handleQuickAddAsk}
+                onAddMilestone={handleQuickAddMilestone} 
+              />
+              <Button 
+                variant="outlined" 
+                fullWidth 
+                onClick={handleViewSuggestions}
+                color={suggestionPriority === 'high' ? 'error' : 'primary'}
+              >
+                View Suggestions ({pendingCount})
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+      )}
+
       <SuggestionsPanel
         contactId={contactId}
         isOpen={suggestionsPanelOpen}
@@ -582,106 +632,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         isLoading={isLoadingSuggestions || isBulkProcessing}
       />
 
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-        <Box sx={{ flexGrow: 1, flexBasis: { md: '66%' }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <NextConnection contactId={contactId} /> 
-          <ActionQueues 
-            pogs={pogs}
-            asks={asks}
-            onUpdateStatus={handleUpdateStatus}
-            onBrainstormPogs={handleBrainstormPogs}
-          />
-          
-          <Paper elevation={2} sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Voice Memos</Typography>
-            <Box mb={2}>
-              {isClient ? (
-                <VoiceRecorder 
-                  contactId={contactId} 
-                  onRecordingComplete={handleVoiceRecordingComplete} 
-                  onError={handleVoiceMemoError} 
-                />
-              ) : (
-                <CircularProgress size={20} sx={{display: 'block', margin: 'auto'}} /> 
-              )}
-            </Box>
-            {isLoadingVoiceMemos && <CircularProgress size={20} />}
-            {isVoiceMemosError && <Alert severity="error">Error loading voice memos: {voiceMemosError?.message}</Alert>}
-            {audioPlaybackError && <Alert severity="error" sx={{mt: 1}}>{audioPlaybackError}</Alert>}
-            {playingAudioUrl && (
-              <Box mt={2} mb={1}>
-                <audio controls autoPlay src={playingAudioUrl} onEnded={handleAudioEnded} onError={handleAudioError}>
-                  Your browser does not support the audio element.
-                </audio>
-              </Box>
-            )}
-            {!isLoadingVoiceMemos && !isVoiceMemosError && voiceMemos.length === 0 && (
-              <Typography variant="body2" color="text.secondary">No voice memos recorded yet.</Typography>
-            )}
-            {!isLoadingVoiceMemos && !isVoiceMemosError && voiceMemos.length > 0 && (
-              <List dense>
-                {voiceMemos.map((memo) => {
-                  const memoProcessingStatus = getProcessingStatus(memo.id);
-                  return (
-                    <ListItemButton key={memo.id} onClick={() => handleOpenVoiceMemoDetailModal(memo)} divider>
-                      <ListItemText
-                        primary={`Voice Memo - ${new Date(memo.created_at).toLocaleDateString()}`}
-                        secondary={
-                          memo.transcription_status === 'pending' ? (
-                            'Transcription pending...'
-                          ) : memoProcessingStatus.status === 'processing' ? (
-                            <ProcessingIndicator
-                              status="processing"
-                              startTime={memoProcessingStatus.startedAt || undefined}
-                              showTimer={true}
-                              compact
-                              message={`Processing... (${Math.round(getProcessingDuration(memo.id) / 1000)}s)`}
-                            />
-                          ) : memoProcessingStatus.status === 'completed' ? (
-                            `Analyzed: ${memo.transcription ? memo.transcription.substring(0, 30) + '...' : 'View details.'}`
-                          ) : memoProcessingStatus.status === 'failed' ? (
-                            <ProcessingIndicator status="failed" compact message="Processing failed. Click to view." />
-                          ) : memo.transcription_status === 'completed' && memo.ai_parsing_status === 'pending' ? ( 
-                             'AI analysis pending...'
-                          ) : (
-                            'Status unknown. Click to view.'
-                          )
-                        }
-                        secondaryTypographyProps={{ component: 'div' }}
-                      />
-                    </ListItemButton>
-                  );
-                })}
-              </List>
-            )}
-          </Paper>
-          
-          <ReciprocityDashboard 
-            balance={undefined}
-            healthIndex={undefined}
-            status={undefined}
-            recentExchanges={undefined}
-            outstandingCommitments={undefined}
-          />
-        </Box>
-
-        <Box sx={{ flexGrow: 1, flexBasis: { md: '33%' } }}>
-          {isClient && contact && !isLoadingContact && (
-            <ContextSections 
-              contactData={contact}
-              contactId={contactId}
-            />
-          )}
-        </Box>
-      </Box>
-      
-      <QuickAdd 
-        onAddNote={handleQuickAddNote}
-        onAddMeeting={handleQuickAddMeeting}
-        onAddPOG={handleQuickAddPOG}
-        onAddAsk={handleQuickAddAsk}
-        onAddMilestone={handleQuickAddMilestone}
-      />
       <Box sx={{ textAlign: 'center', py: 3, mt: 4, borderTop: 1, borderColor: 'divider'}}>
         <Typography variant="caption" color="text.secondary">
           Data for {contact.name || 'this contact'}. Last updated: {contact.updated_at ? new Date(contact.updated_at).toLocaleDateString() : 'N/A'}

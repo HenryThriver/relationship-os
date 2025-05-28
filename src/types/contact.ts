@@ -98,32 +98,16 @@ export interface PersonalContext {
 }
 
 // ----- Core Contact Type ----- 
-export interface Contact extends Partial<Database['public']['Tables']['contacts']['Row']> { 
-  // Required fields from DB that are not optional in the interface
-  id: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  name: string | null; // Changed to string | null to match DB nullability
-  profile_photo_url?: string | null; // Explicitly adding, though Partial should cover it
-  
-  // JSONB fields - use Json type for DB compatibility, cast to specific types when using
-  professional_context?: Json | null;
-  personal_context?: Json | null;
-  linkedin_data?: Json | null; 
-  field_sources?: FieldSources | Json | null; // Updated to allow FieldSources type or fallback to Json
+// Base type from Supabase schema
+type ContactDbRow = Database['public']['Tables']['contacts']['Row'];
 
-  // Add fields that might be causing issues with Partial<DBContactRow> resolution
-  title?: string | null;
-  company?: string | null;
-  last_contacted_date?: string | null;
-  connection_cadence_days?: number | null;
-  // location?: string | null; // if needed
-  // relationship_score?: number | null; // if needed
+export interface Contact extends ContactDbRow { 
+  // All fields are inherited from ContactDbRow.
+  // professional_context, personal_context, linkedin_data, field_sources
+  // will have the type Json | null as defined in ContactDbRow.
 
   // Related data that might be joined or fetched separately
   artifacts?: ArtifactGlobal[] | null; 
-  // next_connections are handled by useNextConnection hook, not directly on Contact
 }
 
 // ----- Next Connection Types ----- 
