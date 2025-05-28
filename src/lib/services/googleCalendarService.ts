@@ -311,18 +311,51 @@ export class GoogleCalendarService {
             .eq('id', existingArtifact.id);
         } else {
           // Create new artifact
-          await this.supabase
+          const { data: artifact, error: artifactError } = await this.supabase
             .from('artifacts')
             .insert({
-              contact_id: primaryMatch.contactId,
               user_id: userId,
+              contact_id: primaryMatch.contactId,
               type: 'meeting',
               content: event.summary || 'Meeting',
-              metadata,
               timestamp: meetingDate,
+              ai_parsing_status: 'pending',
+              metadata: {
+                title: event.summary,
+                attendees: event.attendees?.map(a => a.displayName || a.email) || [],
+                meeting_date: event.start?.dateTime || event.start?.date,
+                location: event.location,
+                google_calendar_id: event.id,
+                google_calendar_link: event.hangoutLink,
+                organizer: event.organizer ? {
+                  email: event.organizer.email,
+                  name: event.organizer.displayName,
+                  self: event.organizer.self,
+                } : undefined,
+                attendee_emails: event.attendees?.map(a => a.email) || [],
+                duration_minutes: durationMinutes,
+                recurring_event_id: event.recurringEventId,
+                conference_data: event.conferenceData ? {
+                  type: event.hangoutLink ? 'google_meet' : 'other',
+                  join_url: event.hangoutLink || event.conferenceData.entryPoints?.[0]?.uri,
+                  conference_id: event.conferenceData.conferenceId,
+                } : undefined,
+                calendar_source: 'google',
+                last_synced_at: new Date().toISOString(),
+              } as any,
+            })
+            .select()
+            .single();
+
+          if (artifactError) {
+            console.error(`Error creating artifact for event ${event.id}:`, artifactError);
+            errors.push({
+              eventId: event.id,
+              error: artifactError instanceof Error ? artifactError.message : 'Unknown error',
             });
-          
-          created++;
+          } else {
+            created++;
+          }
         }
       } catch (error) {
         console.error(`Error creating artifact for event ${event.id}:`, error);
