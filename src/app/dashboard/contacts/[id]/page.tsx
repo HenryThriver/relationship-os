@@ -119,6 +119,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     error: contactError,
   } = useContactProfile(contactId);
 
+  // Explicitly type contactProfileError to help TypeScript
+  const contactProfileError: Error | null = contactError as (Error | null);
+
   const { 
     voiceMemos, 
     isLoading: isLoadingVoiceMemos,
@@ -532,12 +535,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     return <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Container>;
   }
 
-  if (contactError) {
-    return <Container sx={{ py: 4 }}><Alert severity="error">{(contactError as Error).message || "Failed to load contact information."}</Alert></Container>;
-  }
-
-  if (suggestionsError) {
-    console.error("Error fetching suggestions:", suggestionsError);
+  if (contactProfileError) {
+    // TODO: Revisit this type assertion. TypeScript incorrectly infers contactProfileError as 'never'.
+    return <Alert severity="error">Error loading contact: {(contactProfileError as any).message || 'An unexpected error occurred.'}</Alert>;
   }
 
   if (!contact) {
@@ -546,80 +546,75 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {isLoadingContact && <CircularProgress />}
-      {contactError && <Alert severity="error">Failed to load contact details: {(contactError as Error).message}</Alert>}
-      
-      {contact && (
-        <Box>
-          <ContactHeader 
-            name={contact.name || 'Unnamed Contact'}
-            title={contact.title}
-            company={contact.company}
-            connectCadence={connectCadenceText}
-            connectDate={contact.last_interaction_date ? new Date(contact.last_interaction_date) : undefined}
-            personalContext={personalContextForHeader}
-            profilePhotoUrl={(contact.linkedin_data as unknown as LinkedInArtifactContent)?.profilePicture || undefined}
-            location={contact.location}
-            relationshipScore={contact.relationship_score}
-          />
+      <Box>
+        <ContactHeader 
+          name={contact.name || 'Unnamed Contact'}
+          title={contact.title}
+          company={contact.company}
+          connectCadence={connectCadenceText}
+          connectDate={contact.last_interaction_date ? new Date(contact.last_interaction_date) : undefined}
+          personalContext={personalContextForHeader}
+          profilePhotoUrl={(contact.linkedin_data as unknown as LinkedInArtifactContent)?.profilePicture || undefined}
+          location={contact.location}
+          relationshipScore={contact.relationship_score}
+        />
 
-          <ProcessingStatusBar 
-            activeProcessingCount={processingCount} 
-            contactName={contact.name || undefined} 
-          />
+        <ProcessingStatusBar 
+          activeProcessingCount={processingCount} 
+          contactName={contact.name || undefined} 
+        />
 
-          <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <NextConnection 
-                contactId={contactId} 
-              />
-              
-              <ActionQueues 
-                pogs={pogs}
-                asks={asks}
-                onUpdateStatus={handleUpdateStatus}
-                onBrainstormPogs={handleBrainstormPogs}
-              />
-
-              <ReciprocityDashboard 
-                outstandingCommitments={undefined}
-              />
-
-              {/* Loop System Integration Point */}
-              <LoopDashboard 
-                contactId={contactId} 
-                contactName={contact.name || 'Contact'} 
-              />
-
-              <ContextSections 
-                contactData={contact}
-                contactId={contactId}
-              />
-            </Box>
+        <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <NextConnection 
+              contactId={contactId} 
+            />
             
-            <Box sx={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: '70px' }}>
-              {isClient && <VoiceRecorder 
-                contactId={contactId} 
-              />}
-              <QuickAdd 
-                onAddNote={handleQuickAddNote}
-                onAddMeeting={handleQuickAddMeeting}
-                onAddPOG={handleQuickAddPOG}
-                onAddAsk={handleQuickAddAsk}
-                onAddMilestone={handleQuickAddMilestone} 
-              />
-              <Button 
-                variant="outlined" 
-                fullWidth 
-                onClick={handleViewSuggestions}
-                color={suggestionPriority === 'high' ? 'error' : 'primary'}
-              >
-                View Suggestions ({pendingCount})
-              </Button>
-            </Box>
+            <ActionQueues 
+              pogs={pogs}
+              asks={asks}
+              onUpdateStatus={handleUpdateStatus}
+              onBrainstormPogs={handleBrainstormPogs}
+            />
+
+            <ReciprocityDashboard 
+              outstandingCommitments={undefined}
+            />
+
+            {/* Loop System Integration Point */}
+            <LoopDashboard 
+              contactId={contactId} 
+              contactName={contact.name || 'Contact'} 
+            />
+
+            <ContextSections 
+              contactData={contact}
+              contactId={contactId}
+            />
+          </Box>
+          
+          <Box sx={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: '70px' }}>
+            {isClient && <VoiceRecorder 
+              contactId={contactId} 
+            />}
+            <QuickAdd 
+              onAddNote={handleQuickAddNote}
+              onAddMeeting={handleQuickAddMeeting}
+              onAddPOG={handleQuickAddPOG}
+              onAddAsk={handleQuickAddAsk}
+              onAddMilestone={handleQuickAddMilestone} 
+            />
+            <Button 
+              variant="outlined" 
+              fullWidth 
+              onClick={handleViewSuggestions}
+              color={suggestionPriority === 'high' ? 'error' : 'primary'}
+            >
+              View Suggestions ({pendingCount})
+            </Button>
           </Box>
         </Box>
-      )}
+      </Box>
 
       <SuggestionsPanel
         contactId={contactId}
@@ -663,7 +658,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           onDelete={handleDeleteVoiceMemoFromDetailModal} 
           onReprocess={handleReprocessVoiceMemoInDetailModal}
           isReprocessing={isReprocessingMemo} 
-          contactName={contact?.name || undefined}
+          contactName={contact.name || undefined}
           playAudio={playAudio}
           currentPlayingUrl={playingAudioUrl || undefined} 
           audioPlaybackError={audioPlaybackError || undefined}

@@ -2,11 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import { LoopArtifact, LoopStatus, LoopType, LoopArtifactContent, LoopAction, ArtifactTypeEnum, LoopTemplate, LoopTemplateAction } from '@/types/artifact';
 import { useToast } from '@/lib/contexts/ToastContext';
-import { DatabaseArtifactRow, DatabaseArtifactInsert } from '@/types/artifact'; // Import base types
-import { Json, type Database } from '../supabase/types_db'; // Testing relative path
+import { Json, type Database, type Tables, type TablesInsert, type TablesUpdate } from '../supabase/types_db';
 
-// Helper to parse LoopTemplate default_actions (similar to useLoopTemplates)
-// This is a simplified version for use here. A shared utility might be better.
+// Helper to parse LoopTemplate default_actions
 const parseTemplateDefaultActions = (jsonInput: Json | null): LoopTemplateAction[] | null => {
   if (jsonInput === null || jsonInput === undefined) return null;
   let actionsArray: any;
@@ -33,39 +31,43 @@ export const useLoops = (contactId: string) => {
     queryFn: async (): Promise<LoopArtifact[]> => {
       const { data, error } = await supabase
         .from('artifacts')
-        .select('*')
+        .select<'*', Tables<'artifacts'>>('*')
         .eq('contact_id', contactId)
         .eq('type', 'loop' as any)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data.map(d => {
-        const row = d as DatabaseArtifactRow;
-        let parsedContent: LoopArtifactContent;
-        try {
-          // Assuming row.content is a JSON string
-          parsedContent = JSON.parse(row.content) as LoopArtifactContent;
-        } catch (e) {
-          console.error('Failed to parse loop content:', e, row.content);
-          // Provide a default or fallback content structure
-          // This is a critical error, ideally, content should always be parsable
-          // Or the LoopArtifactContent type should allow for a partial/error state
-          parsedContent = { 
-            type: LoopType.INTRODUCTION, // Default type
-            status: LoopStatus.ABANDONED, // Default status indicating an issue
-            title: 'Error: Invalid Content',
-            description: 'Loop content was not parsable.',
-            initiator: 'user',
-            actions: [],
-            reciprocity_direction: 'giving',
-          } as LoopArtifactContent;
-        }
-        return {
-          ...row,
-          type: 'loop', // Assert type on our end
-          content: parsedContent,
-        } as LoopArtifact;
-      });
+      if (!data) return [];
+
+      return data
+        .map((row: Tables<'artifacts'>): LoopArtifact | null => {
+          if (row.type !== 'loop') {
+            console.warn(`Fetched non-loop artifact in useLoops: ${row.id}, type: ${row.type}`);
+            return null;
+          }
+          let parsedContent: LoopArtifactContent;
+          try {
+            parsedContent = JSON.parse(row.content) as LoopArtifactContent;
+          } catch (e) {
+            console.error('Failed to parse loop content:', e, row.content);
+            parsedContent = { 
+              type: LoopType.INTRODUCTION,
+              status: LoopStatus.ABANDONED,
+              title: 'Error: Invalid Content',
+              description: 'Loop content was not parsable.',
+              initiator: 'user',
+              actions: [],
+              reciprocity_direction: 'giving',
+            } as LoopArtifactContent;
+          }
+          return {
+            ...row,
+            type: 'loop',
+            content: parsedContent,
+            metadata: row.metadata, // Ensure metadata is passed if LoopArtifact expects it
+          } as LoopArtifact; 
+        })
+        .filter((loop): loop is LoopArtifact => loop !== null);
     }
   });
 
@@ -78,7 +80,7 @@ export const useLoops = (contactId: string) => {
       description: string;
       type: LoopType;
       reciprocity_direction: 'giving' | 'receiving';
-      templateId?: string; // Added templateId
+      templateId?: string;
     }
   >({
     mutationFn: async (loopData) => {
@@ -86,39 +88,35 @@ export const useLoops = (contactId: string) => {
       if (!user) throw new Error("User not authenticated");
 
       let initialActions: LoopAction[] = [];
-
       if (loopData.templateId) {
         const { data: templateRow, error: templateError } = await supabase
-          .from('loop_templates') // This will cause a linter error if types_db.ts is not fixed
-          .select('default_actions')
+          .from('loop_templates' as any)
+          .select<'default_actions', { default_actions: Json | null }>('default_actions')
           .eq('id', loopData.templateId)
-          .eq('user_id', user.id) // Ensure user owns the template
+          .eq('user_id', user.id)
           .single();
         
         if (templateError) {
           console.warn(`Failed to fetch template ${loopData.templateId}:`, templateError.message);
-          // Proceed without template actions if fetch fails
         } else if (templateRow && templateRow.default_actions) {
-          const templateActions = parseTemplateDefaultActions(templateRow.default_actions as Json | null);
+          const templateActions = parseTemplateDefaultActions(templateRow.default_actions);
           if (templateActions) {
             initialActions = templateActions.map((ta: LoopTemplateAction): LoopAction => ({
               id: crypto.randomUUID(),
-              status: LoopStatus.IDEA, // Or derive from template action if needed
+              status: LoopStatus.IDEA, 
               action_type: ta.action_type,
               notes: ta.description_template || '',
-              // due_date could be calculated based on ta.default_offset_days
               created_at: new Date().toISOString(),
             }));
           }
         }
       }
 
-      // If no template actions, add a default initial action
       if (initialActions.length === 0) {
         initialActions.push({
           id: crypto.randomUUID(),
           status: LoopStatus.IDEA,
-          action_type: 'offer', // Or a more generic 'initial_setup' type
+          action_type: 'offer',
           created_at: new Date().toISOString(),
           notes: 'Loop initiated'
         });
@@ -134,35 +132,36 @@ export const useLoops = (contactId: string) => {
         actions: initialActions,
       };
 
-      const artifactToInsertExplicit: Database['public']['Tables']['artifacts']['Insert'] = {
+      const artifactToInsert: TablesInsert<'artifacts'> = {
         contact_id: contactId,
         user_id: user.id,
-        type: 'loop' as ArtifactTypeEnum, 
+        type: 'loop' as any,
         content: JSON.stringify(newLoopContent), 
         timestamp: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
         .from('artifacts')
-        .insert(artifactToInsertExplicit as any)
-        .select()
+        .insert(artifactToInsert as any)
+        .select<'*', Tables<'artifacts'>>('*')
         .single();
 
       if (error) throw error;
-      const row = data as DatabaseArtifactRow;
-      // Assuming row.content is a JSON string from the DB response after insert
+      if (!data) throw new Error('Failed to create loop, no data returned.');
+      
+      const row = data; 
       let parsedContent: LoopArtifactContent;
       try {
         parsedContent = JSON.parse(row.content) as LoopArtifactContent;
       } catch (e) {
-        // This should ideally not happen if we just stringified it
         console.error('Failed to parse loop content immediately after insert:', e, row.content);
-        parsedContent = newLoopContent; // Fallback to the data we tried to insert
+        parsedContent = newLoopContent;
       }
       return {
          ...row,
          type: 'loop',
          content: parsedContent,
+         metadata: row.metadata,
       } as LoopArtifact;
     },
     onSuccess: () => {
@@ -170,10 +169,13 @@ export const useLoops = (contactId: string) => {
       showToast('Loop created successfully!', 'success');
     },
     onError: (error) => {
-      showToast('Failed to create loop', 'error');
+      showToast(`Failed to create loop: ${error.message}`, 'error');
       console.error('Create loop error:', error);
     }
   });
+
+  // Define a type for the selected fields from artifact row for mutations
+  type SelectedArtifactFieldsForMutation = Pick<Tables<'artifacts'>, 'id' | 'content' | 'type' | 'user_id' | 'contact_id' | 'timestamp' | 'created_at' | 'updated_at' | 'metadata'>;
 
   // Update loop status
   const updateStatusMutation = useMutation<
@@ -184,203 +186,242 @@ export const useLoops = (contactId: string) => {
     mutationFn: async ({ loopId, newStatus }) => {
       const { data: currentLoopResult, error: fetchError } = await supabase
         .from('artifacts')
-        .select('id, content')
+        .select<'id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata', SelectedArtifactFieldsForMutation>('id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata')
         .eq('id', loopId)
         .single();
 
       if (fetchError) throw fetchError;
-      if (!currentLoopResult) throw new Error('Loop not found');
+      if (!currentLoopResult) throw new Error('Loop not found for status update');
+      if (currentLoopResult.type !== 'loop') throw new Error('Cannot update status of a non-loop artifact.');
 
       let currentContent: LoopArtifactContent;
       try {
-        // Assuming currentLoopResult.content is a JSON string
-        currentContent = JSON.parse(currentLoopResult.content as string) as LoopArtifactContent;
+        currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
       } catch (e) {
         console.error('Failed to parse current loop content for update:', e, currentLoopResult.content);
-        // Fallback or error handling needed
-        throw new Error('Failed to parse existing loop content.');
+        throw new Error('Failed to parse current loop content');
       }
-      
-      const newStatusAction: LoopAction = {
-        id: crypto.randomUUID(),
-        status: newStatus,
-        action_type: getActionTypeForStatus(newStatus),
-        completed_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      };
 
       const updatedContent: LoopArtifactContent = {
         ...currentContent,
         status: newStatus,
-        actions: [
-          ...(currentContent.actions || []),
-          newStatusAction
-        ]
       };
       
-      switch (newStatus) {
-        case LoopStatus.OFFERED: updatedContent.offered_at = new Date().toISOString(); break;
-        case LoopStatus.ACCEPTED: updatedContent.accepted_at = new Date().toISOString(); break;
-        case LoopStatus.DELIVERED: updatedContent.delivered_at = new Date().toISOString(); break;
-        case LoopStatus.COMPLETED: updatedContent.completed_at = new Date().toISOString(); break;
-      }
+      const updatePayload = { content: JSON.stringify(updatedContent) };
 
-      const { data, error } = await supabase
+      const { data: updatedLoop, error: updateError } = await supabase
         .from('artifacts')
-        .update({
-          content: JSON.stringify(updatedContent), // Stringify content for update
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload as any)
         .eq('id', loopId)
-        .select()
+        .select<'*', Tables<'artifacts'>>('*')
         .single();
 
-      if (error) throw error;
-      const row = data as DatabaseArtifactRow;
-      // Assuming row.content is a JSON string from the DB response after update
-      let parsedContent: LoopArtifactContent;
-      try {
-        parsedContent = JSON.parse(row.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse loop content immediately after update:', e, row.content);
-        // Fallback or error handling, potentially use updatedContent if parsing fails
-        parsedContent = updatedContent; 
-      }
+      if (updateError) throw updateError;
+      if (!updatedLoop) throw new Error('Failed to update loop, no data returned.');
+
       return {
-        ...row,
+        ...updatedLoop,
         type: 'loop',
-        content: parsedContent,
-      } as LoopArtifact;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loops', contactId] });
-      showToast('Loop status updated!', 'success');
-    },
-    onError: (error) => {
-      showToast('Failed to update loop status', 'error');
-      console.error('Update loop status error:', error);
-    }
-  });
-
-  // Add new action to a loop
-  const addActionMutation = useMutation<
-    LoopArtifact, // Return type
-    Error,        // Error type
-    {             // Variables type
-      loopId: string;
-      actionData: Omit<LoopAction, 'id' | 'created_at'>; // User provides type, notes, due_date etc.
-    }
-  >({
-    mutationFn: async ({ loopId, actionData }) => {
-      // 1. Fetch the current loop
-      const { data: currentLoopResult, error: fetchError } = await supabase
-        .from('artifacts')
-        .select('content') // Only need content
-        .eq('id', loopId)
-        .single();
-
-      if (fetchError) throw fetchError;
-      if (!currentLoopResult) throw new Error('Loop not found to add action.');
-
-      let currentContent: LoopArtifactContent;
-      try {
-        currentContent = JSON.parse(currentLoopResult.content as string) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse current loop content for adding action:', e, currentLoopResult.content);
-        throw new Error('Failed to parse existing loop content for adding action.');
-      }
-
-      // 2. Create the new action
-      const newAction: LoopAction = {
-        ...actionData,
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-      };
-
-      // 3. Append to actions array
-      const updatedContent: LoopArtifactContent = {
-        ...currentContent,
-        actions: [...(currentContent.actions || []), newAction],
-        // Optionally update loop's overall next_action_due or status based on this new action
-        // For example, if this new action has a due_date, it might become the loop's next_action_due
-        // updatedContent.next_action_due = newAction.due_date || currentContent.next_action_due;
-      };
-
-      // 4. Update the artifact in Supabase
-      const { data, error } = await supabase
-        .from('artifacts')
-        .update({
-          content: JSON.stringify(updatedContent), // Stringify content for update
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', loopId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      // 5. Return the updated loop artifact (parsed)
-      const row = data as DatabaseArtifactRow;
-      let parsedContent: LoopArtifactContent;
-      try {
-        parsedContent = JSON.parse(row.content as string) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse loop content after adding action:', e, row.content);
-        parsedContent = updatedContent; // Fallback to the data we tried to update with
-      }
-      return {
-        ...(row as Omit<DatabaseArtifactRow, 'content' | 'type'>), // Avoid conflicts with parsed content
-        id: row.id, // ensure id is present
-        contact_id: contactId, // ensure contact_id is present from the hook scope if not on row
-        user_id: row.user_id, // ensure user_id is present
-        created_at: row.created_at, // ensure created_at is present
-        updated_at: row.updated_at, // ensure updated_at is present
-        timestamp: row.timestamp, // ensure timestamp is present
-        type: 'loop',
-        content: parsedContent,
+        content: updatedContent,
+        metadata: updatedLoop.metadata,
       } as LoopArtifact;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['loops', contactId] });
-      // Potentially invalidate queries for the specific loop details if those exist
-      // queryClient.invalidateQueries({ queryKey: ['loop', data.id] }); 
-      showToast('Action added to loop successfully!', 'success');
+      queryClient.invalidateQueries({ queryKey: ['loop', data.id] });
+      showToast('Loop status updated!', 'success');
     },
     onError: (error) => {
-      showToast('Failed to add action to loop', 'error');
-      console.error('Add action to loop error:', error);
+      showToast(`Failed to update loop status: ${error.message}`, 'error');
+      console.error('Update loop status error:', error);
+    }
+  });
+
+  // Add action to loop
+  const addActionMutation = useMutation<
+    LoopArtifact, 
+    Error, 
+    { loopId: string; action: LoopAction }
+  >({
+    mutationFn: async ({ loopId, action }) => {
+      const { data: currentLoopResult, error: fetchError } = await supabase
+        .from('artifacts')
+        .select<'id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata', SelectedArtifactFieldsForMutation>('id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata')
+        .eq('id', loopId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!currentLoopResult) throw new Error('Loop not found for adding action');
+      if (currentLoopResult.type !== 'loop') throw new Error('Cannot add action to a non-loop artifact.');
+
+      let currentContent: LoopArtifactContent;
+      try {
+        currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
+      } catch (e) {
+        console.error('Failed to parse current loop content for adding action:', e, currentLoopResult.content);
+        throw new Error('Failed to parse current loop content');
+      }
+
+      const updatedContent: LoopArtifactContent = {
+        ...currentContent,
+        actions: [...(currentContent.actions || []), action],
+      };
+      
+      const updatePayload = { content: JSON.stringify(updatedContent) };
+
+      const { data: updatedLoop, error: updateError } = await supabase
+        .from('artifacts')
+        .update(updatePayload as any)
+        .eq('id', loopId)
+        .select<'*', Tables<'artifacts'>>('*')
+        .single();
+
+      if (updateError) throw updateError;
+      if (!updatedLoop) throw new Error('Failed to update loop with new action, no data returned.');
+
+      return {
+        ...updatedLoop,
+        type: 'loop',
+        content: updatedContent,
+        metadata: updatedLoop.metadata,
+      } as LoopArtifact;
     },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['loops', contactId] });
+      queryClient.invalidateQueries({ queryKey: ['loop', data.id] });
+      showToast('Action added to loop!', 'success');
+    },
+    onError: (error) => {
+      showToast(`Failed to add action: ${error.message}`, 'error');
+      console.error('Add action error:', error);
+    }
+  });
+
+  // Update action within a loop
+  const updateActionMutation = useMutation<
+    LoopArtifact, 
+    Error, 
+    { loopId: string; actionId: string; updates: Partial<LoopAction> }
+  >({
+    mutationFn: async ({ loopId, actionId, updates }) => {
+      const { data: currentLoopResult, error: fetchError } = await supabase
+        .from('artifacts')
+        .select<'id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata', SelectedArtifactFieldsForMutation>('id, content, type, user_id, contact_id, timestamp, created_at, updated_at, metadata')
+        .eq('id', loopId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!currentLoopResult) throw new Error('Loop not found for updating action');
+      if (currentLoopResult.type !== 'loop') throw new Error('Cannot update action in a non-loop artifact.');
+
+      let currentContent: LoopArtifactContent;
+      try {
+        currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
+      } catch (e) {
+        console.error('Failed to parse current loop content for updating action:', e, currentLoopResult.content);
+        throw new Error('Failed to parse current loop content');
+      }
+
+      const actionIndex = currentContent.actions.findIndex(a => a.id === actionId);
+      if (actionIndex === -1) throw new Error('Action not found in loop');
+
+      const updatedActions = [...currentContent.actions];
+      updatedActions[actionIndex] = { ...updatedActions[actionIndex], ...updates };
+
+      const updatedContent: LoopArtifactContent = {
+        ...currentContent,
+        actions: updatedActions,
+      };
+      
+      const updatePayload = { content: JSON.stringify(updatedContent) };
+
+      const { data: updatedLoop, error: updateError } = await supabase
+        .from('artifacts')
+        .update(updatePayload as any)
+        .eq('id', loopId)
+        .select<'*', Tables<'artifacts'>>('*')
+        .single();
+
+      if (updateError) throw updateError;
+      if (!updatedLoop) throw new Error('Failed to update loop action, no data returned.');
+
+      return {
+        ...updatedLoop,
+        type: 'loop',
+        content: updatedContent,
+        metadata: updatedLoop.metadata,
+      } as LoopArtifact;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['loops', contactId] });
+      queryClient.invalidateQueries({ queryKey: ['loop', data.id] });
+      showToast('Loop action updated!', 'success');
+    },
+    onError: (error) => {
+      showToast(`Failed to update loop action: ${error.message}`, 'error');
+      console.error('Update loop action error:', error);
+    }
+  });
+  
+  function getActionTypeForStatus(status: LoopStatus): LoopAction['action_type'] { 
+    switch (status) {
+      case LoopStatus.OFFERED:
+      case LoopStatus.ACCEPTED:
+        return 'follow_up';
+      case LoopStatus.IN_PROGRESS:
+        return 'check_in';
+      case LoopStatus.PENDING_APPROVAL:
+        return 'approval_request';
+      case LoopStatus.DELIVERED:
+        return 'delivery'; 
+      case LoopStatus.FOLLOWING_UP:
+          return 'follow_up';
+      case LoopStatus.COMPLETED:
+        return 'completion'; 
+      default:
+        return 'check_in'; 
+    }
+  }
+
+  const addDefaultNextActionMutation = useMutation<
+    LoopArtifact, 
+    Error, 
+    { loopId: string; currentStatus: LoopStatus }
+  >({
+    mutationFn: async ({ loopId, currentStatus }) => {
+      const actionType = getActionTypeForStatus(currentStatus);
+      const newAction: LoopAction = {
+        id: crypto.randomUUID(),
+        status: currentStatus, 
+        action_type: actionType,
+        created_at: new Date().toISOString(),
+        notes: `Default action for ${currentStatus} status.`
+      };
+      return addActionMutation.mutateAsync({ loopId, action: newAction });
+    },
+    onSuccess: () => {
+      showToast('Default next action added to loop!', 'success');
+    },
+    onError: (error) => {
+      showToast(`Failed to add default next action: ${error.message}`, 'error');
+      console.error('Add default next action error:', error);
+    }
   });
 
   return {
-    loops,
+    loops: loops || [],
     isLoading,
     isError,
-    refetch,
-    createLoop: createLoopMutation.mutate,
-    updateStatus: updateStatusMutation.mutate,
-    addAction: addActionMutation.mutate, // Expose the new mutation
-    isCreating: createLoopMutation.isPending,
-    isUpdating: updateStatusMutation.isPending,
-    isAddingAction: addActionMutation.isPending, // Expose loading state for adding action
+    refetchLoops: refetch,
+    createLoop: createLoopMutation.mutateAsync,
+    isCreatingLoop: createLoopMutation.isPending,
+    updateLoopStatus: updateStatusMutation.mutateAsync,
+    isUpdatingLoopStatus: updateStatusMutation.isPending,
+    addLoopAction: addActionMutation.mutateAsync,
+    isAddingLoopAction: addActionMutation.isPending,
+    updateLoopAction: updateActionMutation.mutateAsync,
+    isUpdatingLoopAction: updateActionMutation.isPending,
+    addDefaultNextAction: addDefaultNextActionMutation.mutateAsync,
+    isAddingDefaultNextAction: addDefaultNextActionMutation.isPending,
   };
-};
-
-// Helper function to determine action type based on status
-function getActionTypeForStatus(status: LoopStatus): LoopAction['action_type'] { // More specific return type
-  const actionMap: Partial<Record<LoopStatus, LoopAction['action_type']>> = { // Use Partial for safety
-    [LoopStatus.IDEA]: 'offer', // Or a new 'ideation' action_type if it exists
-    [LoopStatus.QUEUED]: 'offer', // Or 'queue'
-    [LoopStatus.OFFERED]: 'offer',
-    [LoopStatus.RECEIVED]: 'delivery', // Or 'receive' if that type exists
-    [LoopStatus.ACCEPTED]: 'delivery', // Or 'accept'
-    [LoopStatus.DECLINED]: 'completion', // Or 'decline'
-    [LoopStatus.IN_PROGRESS]: 'delivery', // Or 'progress'
-    [LoopStatus.PENDING_APPROVAL]: 'approval_request',
-    [LoopStatus.DELIVERED]: 'delivery',
-    [LoopStatus.FOLLOWING_UP]: 'follow_up',
-    [LoopStatus.COMPLETED]: 'completion',
-    [LoopStatus.ABANDONED]: 'completion' // Or 'abandonment'
-  };
-  return actionMap[status] || 'check_in'; // Default to 'check_in' or a generic 'update'
-} 
+}; 
