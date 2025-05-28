@@ -212,27 +212,102 @@ Last update: 5/27/2025
 
 #### contacts/[id]/page.tsx
 
-- **Purpose:** Main profile page for a contact, shows all relationship intelligence and actions.
+- **Purpose:** Main profile page for a contact. Displays comprehensive relationship intelligence, facilitates interaction logging (e.g., voice memos), manages AI-generated suggestions, and provides quick access to common actions. This page is central to the user's workflow for a specific contact.
 - **Imports:**
-  - React, useState, useEffect, useCallback, useMemo
-  - MUI: Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItemText, ListItemButton, Button
-  - Next.js: useParams, useSearchParams, useRouter
-  - Supabase client
-  - Next.js dynamic import
-  - TanStack Query: useQueryClient
-  - Many feature components: ContactHeader, NextConnection, ActionQueues, ReciprocityDashboard, ContextSections, QuickAdd, ArtifactModal, VoiceRecorder, SuggestionsPanel, VoiceMemoDetailModal, ProcessingIndicator, ProcessingStatusBar
-  - Many hooks: useContactProfile, useVoiceMemos, useUpdateSuggestions, useArtifacts, useArtifactModalData
-  - Types: ArtifactGlobal, POGArtifactContent, AskArtifactContent, POGArtifactContentStatus, AskArtifactContentStatus, PersonalContext, VoiceMemoArtifact
-  - Toast context
-- **Component:**
+  - React: `useState`, `useEffect`, `useCallback`, `useMemo`
+  - MUI: Various components for layout, display, and interaction (Container, Box, Typography, Paper, CircularProgress, Alert, etc.)
+  - Next.js: `useParams`, `useSearchParams`, `useRouter` (for routing and query parameter handling), `nextDynamic` (for dynamic imports)
+  - Supabase: `supabase` client (`@/lib/supabase/client`)
+  - TanStack Query: `useQueryClient`
+  - Feature Components:
+    - `@/components/features/contacts/ContactHeader.tsx`: Displays key contact information and action buttons.
+    - `@/components/features/contacts/NextConnection.tsx`: Shows upcoming connection details.
+    - `@/components/features/contacts/ActionQueues.tsx`: Lists pending POGs and Asks.
+    - `@/components/features/contacts/ReciprocityDashboard.tsx`: Visualizes give/take balance.
+    - `@/components/features/contacts/ContextSections.tsx`: Renders professional and personal context.
+    - `@/components/features/contacts/QuickAdd.tsx`: Floating action button for quick additions.
+    - `@/components/features/timeline/ArtifactModal.tsx`: Modal for viewing artifact details.
+    - `@/components/features/voice-memos/VoiceRecorder.tsx` (Dynamically Imported): For recording voice memos.
+    - `@/components/features/suggestions/SuggestionsPanel.tsx`: Panel for reviewing AI suggestions.
+    - `@/components/features/voice/VoiceMemoDetailModal.tsx`: Modal for voice memo specific details.
+    - `@/components/features/voice/ProcessingIndicator.tsx`: Visual indicator for processing tasks.
+    - `@/components/features/voice/ProcessingStatusBar.tsx`: Alert bar for active voice memo processing.
+  - Custom Hooks:
+    - `@/lib/hooks/useContactProfile.ts`: Fetches main contact data.
+    - `@/lib/hooks/useVoiceMemos.ts`: Manages voice memo data and processing status.
+    - `@/lib/hooks/useUpdateSuggestions.ts`: Handles AI-generated update suggestions.
+    - `@/lib/hooks/useArtifacts.ts`: General artifact management (used here for delete action).
+    - `@/lib/hooks/useArtifactModalData.ts`: Manages data and actions for the generic `ArtifactModal`.
+  - Types: `ArtifactGlobal`, `POGArtifactContent`, `AskArtifactContent`, `PersonalContextType`, `VoiceMemoArtifact`, etc. (from `@/types`)
+  - Contexts: `useToast` (from `@/lib/contexts/ToastContext.tsx`)
+- **Component Signature:**
   ```ts
   const ContactProfilePage: React.FC<ContactProfilePageProps> = () => { ... }
   export default ContactProfilePage;
+  // interface ContactProfilePageProps {} // Currently empty
   ```
-  - Handles all data fetching, state, and event logic for a contact's profile.
-  - Integrates voice memos, suggestions, action queues, quick add, and artifact modals.
-  - Handles real-time updates via Supabase channels.
-  - Provides full relationship intelligence workflow for a contact.
+- **Key State Variables:**
+  - `playingAudioUrl`, `audioPlaybackError`: For managing audio playback from modals.
+  - `selectedVoiceMemoForDetail`, `isVoiceMemoDetailModalOpen`: State for the `VoiceMemoDetailModal`.
+  - `selectedArtifactForModal`, `isArtifactModalOpen`: State for the generic `ArtifactModal` (via `useArtifactModalData`).
+  - `isReprocessingMemo`: Loading state for reprocessing actions.
+  - `suggestionsPanelOpen`: Visibility of the `SuggestionsPanel`.
+- **Data Fetching & Management (Primary Hooks):**
+  - `useContactProfile(contactId)`: Fetches core contact details.
+  - `useVoiceMemos({ contact_id: contactId })`: Fetches voice memos, their processing status, and count.
+  - `useUpdateSuggestions({ contactId })`: Fetches update suggestions, counts, and provides action handlers.
+  - `useArtifactModalData()`: Manages data fetching and actions (reprocess, delete, play audio) for the `ArtifactModal`.
+  - `useArtifacts()`: Provides `deleteArtifact` function used by `handleDeleteArtifactConfirmed`.
+- **Operational Flow & Key Features:**
+  1.  **Initialization & Data Fetching:**
+      - Retrieves `contactId` from URL parameters.
+      - Fetches contact profile, voice memos, and update suggestions using their respective hooks.
+      - Sets `isClient` to true in `useEffect` to enable client-side only rendering for certain parts if needed.
+  2.  **URL-Driven Modal Opening:**
+      - `useEffect` listens to `searchParams` (`artifactView`, `artifactType`).
+      - If `artifactType === 'voice_memo'` and `artifactView` (ID) are present, it finds the corresponding voice memo and opens `VoiceMemoDetailModal`.
+      - Clears these query parameters from the URL after modal is opened to prevent re-opening on refresh.
+  3.  **Contact Header Display:**
+      - Renders `ContactHeader` with memoized props derived from `contact` data (name, title, personal context, cadence) and `useUpdateSuggestions` (suggestion count, priority).
+      - `onViewSuggestions` action toggles the `SuggestionsPanel`.
+  4.  **Voice Memo Features:**
+      - Displays `ProcessingStatusBar` if `processingCount` from `useVoiceMemos` > 0.
+      - Renders `VoiceRecorder` (dynamically imported) for new recordings.
+      - `VoiceMemoDetailModal` is used for viewing existing voice memos (triggered by URL or future UI elements).
+        - Handlers for playing audio, deleting, and reprocessing voice memos are passed to this modal, often delegating to `useArtifactModalData` or specific API calls.
+  5.  **Suggestions Panel:**
+      - `SuggestionsPanel` is toggled by `ContactHeader`.
+      - Displays suggestions from `useUpdateSuggestions` and provides `bulkApply` and `bulkReject` actions.
+  6.  **Artifact Modals:**
+      - Generic `ArtifactModal` is managed by `useArtifactModalData` hook.
+        - `handleOpenArtifactModal` (called from timeline or other UI) fetches artifact data using `fetchArtifactData(artifact.id)` and opens the modal.
+        - Actions within this modal (delete, reprocess voice memo) use functions from `useArtifactModalData`.
+      - `VoiceMemoDetailModal` (specialized) shows specific voice memo details.
+        - `handlePlayAudioInModal` manages audio playback state.
+        - `handleDeleteVoiceMemo` (passed to `VoiceMemoDetailModal`) calls API to delete, shows toasts, refetches data, and closes modal.
+        - `handleReprocessVoiceMemo` (passed to `VoiceMemoDetailModal`) calls API to reprocess, shows toasts, refetches data.
+  7.  **Context & Relationship Intelligence Display:**
+      - `ContextSections`: Displays professional and personal context from `contact` data.
+      - `NextConnection`: Shows upcoming connection details for the `contactId`.
+      - `ActionQueues`: Displays POGs and Asks, mapping their status from `artifacts` data (fetched separately or part of a broader artifacts list if available to this component, otherwise POG/Ask data needs to be explicitly fetched).
+      - `ReciprocityDashboard`: Placeholder for give/take balance visualization.
+  8.  **Quick Actions:**
+      - `QuickAdd` FAB provides shortcuts (currently placeholders or simple log actions like `onAddNote`, `onAddPOG`).
+  9.  **Real-time Updates (Assumed via TanStack Query & Supabase):**
+      - The page relies on TanStack Query's caching and refetching mechanisms, which are often integrated with Supabase real-time subscriptions (though not explicitly detailed in this component's code, it's a pattern from `custom_instructions`). When data changes (e.g., new artifact, suggestion update), queries are invalidated/refetched, updating the UI.
+- **Error Handling:**
+  - Displays `Alert` components for errors from `useContactProfile` and `useVoiceMemos`.
+  - `useToast` is used to show success/error notifications for actions like deletion, reprocessing, applying suggestions.
+  - Individual hooks manage their own error states for data fetching.
+- **Security Notes:**
+  - Page access and data fetching are implicitly secured by `ProtectedRoute` in the layout and RLS policies in Supabase, ensuring users only see contacts they own or have access to.
+  - Actions like delete/reprocess call backend APIs which should also enforce ownership and permissions.
+- **Cross-references:**
+  - Core page for displaying data from `contacts`, `artifacts`, `contact_update_suggestions` tables.
+  - Integrates heavily with numerous custom hooks: `useContactProfile`, `useVoiceMemos`, `useUpdateSuggestions`, `useArtifactModalData`, `useArtifacts`.
+  - Utilizes many feature components from `src/components/features/*`.
+  - Navigation and state managed via Next.js Router and React state/context.
+  - Data flow: Hooks fetch data -> Page passes data to child components -> Child components trigger actions -> Actions call APIs/update Supabase -> Hooks refetch/TanStack Query updates cache -> UI reflects changes.
 
 ---
 
@@ -264,112 +339,516 @@ Last update: 5/27/2025
 - **Purpose:** API route to delete an artifact by ID, with ownership and source checks.
 - **Imports:**
   - Next.js: NextRequest, NextResponse
-  - Supabase server client
+  - Supabase server client (`@/lib/supabase/server`)
+- **Request (DELETE):**
+  - **Path Parameter:** `id` (string) - The ID of the artifact to delete.
+- **Responses:**
+  - **Success (204 No Content):** Artifact successfully deleted.
+    ```typescript
+    // No body content
+    ```
+  - **Error (400 Bad Request):** Artifact ID is missing.
+    ```typescript
+    interface BadRequestResponse {
+      error: string; // e.g., "Artifact ID is required"
+    }
+    ```
+  - **Error (401 Unauthorized):** User is not logged in.
+    ```typescript
+    interface UnauthorizedResponse {
+      error: string; // e.g., "You must be logged in to delete an artifact."
+    }
+    ```
+  - **Error (403 Forbidden):** User is not authorized to delete this artifact.
+    ```typescript
+    interface ForbiddenResponse {
+      error: string; // e.g., "You are not authorized to delete this artifact."
+    }
+    ```
+  - **Error (404 Not Found):** Artifact with the given ID does not exist.
+    ```typescript
+    interface NotFoundResponse {
+      error: string; // e.g., "Artifact not found"
+    }
+    ```
+  - **Error (409 Conflict):** Artifact cannot be deleted because it's a source.
+    ```typescript
+    interface ConflictResponse {
+      error: string; // e.g., "This artifact cannot be deleted because it is used as a source..."
+      code: 'ARTIFACT_IS_SOURCE';
+    }
+    ```
+  - **Error (500 Internal Server Error):** Failed to fetch artifact, delete artifact, check suggestions, or an unexpected error occurred.
+    ```typescript
+    interface InternalServerErrorResponse {
+      error: string; // e.g., "Failed to fetch artifact details.", "Failed to delete artifact."
+    }
+    ```
 - **Handler:**
   ```ts
-  export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> })
+  export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+  )
   ```
-  - Authenticates user
-  - Fetches artifact, checks ownership
-  - Checks if artifact is a source for contact fields or suggestions
-  - Deletes artifact from DB and, if a voice memo, from storage
-  - Returns appropriate status and error messages
+- **Key Logic Flow:**
+  1. Retrieve `artifactId` from path parameters.
+  2. Authenticate user using Supabase `auth.getUser()`. Return 401 if not logged in.
+  3. Fetch the artifact by `artifactId` from the `artifacts` table. Return 404 if not found, 500 on fetch error.
+  4. Verify artifact ownership by comparing `artifact.user_id` with `user.id`. Return 403 if not owner.
+  5. **Source Data Check:**
+     a. If `artifact.contact_id` exists, check `contacts.field_sources` to see if the `artifactId` is a source for any contact field.
+     b. If `artifact.type` is `'voice_memo'`, check `contact_update_suggestions` for any 'approved' or 'partial' suggestions linked to this `artifactId`.
+     c. If it's a source in either case, return 409 Conflict.
+  6. Delete the artifact from the `artifacts` table. Return 500 on delete error.
+  7. If `artifact.type` is `'voice_memo'` and `artifact.metadata.file_path` exists, delete the corresponding file from Supabase Storage (`voice_memos` bucket). Log errors if storage deletion fails but continue.
+  8. Return 204 No Content on successful deletion.
+- **Error Handling:**
+  - Specific status codes and error messages for different failure scenarios (missing ID, auth failure, not found, conflict, server errors).
+  - Logs errors to the console for server-side debugging.
+  - Catches unexpected errors and returns a generic 500 response.
+- **Security Notes:**
+  - Requires user authentication.
+  - Enforces artifact ownership; users can only delete their own artifacts.
+  - Prevents deletion of artifacts that are actively used as a data source for contacts or have approved/partially-approved suggestions, maintaining data integrity.
+  - Uses Supabase server client (`createClient` from `@/lib/supabase/server`) which should handle RLS, though explicit ownership checks are also performed.
+- **Cross-references:**
+  - Interacts with `artifacts`, `contacts`, and `contact_update_suggestions` tables in Supabase.
+  - May interact with Supabase Storage for `voice_memo` files.
+  - Referenced by UI components that allow artifact deletion (e.g., potentially in `VoiceMemoDetailModal.tsx` or a generic artifact management UI).
 
 ---
 
 ### linkedin/rescrape/route.ts
 
-- **Purpose:** API route to re-scrape a LinkedIn profile for a contact and create a new artifact.
+- **Purpose:** API route to re-scrape a LinkedIn profile for a contact using RapidAPI, create a new `linkedin_profile` artifact with the fresh data, and associate it with the contact.
 - **Imports:**
   - Next.js: NextRequest, NextResponse
-  - Supabase server client
-  - Types: RapidLinkedInProfile, LinkedInImportApiResponse, LinkedInDate, LinkedInArtifactContent
+  - Supabase server client (`@/lib/supabase/server`)
+  - Types: `RapidLinkedInProfile`, `LinkedInImportApiResponse`, `LinkedInDate` (from `@/types/rapidapi`), `LinkedInArtifactContent` (from `@/types/artifact`)
+- **Request (POST):**
+  ```typescript
+  interface LinkedInRescrapeRequestBody {
+    contactId: string;    // ID of the contact to associate the new artifact with
+    linkedinUrl: string;  // Full LinkedIn profile URL (e.g., https://linkedin.com/in/...)
+  }
+  ```
+- **Responses:**
+  - **Success (200 OK):** Profile re-scraped, new artifact created.
+    ```typescript
+    interface LinkedInRescrapeSuccessResponse extends LinkedInImportApiResponse {
+      success: true;
+      message: string; // e.g., "LinkedIn profile re-scraped and new artifact created."
+      data: RapidLinkedInProfile; // Raw data from RapidAPI
+      artifact: any; // The newly created artifact record from Supabase artifacts table
+      inputLinkedinUrl: string;
+    }
+    ```
+  - **Error (400 Bad Request):** Invalid request body, missing fields, or invalid LinkedIn URL format.
+    ```typescript
+    interface BadRequestResponse {
+      success: false;
+      error: string; // e.g., "Invalid request body.", "Contact ID and LinkedIn URL are required.", "Invalid LinkedIn profile URL format."
+    }
+    ```
+  - **Error (401 Unauthorized):** User not authenticated.
+    ```typescript
+    interface UnauthorizedResponse {
+      success: false;
+      error: string; // "User not authenticated."
+    }
+    ```
+  - **Error (404 Not Found):** Contact not found or user does not have access.
+    ```typescript
+    interface NotFoundResponse {
+      success: false;
+      error: string; // "Contact not found or access denied."
+    }
+    ```
+  - **Error (500 Internal Server Error):** Server configuration error (API keys missing), RapidAPI fetch error, database error during artifact insertion, or other unexpected errors.
+    ```typescript
+    interface InternalServerErrorResponse {
+      success: false;
+      error: string; // Detailed error message
+      rawResponse?: string; // Optional: Raw response from RapidAPI on failure
+      inputLinkedinUrl?: string;
+    }
+    ```
+  - **Error (RapidAPI Specific Status):** If RapidAPI returns an error (e.g., 403, 429), the status code from RapidAPI is forwarded.
+    ```typescript
+    // Example: RapidAPI returns 429 Too Many Requests
+    // Status: 429
+    // Body:
+    interface RapidApiErrorResponse {
+      success: false;
+      error: string; // e.g., "Failed to fetch data from LinkedIn API: Too Many Requests"
+      rawResponse?: string;
+      inputLinkedinUrl: string;
+    }
+    ```
 - **Handler:**
   ```ts
   export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImportApiResponse>>
   ```
-  - Authenticates user
-  - Validates request body (contactId, linkedinUrl)
-  - Verifies contact ownership
-  - Calls RapidAPI to fetch LinkedIn data
-  - Transforms and stores data as a new artifact
-  - Returns new artifact and raw data
+- **Key Logic Flow:**
+  1. Check for RapidAPI environment variables (`RAPIDAPI_KEY`, `RAPIDAPI_HOST`). Return 500 if missing.
+  2. Authenticate user via Supabase. Return 401 if not authenticated.
+  3. Parse `contactId` and `linkedinUrl` from the JSON request body. Return 400 if invalid or missing.
+  4. Validate `linkedinUrl` format. Return 400 if invalid.
+  5. Verify contact ownership: Fetch contact by `contactId` ensuring it belongs to the authenticated `user.id`. Return 404 if not found or no access.
+  6. Call RapidAPI's `get-profile-data-by-url` endpoint with the `linkedinUrl`.
+  7. If RapidAPI call fails, parse error and return appropriate status code (forwarded from RapidAPI) and error message.
+  8. Transform the scraped `RapidLinkedInProfile` data into `LinkedInArtifactContent` format (including formatting dates and durations).
+  9. Create a new artifact in the `artifacts` table with `type: 'linkedin_profile'`, the transformed `metadata`, `contact_id`, `user_id`, and a timestamp. Return 500 on database insertion error.
+  10. Return 200 OK with success message, raw scraped data, and the new artifact record.
+- **Error Handling:**
+  - Validates environment variables for API keys.
+  - Handles JSON parsing errors for the request body.
+  - Returns specific error messages and status codes for auth failures, input validation, contact ownership, RapidAPI errors, and database errors.
+  - Logs errors to the console for server-side debugging.
+  - Forwards RapidAPI error status codes when applicable.
+- **Security Notes:**
+  - Requires user authentication.
+  - Enforces contact ownership before allowing a re-scrape to be associated with a contact.
+  - API keys (`RAPIDAPI_KEY`) are stored as environment variables and used server-side, not exposed to the client.
+- **Cross-references:**
+  - Interacts with Supabase `contacts` and `artifacts` tables.
+  - Uses RapidAPI LinkedIn service (external dependency).
+  - Types defined in `@/types/rapidapi.ts` and `@/types/artifact.ts`.
+  - Likely triggered from a UI component like `LinkedInProfileModal.tsx` or a contact profile page action.
 
 ---
 
 ### linkedin/import/route.ts
 
-- **Purpose:** API route to import a LinkedIn profile via RapidAPI.
+- **Purpose:** API route to import a LinkedIn profile by its URL using the RapidAPI LinkedIn service. This route fetches the raw profile data but does *not* create an artifact or associate it with a contact (unlike the `rescrape` route).
 - **Imports:**
   - Next.js: NextRequest, NextResponse
-  - Types: LinkedInImportApiRequestBody, RapidLinkedInProfile, LinkedInImportApiResponse
+  - Types: `LinkedInImportApiRequestBody`, `RapidLinkedInProfile`, `LinkedInImportApiResponse` (from `@/types/rapidapi`)
+- **Request (POST):**
+  ```typescript
+  interface LinkedInImportApiRequestBody {
+    linkedinUrl: string; // Full LinkedIn profile URL (e.g., https://linkedin.com/in/...)
+  }
+  ```
+- **Responses:**
+  - **Success (200 OK):** Profile data successfully fetched from RapidAPI.
+    ```typescript
+    interface LinkedInImportSuccessResponse extends LinkedInImportApiResponse {
+      success: true;
+      data: RapidLinkedInProfile;    // The raw profile data from RapidAPI
+      rawResponse: RapidLinkedInProfile; // Note: In the code, this is the same as `data`.
+      inputLinkedinUrl: string;
+    }
+    ```
+  - **Error (400 Bad Request):** Invalid request body, missing `linkedinUrl`, or invalid LinkedIn URL format.
+    ```typescript
+    interface BadRequestResponse {
+      success: false;
+      error: string; // e.g., "Invalid request body.", "LinkedIn URL is required.", "Invalid LinkedIn profile URL format."
+    }
+    ```
+  - **Error (500 Internal Server Error):** Server configuration error (API keys missing), RapidAPI fetch error, or other unexpected errors.
+    ```typescript
+    interface InternalServerErrorResponse {
+      success: false;
+      error: string; // Detailed error message
+      rawResponse?: string; // Optional: Raw response text from RapidAPI on failure
+      inputLinkedinUrl?: string;
+    }
+    ```
+  - **Error (RapidAPI Specific Status):** If RapidAPI returns an error (e.g., 401, 403, 404, 429), the status code from RapidAPI is forwarded.
+    ```typescript
+    // Example: RapidAPI returns 429 Too Many Requests
+    // Status: 429
+    // Body:
+    interface RapidApiErrorResponse {
+      success: false;
+      error: string; // e.g., "Failed to fetch data from LinkedIn API: Too Many Requests"
+      rawResponse?: string; // Raw text of the error response from RapidAPI
+      inputLinkedinUrl: string;
+    }
+    ```
 - **Handler:**
   ```ts
   export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImportApiResponse>>
   ```
-  - Validates API keys and request body
-  - Validates LinkedIn URL
-  - Calls RapidAPI to fetch profile data
-  - Returns profile data and raw response
+- **Key Logic Flow:**
+  1. Check for RapidAPI environment variables (`RAPIDAPI_KEY`, `RAPIDAPI_HOST`). Return 500 if missing.
+  2. Parse `linkedinUrl` from the JSON request body. Return 400 if invalid or missing.
+  3. Validate `linkedinUrl` format (must include `linkedin.com/in/`). Return 400 if invalid.
+  4. Construct the GET request URL for RapidAPI's `get-profile-data-by-url` endpoint, appending `linkedinUrl` as a query parameter.
+  5. Call the RapidAPI endpoint using `fetch` with appropriate headers (X-RapidAPI-Key, X-RapidAPI-Host).
+  6. If RapidAPI call fails (response not OK):
+     a. Attempt to parse an error message from the RapidAPI response text (if JSON).
+     b. Return the RapidAPI status code and an error message (including raw response text for debugging).
+  7. If RapidAPI call is successful:
+     a. Parse the response text as JSON into `RapidLinkedInProfile`.
+     b. Return 200 OK with `success: true`, the parsed `data` (also as `rawResponse`), and the `inputLinkedinUrl`.
+  8. Catch any unexpected errors during the process and return 500.
+- **Error Handling:**
+  - Validates presence of RapidAPI credentials in environment variables.
+  - Handles JSON parsing errors for the request body.
+  - Validates the format of the `linkedinUrl`.
+  - Forwards status codes and attempts to parse error messages from RapidAPI upon failure.
+  - Includes raw RapidAPI response text in error responses for easier debugging.
+  - Logs errors to the console server-side.
+- **Security Notes:**
+  - This endpoint does *not* require user authentication as it's a direct proxy to RapidAPI for fetching public profile data. This is different from the `rescrape` route.
+  - API keys (`RAPIDAPI_KEY`) are stored as environment variables and used server-side, not exposed to the client.
+  - Input validation is performed on the `linkedinUrl` format.
+- **Cross-references:**
+  - Uses RapidAPI LinkedIn service (external dependency).
+  - Types defined in `@/types/rapidapi.ts`.
+  - Primarily used by `LinkedInImportForm.tsx` in the new contact flow (`contacts/new/page.tsx`) to fetch initial profile data before contact creation.
 
 ---
 
 ### suggestions/apply/route.ts
 
-- **Purpose:** API route to apply selected contact update suggestions to a contact, with granular source tracking.
+- **Purpose:** API route to apply selected AI-generated contact update suggestions to a contact record. It handles updating various fields, including nested context fields and arrays, and maintains granular source attribution for each change.
 - **Imports:**
   - Next.js: NextRequest, NextResponse
-  - Supabase server client
-  - Types: ContactUpdateSuggestion, UpdateSuggestionRecord, Database, Json
-- **Helpers:**
-  - `setValueAtPath(obj, path, value, action)`: Sets, updates, or removes a value at a nested path, handling arrays and objects.
-  - `arrayFieldPaths`: Set of known array field paths for context fields.
+  - Supabase server client (`@/lib/supabase/server`)
+  - Types: `ContactUpdateSuggestion`, `UpdateSuggestionRecord` (from `@/types/suggestions`), `Database`, `Json` (from `@/lib/supabase/database.types.ts`)
+- **Request (POST):**
+  ```typescript
+  interface ApplySuggestionsRequestBody {
+    suggestionId: string;      // ID of the contact_update_suggestions record
+    selectedPaths: string[]; // Array of field_path strings for the suggestions to be applied
+  }
+  ```
+- **Responses:**
+  - **Success (200 OK):** Suggestions successfully applied or no updates were selected.
+    ```typescript
+    interface ApplySuggestionsSuccessResponse {
+      success: true;
+      message: string; // e.g., "Contact updated successfully with X suggestions." or "No updates selected. Suggestion marked as reviewed."
+      appliedSuggestionsCount?: number;
+      conflicts?: Array<{ path: string; oldValue: any; newValue: any; reason: string }>; // If conflict resolution was part of the logic (currently not explicitly handled beyond overwrite)
+    }
+    ```
+  - **Error (400 Bad Request):** Missing or invalid `suggestionId` or `selectedPaths`.
+    ```typescript
+    interface BadRequestResponse {
+      error: string; // e.g., "Missing or invalid suggestionId or selectedPaths"
+    }
+    ```
+  - **Error (401 Unauthorized):** User not authenticated (implicitly handled by Supabase client if RLS is strict, though route code doesn't explicitly call `getUser` for this operation but relies on RLS for contact/suggestion access).
+    ```typescript
+    interface UnauthorizedResponse {
+      error: string; // e.g., "User not authenticated" (if getUser check was added)
+    }
+    ```
+  - **Error (404 Not Found):** Suggestion record or associated contact not found.
+    ```typescript
+    interface NotFoundResponse {
+      error: string; // e.g., "Suggestion not found or database error", "Associated contact not found"
+    }
+    ```
+  - **Error (500 Internal Server Error):** Database error during update or unexpected server error.
+    ```typescript
+    interface InternalServerErrorResponse {
+      error: string; // e.g., "Failed to update contact.", "An unexpected error occurred."
+    }
+    ```
 - **Handler:**
   ```ts
   export async function POST(request: NextRequest)
   ```
-  - Validates input (suggestionId, selectedPaths)
-  - Fetches suggestion and associated contact
-  - Deep clones contact, ensures context fields are objects
-  - Applies selected suggestions to contact fields using `setValueAtPath`
-  - Tracks source artifact for each updated field
-  - Updates contact and suggestion status in DB
-  - Returns success or error
+- **Key Helper Functions:**
+  - `setValueAtPath(obj: ContactContext, path: string, value: unknown, action: 'add' | 'update' | 'remove')`: Recursively sets, adds to, or removes values from a nested object path. Handles array fields specifically based on `arrayFieldPaths` set.
+  - `arrayFieldPaths`: A `Set<string>` containing predefined paths that are known to be arrays within `personal_context` or `professional_context` (e.g., `family.children`, `skills`).
+- **Key Logic Flow:**
+  1. Parse `suggestionId` and `selectedPaths` from the JSON request body. Return 400 if invalid.
+  2. Fetch the `contact_update_suggestions` record by `suggestionId`, including the associated `contacts` data. Return 404 if not found or contact is missing.
+  3. If `selectedPaths` is empty, update the suggestion record status to 'rejected' and return 200.
+  4. Deep clone the fetched contact data to prepare for updates.
+  5. Ensure `contact.professional_context` and `contact.personal_context` are initialized as objects if they are null/undefined.
+  6. Filter the `suggestionRecord.suggested_updates.suggestions` to get only those matching `selectedPaths`.
+  7. Iterate through `selectedSuggestions`:
+     a. Determine if the `field_path` targets `professional_context`, `personal_context`, or a direct contact field.
+     b. Use `setValueAtPath` to apply the `suggested_value` based on the `action` (`add`, `update`, `remove`) to the cloned contact data (specifically to the correct context object or direct field).
+     c. Update the `sourceUpdates` record: 
+        - For direct fields, the source is `suggestionRecord.artifact_id` for the `fullSuggestedPath`.
+        - For context fields, if the field is an array and action is `add`, and `suggested_value` is an array, append sources for each new item as `fullSuggestedPath[index]: artifactId`.
+        - Otherwise, source the `fullSuggestedPath` to `suggestionRecord.artifact_id`.
+  8. Perform a batch update to the `contacts` table with the modified context fields, direct fields, and the updated `field_sources`.
+  9. Update the `contact_update_suggestions` record status to 'applied' (or 'partial' if not all originally suggested paths were selected) and record `user_selections` and `reviewed_at` timestamp.
+  10. Return 200 OK with a success message.
+- **Error Handling:**
+  - Validates request body parameters.
+  - Handles cases where suggestions or contacts are not found (404).
+  - Catches database errors during contact or suggestion updates (500).
+  - Logs errors to the console for server-side debugging.
+- **Security Notes:**
+  - Relies on Supabase Row Level Security (RLS) to ensure that the user making the request has permission to access and modify the specified `suggestionRecord` and its associated `contact`. The code itself does not perform an explicit `supabase.auth.getUser()` and subsequent ownership check on the contact/suggestion, assuming RLS handles this. This is a critical security assumption.
+  - Input `selectedPaths` are used to pick from existing suggestions; new paths cannot be arbitrarily injected.
+  - The `setValueAtPath` helper needs to be robust to prevent prototype pollution if paths could be maliciously crafted, though currently paths come from trusted suggestions.
+- **Cross-references:**
+  - Modifies `contacts` and `contact_update_suggestions` tables in Supabase.
+  - Uses types from `@/types/suggestions.ts` and `@/lib/supabase/database.types.ts`.
+  - Relies on the `arrayFieldPaths` set for correct handling of array updates within context objects.
+  - This route is the backend for applying suggestions likely reviewed in `SuggestionsPanel.tsx` or `UpdateSuggestionsModal.tsx`.
 
 ---
 
 ### voice-memo/[id]/reprocess/route.ts
 
-- **Purpose:** API route to re-trigger AI parsing for a voice memo artifact.
+- **Purpose:** API route to re-trigger the AI parsing process for an existing voice memo artifact. This is typically used if the initial parsing failed or needs to be redone with updated logic.
 - **Imports:**
   - Next.js: NextRequest, NextResponse
-  - Supabase server client
+  - Supabase server client (`@/lib/supabase/server`)
+- **Request (POST):**
+  - **Path Parameter:** `id` (string) - The ID of the voice memo artifact to reprocess.
+  - **Body:** None explicitly required by this route, but the invoked Edge Function `parse-voice-memo` expects `{ artifactId: string }`.
+- **Responses:**
+  - **Success (200 OK):** AI reprocessing successfully initiated and the `parse-voice-memo` Edge Function invoked.
+    ```typescript
+    interface ReprocessSuccessResponse {
+      message: string; // e.g., "AI reprocessing initiated and Edge Function invoked."
+      artifact_id: string;
+    }
+    ```
+  - **Error (400 Bad Request):** Artifact ID is missing, artifact is not a voice memo, or transcription is not yet completed.
+    ```typescript
+    interface BadRequestResponse {
+      error: string; // e.g., "Artifact ID is required", "Only voice memo artifacts can be reprocessed.", "AI parsing can only be retriggered if transcription is completed."
+    }
+    ```
+  - **Error (401 Unauthorized):** (Implicit) User not authenticated, assuming RLS on `artifacts` table prevents unauthorized access.
+    ```typescript
+    // Hypothetical if explicit auth check were added
+    // interface UnauthorizedResponse {
+    //   error: string; // e.g., "User not authenticated"
+    // }
+    ```
+  - **Error (404 Not Found):** Artifact with the given ID does not exist.
+    ```typescript
+    interface NotFoundResponse {
+      error: string; // e.g., "Artifact not found", "Artifact not found: <db_error_message>"
+    }
+    ```
+  - **Error (500 Internal Server Error):** Failed to update artifact status in the database, error invoking Edge Function (logged, but route may still return success for status update), or an unexpected server error.
+    ```typescript
+    interface InternalServerErrorResponse {
+      error: string; // e.g., "Failed to update artifact for reprocessing: <db_error_message>", "An unexpected error occurred"
+    }
+    ```
 - **Handler:**
   ```ts
-  export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> })
+  export async function POST(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+  )
   ```
-  - Authenticates and validates artifact ID
-  - Fetches artifact, checks type and status
-  - Updates artifact to set AI parsing status to 'pending'
-  - Invokes the 'parse-voice-memo' Edge Function
-  - Returns status and error messages
+- **Key Logic Flow:**
+  1. Retrieve `artifactId` from path parameters. Return 400 if missing.
+  2. Fetch the artifact by `artifactId` from the `artifacts` table, selecting `id, type, transcription_status, ai_parsing_status`.
+  3. Return 404 if artifact not found or on database fetch error.
+  4. Validate artifact: 
+     a. Must be `type: 'voice_memo'`. Return 400 if not.
+     b. `transcription_status` must be `'completed'`. Return 400 if not.
+  5. Update the artifact record in the `artifacts` table:
+     a. Set `ai_parsing_status: 'pending'`.
+     b. Set `ai_processing_started_at: new Date().toISOString()`.
+     c. Set `ai_processing_completed_at: null`.
+  6. If artifact update fails, return 500.
+  7. Invoke the `parse-voice-memo` Supabase Edge Function, passing `{ artifactId }` in the body.
+     a. Log any errors from the Edge Function invocation but proceed (the main purpose of this route is to update the status and trigger; the Edge Function handles its own success/failure).
+  8. Return 200 OK with a success message and the `artifact_id`.
+- **Error Handling:**
+  - Validates that an artifact ID is provided.
+  - Checks if the artifact exists and is of the correct type (`voice_memo`) and state (`transcription_status: 'completed'`).
+  - Handles database errors when fetching or updating the artifact.
+  - Logs errors related to Edge Function invocation for debugging but doesn't necessarily fail the request if the status update was successful.
+  - Catches unexpected errors and returns a generic 500 response.
+- **Security Notes:**
+  - Relies on Supabase Row Level Security (RLS) on the `artifacts` table to ensure the authenticated user has permission to fetch and update the artifact. The route does not perform an explicit `getUser()` and ownership check itself for this specific operation but trusts RLS.
+  - The primary action is a state change and triggering a backend function; direct data manipulation by user input is minimal (only `artifactId`).
+- **Cross-references:**
+  - Modifies the `artifacts` table in Supabase.
+  - Invokes the `parse-voice-memo` Supabase Edge Function (see `supabase/functions/parse-voice-memo/index.ts`).
+  - Related to voice memo lifecycle and AI processing features (e.g., `VoiceMemoDetailModal.tsx` might have a button to trigger this).
 
 ---
 
 ### voice-memo/[id]/delete/route.ts
 
-- **Purpose:** API route to delete a voice memo artifact and its storage file, with suggestion checks.
+- **Purpose:** API route to delete a specific voice memo artifact. It also handles deleting the associated audio file from Supabase Storage. A key check is performed to prevent deletion if the voice memo has any suggestions that have been approved or partially approved.
 - **Imports:**
   - Next.js: NextRequest, NextResponse
-  - Supabase server client
+  - Supabase server client (`@/lib/supabase/server`)
+- **Request (DELETE):**
+  - **Path Parameter:** `id` (string) - The ID of the voice memo artifact to delete.
+- **Responses:**
+  - **Success (200 OK):** Voice memo successfully deleted (or was already deleted/not found, which is treated as a success for idempotency).
+    ```typescript
+    interface DeleteSuccessResponse {
+      message: string; // e.g., "Voice memo successfully deleted." or "Artifact not found or already deleted."
+      artifact_id: string;
+    }
+    ```
+  - **Error (400 Bad Request):** Artifact ID is missing, or the artifact is not a voice memo.
+    ```typescript
+    interface BadRequestResponse {
+      error: string; // e.g., "Artifact ID is required for deletion", "Deletion target is not a voice memo."
+    }
+    ```
+  - **Error (401 Unauthorized):** (Implicit) User not authenticated, assuming RLS on `artifacts` table prevents unauthorized access/deletion.
+    ```typescript
+    // Hypothetical if explicit auth check were added
+    // interface UnauthorizedResponse {
+    //   error: string; // e.g., "User not authenticated"
+    // }
+    ```
+  - **Error (403 Forbidden):** Deletion is blocked because the voice memo has approved or partially approved suggestions.
+    ```typescript
+    interface ForbiddenResponse {
+      error: string; // "This voice memo cannot be deleted because one or more of its suggestions have been approved..."
+    }
+    ```
+  - **Error (500 Internal Server Error):** Failed to check suggestion status, fetch artifact, delete artifact record, or an unexpected server error occurred.
+    ```typescript
+    interface InternalServerErrorResponse {
+      error: string; // e.g., "Failed to check suggestion status: <db_error_message>", "Error fetching artifact: <db_error_message>"
+    }
+    ```
 - **Handler:**
   ```ts
-  export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> })
+  export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+  )
   ```
-  - Checks for approved/partial suggestions for the artifact
-  - Fetches artifact, checks type
-  - Deletes artifact from DB and associated audio file from storage
-  - Returns status and error messages
+- **Key Logic Flow:**
+  1. Retrieve `artifactIdToDelete` from path parameters. Return 400 if missing.
+  2. Check `contact_update_suggestions` table: Query for any suggestions linked to `artifactIdToDelete` with status `'approved'` or `'partial'`.
+     a. If database error during check, return 500.
+     b. If any such suggestions exist, return 403 Forbidden.
+  3. Fetch the artifact by `artifactIdToDelete` from `artifacts` table, selecting `id, type, audio_file_path`.
+     a. If database error during fetch, return 500.
+     b. If artifact not found, return 200 OK with a message (idempotent delete).
+  4. Validate that `artifact.type` is `'voice_memo'`. Return 400 if not.
+  5. Delete the artifact record from the `artifacts` table using `artifactIdToDelete`.
+     a. If database error during deletion, return 500.
+  6. If the fetched artifact had an `audio_file_path`, attempt to delete the file from Supabase Storage (`voice-memos` bucket).
+     a. Log a warning if storage deletion fails, but do not fail the request as the database record is already deleted.
+  7. Return 200 OK with a success message and the `artifact_id`.
+- **Error Handling:**
+  - Validates that an artifact ID is provided.
+  - Handles database errors during suggestion checks, artifact fetching, and artifact deletion.
+  - Specifically blocks deletion (403) if linked suggestions are approved/partial.
+  - Treats "not found" during fetch as a successful (idempotent) deletion, returning 200.
+  - Logs warnings for storage deletion failures but doesn't fail the overall operation for it.
+  - Catches unexpected errors and returns a generic 500 response.
+- **Security Notes:**
+  - Relies on Supabase Row Level Security (RLS) on `artifacts` and `contact_update_suggestions` tables to ensure the authenticated user has appropriate permissions. The route itself does not perform explicit `getUser()` and ownership checks for this specific operation.
+  - The check against approved suggestions prevents accidental data loss where voice memo content has been integrated into a contact's profile.
+- **Cross-references:**
+  - Interacts with `artifacts` and `contact_update_suggestions` tables in Supabase.
+  - Interacts with Supabase Storage (`voice-memos` bucket).
+  - This route would be called from UI elements that allow deleting voice memos, such as `VoiceMemoDetailModal.tsx`.
 
 ---
 
