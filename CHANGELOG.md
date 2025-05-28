@@ -5,6 +5,41 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-05-28
+
+### Added
+- **Phase 3: AI Processing Pipeline for Meeting Artifacts:**
+  - Extended `parse-artifact` edge function to handle both voice memos and meetings with unified AI processing.
+  - Implemented meeting-specific AI processing with insights extraction for action items, key topics, and summaries.
+  - Created database triggers for automatic meeting processing when artifacts are created or updated.
+  - Updated Google Calendar service to set `ai_parsing_status = 'pending'` for automatic AI processing.
+  - Enhanced meeting metadata with AI-extracted insights stored in artifact metadata.
+  - Unified AI processing pipeline ensuring both voice memos and meetings use the same suggestion workflow.
+
+- **Database Schema Enhancements:**
+  - Added migration `20250528024821_add_meeting_ai_processing.sql` for meeting AI processing support.
+  - Created `trigger_meeting_ai_processing()` function for automatic meeting artifact processing.
+  - Updated existing voice memo triggers to use the new unified `parse-artifact` function.
+  - Ensured backward compatibility with existing voice memo processing workflow.
+
+- **Meeting Intelligence Features:**
+  - AI extraction of action items from meeting content with priority and completion tracking.
+  - Automatic identification of key topics and pain points discussed in meetings.
+  - Meeting summary generation for quick overview of discussion content.
+  - Integration with existing contact update and loop suggestion systems.
+
+### Fixed
+- **Type System & Build Issues:**
+  - Regenerated Supabase types to include new `user_integrations` and `calendar_sync_logs` tables.
+  - Resolved TypeScript compilation errors in calendar API routes.
+  - Fixed unused import linting errors in calendar authentication endpoints.
+
+### Changed
+- **AI Processing Architecture:**
+  - Consolidated voice memo and meeting processing into single `parse-artifact` edge function.
+  - Enhanced OpenAI prompts to handle both transcription and meeting content dynamically.
+  - Improved error handling and status tracking for all artifact types in AI processing pipeline.
+
 ## [0.5.0] - 2025-05-28
 
 ### Added
