@@ -150,6 +150,25 @@ export interface MeetingArtifactMetadata {
   attendees?: string[];
   meeting_date?: string; // ISO string
   location?: string;
+  // Google Calendar specific fields
+  google_calendar_id?: string; // Google Calendar event ID
+  google_calendar_link?: string; // Google Meet/Calendar link
+  google_calendar_html_link?: string; // Web link to the event
+  organizer?: {
+    email?: string;
+    name?: string;
+    self?: boolean; // Whether the current user is the organizer
+  };
+  attendee_emails?: string[]; // Email addresses for contact matching
+  duration_minutes?: number;
+  recurring_event_id?: string; // For recurring meetings
+  conference_data?: {
+    type?: 'google_meet' | 'zoom' | 'teams' | 'other';
+    join_url?: string;
+    conference_id?: string;
+  };
+  calendar_source?: 'google' | 'manual' | 'other';
+  last_synced_at?: string; // When this was last synced from Google Calendar
   // content can be meeting notes summary, full notes in a specific field if needed
 }
 export interface MeetingArtifact extends ArtifactGlobal<string | null> {

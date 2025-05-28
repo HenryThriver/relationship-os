@@ -1,9 +1,9 @@
 import type { ArtifactTimelineConfig } from '@/types/timeline';
 import type { ArtifactType } from '@/types/artifact'; // The main ArtifactType
 import {
-  FiFileText, FiMic, FiUsers, FiMail, FiLink, FiClipboard, FiTarget, FiRefreshCw, FiBell, FiBriefcase, FiCheckCircle, FiGift, FiHelpCircle, FiMessageSquare, FiThumbsUp, FiZap
+  FiFileText, FiMic, FiUsers, FiMail, FiLink, FiClipboard, FiTarget, FiRefreshCw, FiBell, FiBriefcase, FiCheckCircle, FiGift, FiHelpCircle, FiMessageSquare, FiThumbsUp, FiZap, FiVideo
 } from 'react-icons/fi';
-import { ArtifactGlobal, LoopArtifactContent, LoopStatus } from '@/types'; // Added LoopArtifactContent and LoopStatus
+import { ArtifactGlobal, LoopArtifactContent, LoopStatus, MeetingArtifactMetadata } from '@/types'; // Added LoopArtifactContent and LoopStatus
 import { Loop as LoopIcon } from '@mui/icons-material'; // Added for new loop config
 
 // Helper to truncate text for previews
@@ -30,10 +30,24 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
                         : `Duration: ${content?.duration_seconds || 'N/A'}s`,
   },
   meeting: {
-    icon: FiUsers,
-    color: 'success.main',
+    icon: FiVideo,
+    color: '#1976d2', // Blue for meetings
     badgeLabel: 'Meeting',
-    getPreview: (content) => truncateText(content?.summary || content?.title || 'Meeting details'),
+    getPreview: (content: any) => {
+      // Handle both old and new meeting artifact formats
+      // For new format, metadata should be accessible through content
+      if (content && typeof content === 'object') {
+        const title = content.title || content.summary || 'Meeting';
+        const attendeeCount = content.attendees?.length || content.attendee_emails?.length || 0;
+        const duration = content.duration_minutes ? ` • ${content.duration_minutes}m` : '';
+        const source = content.calendar_source === 'google' ? ' 📅' : '';
+        
+        return `${title}${attendeeCount > 0 ? ` • ${attendeeCount} attendees` : ''}${duration}${source}`;
+      }
+      
+      // Fallback for legacy format or string content
+      return truncateText(typeof content === 'string' ? content : 'Meeting details');
+    },
   },
   email: {
     icon: FiMail,
