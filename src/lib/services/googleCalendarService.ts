@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import type { 
   GoogleCalendarEvent, 
   ContactEmailMatch, 
@@ -11,7 +11,7 @@ import type {
 import type { MeetingArtifactMetadata } from '@/types/artifact';
 
 export class GoogleCalendarService {
-  private supabase = createClient();
+  private supabase = supabase;
 
   /**
    * Get user's Google Calendar integration

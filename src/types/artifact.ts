@@ -148,28 +148,46 @@ export interface EmailArtifact extends ArtifactGlobal<string | null> {
 export interface MeetingArtifactMetadata {
   title?: string;
   attendees?: string[];
-  meeting_date?: string; // ISO string
+  meeting_date?: string;
   location?: string;
-  // Google Calendar specific fields
-  google_calendar_id?: string; // Google Calendar event ID
-  google_calendar_link?: string; // Google Meet/Calendar link
-  google_calendar_html_link?: string; // Web link to the event
+  google_calendar_id?: string;
+  google_calendar_link?: string;
+  google_calendar_html_link?: string;
   organizer?: {
-    email?: string;
+    email: string;
     name?: string;
-    self?: boolean; // Whether the current user is the organizer
+    self?: boolean;
   };
-  attendee_emails?: string[]; // Email addresses for contact matching
+  attendee_emails?: string[];
   duration_minutes?: number;
-  recurring_event_id?: string; // For recurring meetings
+  recurring_event_id?: string;
   conference_data?: {
-    type?: 'google_meet' | 'zoom' | 'teams' | 'other';
+    type: 'google_meet' | 'zoom' | 'teams' | 'other';
     join_url?: string;
     conference_id?: string;
   };
-  calendar_source?: 'google' | 'manual' | 'other';
-  last_synced_at?: string; // When this was last synced from Google Calendar
-  // content can be meeting notes summary, full notes in a specific field if needed
+  calendar_source?: 'google' | 'outlook' | 'manual';
+  last_synced_at?: string;
+  insights?: {
+    actionItems?: Array<{
+      id: string;
+      description: string;
+      assignee?: string;
+      dueDate?: string;
+      priority: 'high' | 'medium' | 'low';
+      completed?: boolean;
+    }>;
+    keyTopics?: string[];
+    sentiment?: 'positive' | 'neutral' | 'negative';
+    followUpSuggestions?: Array<{
+      type: 'pog' | 'ask' | 'schedule_meeting';
+      description: string;
+      priority: number;
+      reasoning: string;
+    }>;
+    summary?: string;
+    nextSteps?: string[];
+  };
 }
 export interface MeetingArtifact extends ArtifactGlobal<string | null> {
   type: 'meeting';

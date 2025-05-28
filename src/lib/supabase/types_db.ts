@@ -109,6 +109,45 @@ export type Database = {
           },
         ]
       }
+      calendar_sync_logs: {
+        Row: {
+          artifacts_created: number | null
+          contacts_updated: string[] | null
+          errors: Json | null
+          events_processed: number | null
+          id: string
+          metadata: Json | null
+          status: string | null
+          sync_completed_at: string | null
+          sync_started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          artifacts_created?: number | null
+          contacts_updated?: string[] | null
+          errors?: Json | null
+          events_processed?: number | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          sync_completed_at?: string | null
+          sync_started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          artifacts_created?: number | null
+          contacts_updated?: string[] | null
+          errors?: Json | null
+          events_processed?: number | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          sync_completed_at?: string | null
+          sync_started_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       contact_update_suggestions: {
         Row: {
           applied_at: string | null
@@ -451,6 +490,45 @@ export type Database = {
           },
         ]
       }
+      user_integrations: {
+        Row: {
+          access_token: string | null
+          created_at: string | null
+          id: string
+          integration_type: string
+          metadata: Json | null
+          refresh_token: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string | null
+          id?: string
+          integration_type: string
+          metadata?: Json | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string | null
+          id?: string
+          integration_type?: string
+          metadata?: Json | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -458,6 +536,29 @@ export type Database = {
     Functions: {
       get_decrypted_secret: {
         Args: { secret_name: string }
+        Returns: string
+      }
+      get_user_integration: {
+        Args: { p_user_id: string; p_integration_type: string }
+        Returns: {
+          id: string
+          access_token: string
+          refresh_token: string
+          token_expires_at: string
+          scopes: string[]
+          metadata: Json
+        }[]
+      }
+      upsert_user_integration: {
+        Args: {
+          p_user_id: string
+          p_integration_type: string
+          p_access_token: string
+          p_refresh_token?: string
+          p_token_expires_at?: string
+          p_scopes?: string[]
+          p_metadata?: Json
+        }
         Returns: string
       }
     }

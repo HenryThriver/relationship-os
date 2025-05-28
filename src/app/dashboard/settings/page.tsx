@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Container, Box, Typography, Grid, Card, CardContent, CardActionArea, Breadcrumbs, Link } from '@mui/material';
-import { Loop as LoopIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import { Loop as LoopIcon, Settings as SettingsIcon, CalendarToday } from '@mui/icons-material';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -15,6 +15,12 @@ export default function SettingsPage() {
       description: 'Manage templates for common loop workflows like introductions, referrals, and follow-ups',
       icon: <LoopIcon sx={{ fontSize: 40 }} color="primary" />,
       href: '/dashboard/settings/loops'
+    },
+    {
+      title: 'Calendar Integration',
+      description: 'Connect Google Calendar to automatically import meetings and sync your schedule',
+      icon: <CalendarToday sx={{ fontSize: 40 }} color="primary" />,
+      href: '/dashboard/settings/calendar'
     },
     // Future settings options can be added here
     // {
