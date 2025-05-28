@@ -61,35 +61,40 @@ Briefly mentally review the "Connection OS Development Rules" (often provided in
 
 ## 6. Setup Git Branch and Sync Local Environment
 
-Ensure your local development environment is synchronized and you are working on an appropriate branch. **Always work on a feature, bugfix, or task-specific branch. Never commit directly to `main` (or `develop` if used as a primary integration branch).**
+Ensure your local development environment is synchronized and you are working on an appropriate branch. **Our primary development branch is `develop`. Always work on a feature, bugfix, or task-specific branch. Never commit directly to `main` or `develop`.**
 
 - **Check current branch and status**:
   ```bash
   git status
   ```
-- **Ensure your base branch (`main` or `develop`) is up-to-date**:
+- **Update `develop` branch and sync with `main`**:
+  This ensures `develop` has the latest from `main` before you start new work.
   ```bash
-  git checkout main # Or 'develop' if that's your primary integration branch
-  git pull origin main # Or 'develop'
+  git checkout develop
+  git pull origin develop
+  git merge main # Ensure develop has latest from main (resolve conflicts if any)
+  git push origin develop # Push the updated develop branch
   ```
-- **Create and switch to a new task-specific branch**:
-  If you are starting new work, create a branch from your up-to-date base branch.
+- **Create and switch to a new task-specific branch (from `develop`)**:
+  If you are starting new work, create a branch from your up-to-date `develop` branch.
   ```bash
-  # Example: git checkout -b feature/user-profile-page
-  # Example: git checkout -b bugfix/login-form-validation
+  # Ensure you are on develop first (previous step should cover this)
+  # git checkout develop 
   git checkout -b <type>/<short-descriptive-name>
   ```
   *Replace `<type>` with `feature`, `bugfix`, `chore`, `refactor`, etc., and `<short-descriptive-name>` with a concise, hyphenated name reflecting the task.*
 
-- **If continuing work on an existing branch**:
-  Switch to your branch and ensure it's up-to-date (e.g., by rebasing onto main/develop or pulling if it's a shared branch).
+- **If continuing work on an existing feature branch**:
+  Switch to your branch and ensure it's up-to-date by rebasing onto `develop`.
   ```bash
   git checkout <your-existing-branch-name>
-  # Optional: Rebase onto main to incorporate latest changes
-  # git rebase main # Or 'develop'
-  # Or, if it's a shared branch you pull from:
-  # git pull origin <your-existing-branch-name>
+  # First, ensure your local develop is up-to-date (pull if necessary)
+  git fetch origin 
+  git rebase origin/develop # Or simply 'git rebase develop' if local develop tracks origin/develop and is current
+  # If you need to push after rebasing (and it's a shared branch or you want to update your remote)
+  # git push origin <your-existing-branch-name> --force-with-lease 
   ```
+  *(Note: Use `git push --force-with-lease` cautiously, especially on shared branches. It's generally safer to coordinate with collaborators or use it for your own remote feature branches. If `develop` was updated locally without fetching, you might need `git rebase develop` after ensuring local `develop` is current.)*
 
 ## 7. Define the Goal for the Session
 
