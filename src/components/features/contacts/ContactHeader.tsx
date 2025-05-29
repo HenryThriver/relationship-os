@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, Paper, Avatar, Button, Stack, Chip } from '@mui/material';
+import { Email } from '@mui/icons-material';
 import { SuggestionNotificationBadge } from '../suggestions/SuggestionNotificationBadge';
 import type { PersonalContext as PersonalContextType } from '@/types';
 
@@ -20,6 +21,7 @@ interface ContactHeaderProps {
   title?: string | null;
   company?: string | null;
   location?: string | null;
+  email?: string | null;
   profilePhotoUrl?: string | null;
   relationshipScore?: number | null;
   personalContext?: PersonalContextType | null;
@@ -41,6 +43,7 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
   title,
   company,
   location,
+  email,
   profilePhotoUrl,
   relationshipScore,
   personalContext,
@@ -149,6 +152,12 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
               <Typography sx={{ color: '#6b7280' /* gray-500 */, fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
                 <Box component="span" className="emoji" sx={{ mr: 0.75, color: 'text.secondary'}}>📍</Box>
                 {location}
+              </Typography>
+            )}
+            {email && (
+              <Typography sx={{ color: '#6b7280' /* gray-500 */, fontSize: '0.75rem', display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                <Email fontSize="small" sx={{ mr: 0.75, color: 'text.secondary'}} />
+                {email}
               </Typography>
             )}
             {userGoal && (

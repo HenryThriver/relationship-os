@@ -13,14 +13,14 @@ import { EnhancedTimelineItem } from './EnhancedTimelineItem';
 import { EnhancedTimelineFilters } from './EnhancedTimelineFilters';
 import { EnhancedTimelineStats, TimelineStatsData } from './EnhancedTimelineStats';
 import { TimelineSkeleton } from './TimelineSkeleton';
-import type { ArtifactGlobal, ArtifactType, GroupedArtifact } from '@/types';
+import type { BaseArtifact, ArtifactType, GroupedArtifact } from '@/types';
 import { useArtifactTimeline } from '@/lib/hooks/useArtifactTimeline';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { ALL_ARTIFACT_TYPES } from '@/config/artifactConfig';
 
 interface ArtifactTimelineProps {
   contactId: string;
-  onArtifactClick?: (artifact: ArtifactGlobal) => void;
+  onArtifactClick?: (artifact: BaseArtifact) => void;
 }
 
 const defaultStats: TimelineStatsData = {

@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
-import type { ArtifactGlobal, VoiceMemoArtifact } from '@/types';
+import type { BaseArtifact, VoiceMemoArtifact } from '@/types';
 import type { UpdateSuggestionRecord, ContactUpdateSuggestion } from '@/types/suggestions';
 import type { Contact } from '@/types/contact';
 
 interface UseArtifactModalDataReturn {
-  artifactDetails: ArtifactGlobal | null;
+  artifactDetails: BaseArtifact | null;
   relatedSuggestions: UpdateSuggestionRecord[];
   displayedContactProfileUpdates: Record<string, string>;
   contactName?: string;
@@ -35,7 +35,7 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
     data: artifactDetails, 
     isLoading: isLoadingArtifact, 
     error: artifactError 
-  } = useQuery<ArtifactGlobal | null, Error>({
+  } = useQuery<BaseArtifact | null, Error>({
     queryKey: ['artifactDetail', artifactId],
     queryFn: async () => {
       if (!artifactId) return null;
@@ -60,7 +60,7 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
       // --- END DEBUG LOG ---
 
       if (error) throw error;
-      return data as ArtifactGlobal;
+      return data as BaseArtifact;
     },
     enabled: !!artifactId,
   });

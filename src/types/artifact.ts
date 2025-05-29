@@ -5,7 +5,8 @@ export type ArtifactTypeEnum = Database['public']['Enums']['artifact_type_enum']
 export type ExtendedArtifactType = 'pog' | 'ask' | 'prompt_set' | 'goal' | 'linkedin_interaction'; // Types not in the DB enum, handled client-side
 export type ArtifactType = ArtifactTypeEnum | ExtendedArtifactType;
 
-export interface ArtifactGlobal<TContent = Record<string, any> | string | null> { // Made generic, default to allow string or object for backward compatibility or unspecified content
+// Renamed from ArtifactGlobal to BaseArtifact
+export interface BaseArtifact<TContent = Record<string, any> | string | null> { 
   id: string;
   contact_id: string;
   user_id: string;
@@ -16,6 +17,7 @@ export interface ArtifactGlobal<TContent = Record<string, any> | string | null> 
   timestamp: string; 
   created_at: string;
   updated_at: string;
+  ai_parsing_status?: 'pending' | 'processing' | 'completed' | 'failed' | null; // Added here
 }
 
 // --- LinkedIn Artifact --- 
@@ -79,7 +81,7 @@ export interface LinkedInArtifactContent {
   location?: string; // General location string, if different from geo.full
 }
 
-export interface LinkedInArtifact extends ArtifactGlobal<string> { // Assuming content is a string for LinkedIn Profile, specific data in metadata
+export interface LinkedInArtifact extends BaseArtifact<string> { // Assuming content is a string for LinkedIn Profile, specific data in metadata
   type: 'linkedin_profile';
   metadata: LinkedInArtifactContent; // metadata holds the rich object
 }
@@ -95,7 +97,7 @@ export interface POGArtifactContent {
   // ... other POG-specific fields
 }
 
-export interface POGArtifact extends ArtifactGlobal<string> { // Assuming content is a string, specific data in metadata
+export interface POGArtifact extends BaseArtifact<string> { // Assuming content is a string, specific data in metadata
   type: 'pog';
   metadata: POGArtifactContent;
 }
@@ -111,7 +113,7 @@ export interface AskArtifactContent {
   // ... other Ask-specific fields
 }
 
-export interface AskArtifact extends ArtifactGlobal<string> { // Assuming content is a string, specific data in metadata
+export interface AskArtifact extends BaseArtifact<string> { // Assuming content is a string, specific data in metadata
   type: 'ask';
   metadata: AskArtifactContent;
 }
@@ -119,13 +121,12 @@ export interface AskArtifact extends ArtifactGlobal<string> { // Assuming conten
 // --- Voice Memo Artifact ---
 export type TranscriptionStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
-export interface VoiceMemoArtifact extends ArtifactGlobal<string | null> { // Assuming content might hold transcription or be unused
+export interface VoiceMemoArtifact extends BaseArtifact<string | null> { // Assuming content might hold transcription or be unused
   type: 'voice_memo';
   audio_file_path: string;
   transcription?: string | null; // This could be mapped to `content` if desired
   duration_seconds?: number | null;
   transcription_status: TranscriptionStatus;
-  ai_parsing_status?: string | null;
   ai_processing_started_at?: string | null;
   ai_processing_completed_at?: string | null;
 }
@@ -139,17 +140,23 @@ export interface EmailArtifactMetadata {
   date_received?: string; // ISO string
   // content can be the email body summary, full body in a specific field if needed
 }
-export interface EmailArtifact extends ArtifactGlobal<string | null> {
+export interface EmailArtifact extends BaseArtifact<string | null> {
   type: 'email';
   metadata?: EmailArtifactMetadata | null; // Allow null for metadata
 }
 
 // --- Meeting Artifact --- NEW
-export interface MeetingArtifactMetadata {
+export interface MeetingArtifactContent {
   title?: string;
-  attendees?: string[];
-  meeting_date?: string;
+  startTime: string; // Ensure these are present, adjust types if necessary (e.g., Date or string)
+  endTime: string;   // Ensure these are present
   location?: string;
+  attendees?: Array<{ // This was string[] in metadata, changing to a more structured type
+    email: string;
+    name?: string;
+    responseStatus?: string; // e.g., 'accepted', 'declined', 'tentative'
+    isOrganizer?: boolean;
+  }>;
   google_calendar_id?: string;
   google_calendar_link?: string;
   google_calendar_html_link?: string;
@@ -158,7 +165,6 @@ export interface MeetingArtifactMetadata {
     name?: string;
     self?: boolean;
   };
-  attendee_emails?: string[];
   duration_minutes?: number;
   recurring_event_id?: string;
   conference_data?: {
@@ -168,7 +174,10 @@ export interface MeetingArtifactMetadata {
   };
   calendar_source?: 'google' | 'outlook' | 'manual';
   last_synced_at?: string;
-  insights?: {
+  notes?: string; // Added for explicit notes content
+  transcript?: string; // Added for explicit transcript content
+  recording_url?: string; // Added for explicit recording URL
+  insights?: { // This was already well-defined in MeetingArtifactMetadata
     actionItems?: Array<{
       id: string;
       description: string;
@@ -180,6 +189,7 @@ export interface MeetingArtifactMetadata {
     keyTopics?: string[];
     sentiment?: 'positive' | 'neutral' | 'negative';
     followUpSuggestions?: Array<{
+      id: string; // Added id for follow up suggestions
       type: 'pog' | 'ask' | 'schedule_meeting';
       description: string;
       priority: number;
@@ -189,9 +199,13 @@ export interface MeetingArtifactMetadata {
     nextSteps?: string[];
   };
 }
-export interface MeetingArtifact extends ArtifactGlobal<string | null> {
+
+export interface MeetingArtifact extends BaseArtifact<MeetingArtifactContent> {
   type: 'meeting';
-  metadata?: MeetingArtifactMetadata | null; // Allow null for metadata
+  // metadata can be used for fields not fitting into content, or deprecated if content covers all.
+  // For now, let's assume most of the old metadata is now in MeetingArtifactContent.
+  // If specific metadata fields are still needed, they can be defined here.
+  // Example: metadata?: { some_meeting_specific_flag?: boolean };
 }
 
 // --- Note Artifact --- NEW
@@ -199,7 +213,7 @@ export interface NoteArtifactMetadata {
   title?: string;
   // content is the note itself
 }
-export interface NoteArtifact extends ArtifactGlobal<string> { // Assuming content is the note text
+export interface NoteArtifact extends BaseArtifact<string> { // Assuming content is the note text
   type: 'note';
   metadata?: NoteArtifactMetadata | null; // Allow null for metadata
 }
@@ -312,7 +326,7 @@ export interface LoopArtifactContent {
   previous_loop_success?: boolean;
 }
 
-export interface LoopArtifact extends ArtifactGlobal<LoopArtifactContent> { 
+export interface LoopArtifact extends BaseArtifact<LoopArtifactContent> { 
   type: 'loop'; 
   // content is now correctly typed via the generic parameter TContent = LoopArtifactContent
 }
@@ -367,17 +381,17 @@ export interface LoopAnalytic {
   // updated_at is not in the schema for loop_analytics, but can be added if needed for mutations
 }
 
-// Discriminated union for more specific artifact handling
-export type TypedArtifact =
+// Union type for all specific artifacts + a fallback
+export type Artifact =
   | LinkedInArtifact
   | POGArtifact
   | AskArtifact
   | VoiceMemoArtifact
-  | EmailArtifact     // Added
-  | MeetingArtifact   // Added
-  | NoteArtifact      // Added
-  | LoopArtifact      // NEWLY ADDED
-  | ArtifactGlobal<Record<string, any> | string | null>; // Fallback for generic artifacts with wider content possibilities
+  | EmailArtifact
+  | MeetingArtifact
+  | NoteArtifact
+  | LoopArtifact
+  | BaseArtifact; // Fallback for generic artifacts or those not yet strictly typed
 
 // It might be useful to have what's stored in the 'artifacts' table directly
 export type DatabaseArtifactInsert = Database['public']['Tables']['artifacts']['Insert'];

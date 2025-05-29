@@ -64,11 +64,46 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
   const [error, setError] = useState<string | null>(null);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [syncOptions, setSyncOptions] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 months ago
+    endDate: new Date().toISOString().split('T')[0], // Today
     maxResults: 250,
     includeDeclined: false,
   });
+
+  // Preset date range options
+  const dateRangePresets = [
+    {
+      label: 'Last 7 days',
+      days: 7,
+    },
+    {
+      label: 'Last 30 days',
+      days: 30,
+    },
+    {
+      label: 'Last 3 months',
+      days: 90,
+    },
+    {
+      label: 'Last 6 months',
+      days: 180,
+    },
+    {
+      label: 'Last year',
+      days: 365,
+    },
+  ];
+
+  const handlePresetSelect = (days: number) => {
+    const endDate = new Date();
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    setSyncOptions(prev => ({
+      ...prev,
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+    }));
+  };
 
   // Fetch sync status
   const fetchSyncStatus = async (): Promise<void> => {
@@ -82,7 +117,7 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
       
       const data = await response.json();
       setSyncStatus(data);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching sync status:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch sync status');
     } finally {
@@ -102,7 +137,7 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
       
       const { authUrl } = await response.json();
       window.location.href = authUrl;
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error connecting calendar:', err);
       setError(err instanceof Error ? err.message : 'Failed to connect calendar');
     }
@@ -142,7 +177,7 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
       
       // You could show a success toast here
       console.log('Sync completed:', result);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error syncing calendar:', err);
       setError(err instanceof Error ? err.message : 'Sync failed');
     } finally {
@@ -336,9 +371,36 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
             Choose the date range and options for syncing your calendar events.
           </Typography>
 
+          {/* Preset Date Range Buttons */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2 }}>Quick Date Ranges</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {dateRangePresets.map((preset) => (
+                <Button
+                  key={preset.days}
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handlePresetSelect(preset.days)}
+                  sx={{ 
+                    minWidth: 'auto',
+                    fontSize: '0.75rem',
+                    py: 0.5,
+                    px: 1.5,
+                  }}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </Box>
+          </Box>
+
+          <Divider sx={{ mb: 3 }} />
+
+          {/* Custom Date Range */}
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>Custom Date Range</Typography>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Start Date</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>Start Date</Typography>
               <input
                 type="date"
                 value={syncOptions.startDate}
@@ -347,7 +409,7 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>End Date</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>End Date</Typography>
               <input
                 type="date"
                 value={syncOptions.endDate}
@@ -356,7 +418,7 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
               />
             </Grid>
             <Grid size={{ xs: 12 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Max Results</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>Max Results</Typography>
               <input
                 type="number"
                 value={syncOptions.maxResults}
@@ -367,6 +429,15 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
               />
             </Grid>
           </Grid>
+
+          {/* Current Selection Summary */}
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>Selected Range:</strong> {new Date(syncOptions.startDate).toLocaleDateString()} to {new Date(syncOptions.endDate).toLocaleDateString()}
+              <br />
+              <strong>Duration:</strong> {Math.ceil((new Date(syncOptions.endDate).getTime() - new Date(syncOptions.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
+            </Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowSyncDialog(false)}>Cancel</Button>

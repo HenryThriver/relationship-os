@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
-import type { ArtifactGlobal, ArtifactType, GroupedArtifact, TimelineStatsData } from '@/types';
+import type { BaseArtifact, ArtifactType, GroupedArtifact, TimelineStatsData } from '@/types';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { ALL_ARTIFACT_TYPES } from '@/config/artifactConfig';
 
@@ -12,7 +12,7 @@ interface UseArtifactTimelineOptions {
 }
 
 // Helper to group artifacts by date and format them
-const groupAndFormatArtifacts = (artifacts: ArtifactGlobal[]): GroupedArtifact[] => {
+const groupAndFormatArtifacts = (artifacts: BaseArtifact[]): GroupedArtifact[] => {
   if (!artifacts || artifacts.length === 0) return [];
 
   const grouped = artifacts.reduce((acc, artifact) => {
@@ -22,7 +22,7 @@ const groupAndFormatArtifacts = (artifacts: ArtifactGlobal[]): GroupedArtifact[]
     }
     acc[date].push(artifact);
     return acc;
-  }, {} as Record<string, ArtifactGlobal[]>);
+  }, {} as Record<string, BaseArtifact[]>);
 
   return Object.entries(grouped)
     .map(([date, arts]) => ({
@@ -34,7 +34,7 @@ const groupAndFormatArtifacts = (artifacts: ArtifactGlobal[]): GroupedArtifact[]
 };
 
 // Helper to calculate timeline stats
-const calculateTimelineStats = (artifacts: ArtifactGlobal[]): TimelineStatsData => {
+const calculateTimelineStats = (artifacts: BaseArtifact[]): TimelineStatsData => {
   if (!artifacts || artifacts.length === 0) {
     return {
       totalArtifacts: 0,
@@ -93,7 +93,7 @@ const calculateTimelineStats = (artifacts: ArtifactGlobal[]): TimelineStatsData 
 export const useArtifactTimeline = (contactId: string, options?: UseArtifactTimelineOptions) => {
   const queryKey: [string, string, string] = ['artifactTimeline', contactId, options?.filterTypes?.sort().join('-') || 'allTypes'];
 
-  const queryFn = async (): Promise<ArtifactGlobal[]> => {
+  const queryFn = async (): Promise<BaseArtifact[]> => {
     const { data, error } = await supabase
       .from('artifacts')
       .select('*')
@@ -101,15 +101,15 @@ export const useArtifactTimeline = (contactId: string, options?: UseArtifactTime
       .order('timestamp', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return (data as ArtifactGlobal[]) || [];
+    return (data as BaseArtifact[]) || [];
   };
 
   return useQuery<
-    ArtifactGlobal[], // TQueryFnData: Data type returned by queryFn
+    BaseArtifact[], // TQueryFnData: Data type returned by queryFn
     Error,            // TError
     {                 // TData: Data type after transformation by select
-      allArtifacts: ArtifactGlobal[];
-      filteredArtifacts: ArtifactGlobal[];
+      allArtifacts: BaseArtifact[];
+      filteredArtifacts: BaseArtifact[];
       groupedArtifacts: GroupedArtifact[]; 
       stats: TimelineStatsData 
     },
@@ -117,11 +117,11 @@ export const useArtifactTimeline = (contactId: string, options?: UseArtifactTime
   >({
     queryKey: queryKey,
     queryFn: queryFn,
-    select: (data: ArtifactGlobal[]) => {
+    select: (data: BaseArtifact[]) => {
       const allArtifacts = data;
       let filteredArtifacts = allArtifacts;
       if (options?.filterTypes && options.filterTypes.length > 0) {
-        filteredArtifacts = allArtifacts.filter((artifact: ArtifactGlobal) => 
+        filteredArtifacts = allArtifacts.filter((artifact: BaseArtifact) => 
           options.filterTypes!.includes(artifact.type)
         );
       }

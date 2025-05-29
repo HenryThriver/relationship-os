@@ -11,11 +11,11 @@ import {
   Paper
 } from '@mui/material';
 import { formatDistanceToNow } from 'date-fns';
-import { ArtifactGlobal, LoopArtifact } from '@/types/artifact';
+import { BaseArtifact, LoopArtifact } from '@/types/artifact';
 import { getArtifactConfig } from '@/config/artifactConfig';
 
 interface EnhancedTimelineItemProps {
-  artifact: ArtifactGlobal;
+  artifact: BaseArtifact<any>;
   position: 'left' | 'right';
   onClick: () => void;
 }
@@ -62,6 +62,33 @@ export const EnhancedTimelineItem: React.FC<EnhancedTimelineItemProps> = ({
         />
       );
     }
+
+    if (artifact.type === 'meeting') {
+      const status = (artifact as any).ai_parsing_status || 'pending';
+      const statusConfig = {
+        completed: { color: '#d4edda', textColor: '#155724', label: 'AI Processed' },
+        processing: { color: '#fff3cd', textColor: '#856404', label: 'AI Processing' },
+        pending: { color: '#e2e3e5', textColor: '#495057', label: 'Pending AI' },
+        failed: { color: '#f8d7da', textColor: '#721c24', label: 'AI Failed' }
+      };
+      const statusStyle = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+      
+      return (
+        <Chip
+          label={statusStyle.label}
+          size="small"
+          sx={{
+            backgroundColor: statusStyle.color,
+            color: statusStyle.textColor,
+            fontSize: '11px',
+            height: '20px',
+            mb: 1,
+            fontWeight: 600
+          }}
+        />
+      );
+    }
+
     return null;
   };
 

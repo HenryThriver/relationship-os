@@ -1,4 +1,4 @@
-import type { ArtifactGlobal, ArtifactType } from './artifact'; // Assuming artifact types are here
+import type { BaseArtifact, ArtifactType } from './artifact'; // Assuming artifact types are here
 import type { IconType } from 'react-icons'; // Or from MUI if using MUI icons exclusively
 
 // Configuration for how each artifact type should be displayed in the timeline
@@ -14,7 +14,7 @@ export interface ArtifactTimelineConfig {
 export interface GroupedArtifact {
   date: string; // YYYY-MM-DD format for keying and sorting
   dateLabel: string; // User-friendly date (e.g., "May 26, 2024")
-  artifacts: ArtifactGlobal[];
+  artifacts: BaseArtifact[];
 }
 
 // Data for the statistics display above the timeline
@@ -30,8 +30,8 @@ export interface TimelineStatsData {
 // This is an alternative or extension to what might be in ./artifact.ts
 // For now, we primarily need the types used by the timeline hook and components.
 
-// Example of how you might extend ArtifactGlobal if needed, though ArtifactGlobal should be comprehensive
-// export interface TimelineArtifact extends ArtifactGlobal {
+// Example of how you might extend BaseArtifact if needed, though BaseArtifact should be comprehensive
+// export interface TimelineArtifact extends BaseArtifact {
 //   // Additional properties specific to timeline display, if any
 // }
 

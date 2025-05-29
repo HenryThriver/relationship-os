@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'; // Ensures the page is always dynamically rendered
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Container, Box, Typography, Paper, CircularProgress, Alert, List, ListItemText, ListItemButton, Button } from '@mui/material';
+import { Container, Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { default as nextDynamic } from 'next/dynamic';
@@ -40,17 +40,21 @@ import { SuggestionsPanel } from '@/components/features/suggestions/SuggestionsP
 // Placeholder for the new VoiceMemoDetailModal
 import { VoiceMemoDetailModal } from '@/components/features/voice/VoiceMemoDetailModal'; // Uncommented
 
+// Import MeetingManager for Phase V integration
+import { MeetingManager } from '@/components/features/meetings/MeetingManager';
+
+// Import ContactEmailManagement for email management
+import { ContactEmailManagement } from '@/components/features/contacts/ContactEmailManagement';
+
 // Import hooks and types
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
-import { useVoiceMemos, ProcessingStatus as VoiceMemoProcessingStatus } from '@/lib/hooks/useVoiceMemos';
+import { useVoiceMemos } from '@/lib/hooks/useVoiceMemos';
 // Import useUpdateSuggestions hook
 import { useUpdateSuggestions } from '@/lib/hooks/useUpdateSuggestions';
 import { useArtifacts } from '@/lib/hooks/useArtifacts';
 import { useArtifactModalData } from '@/lib/hooks/useArtifactModalData';
 import type { 
-    ArtifactGlobal,
-    POGArtifactContent,
-    AskArtifactContent,
+    BaseArtifact,
     POGArtifactContentStatus,
     AskArtifactContentStatus,
     PersonalContext as PersonalContextType,
@@ -63,11 +67,11 @@ import type {
     LoopArtifactContent
 } from '@/types';
 import { useToast } from '@/lib/contexts/ToastContext';
-import { ProcessingIndicator } from '@/components/features/voice/ProcessingIndicator';
 import { ProcessingStatusBar } from '@/components/features/voice/ProcessingStatusBar'; // Revert to alias import
 
 interface ContactProfilePageProps {
-  // Empty interface for future props
+  // Props interface for future use
+  params?: Record<string, string>;
 }
 
 const mapPOGStatusToActionQueueStatus = (pogStatus?: POGArtifactContentStatus): ActionQueuesActionItemStatus => {
@@ -111,7 +115,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const [isVoiceMemoDetailModalOpen, setIsVoiceMemoDetailModalOpen] = useState(false);
 
   // State for the general ArtifactModal
-  const [selectedArtifactForModal, setSelectedArtifactForModal] = useState<ArtifactGlobal | null>(null);
   const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
 
   // Add loading states for modal actions
@@ -137,11 +140,8 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const { 
     voiceMemos, 
     isLoading: isLoadingVoiceMemos,
-    isError: isVoiceMemosError, 
-    error: voiceMemosError, 
     processingCount,
-    getProcessingStatus,
-    getProcessingDuration
+    getProcessingStatus
   } = useVoiceMemos({ contact_id: contactId });
 
   // Instantiate useArtifactModalData hook
@@ -185,7 +185,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const {
     suggestions,
     isLoading: isLoadingSuggestions,
-    fetchError: suggestionsError,
     pendingCount,
     highConfidenceCount,
     markAsViewed,
@@ -199,7 +198,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
   const {
     deleteArtifact,
-    isDeletingArtifact,
   } = useArtifacts();
 
   // Memoize computed values to prevent re-renders
@@ -226,18 +224,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
   const handleCloseSuggestionsPanel = useCallback(() => {
     setSuggestionsPanelOpen(false);
-  }, []);
-
-  const handleRecordNote = useCallback(() => {
-    console.log('Record Note clicked');
-  }, []);
-
-  const handleSendPOG = useCallback(() => {
-    console.log('Send POG clicked');
-  }, []);
-
-  const handleScheduleConnect = useCallback(() => {
-    console.log('Schedule Connect clicked');
   }, []);
 
   const handleUpdateStatus = useCallback((itemId: string, newStatus: ActionQueuesActionItemStatus, type: 'pog' | 'ask') => {
@@ -272,49 +258,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     await markAsViewed({ suggestionId });
   }, [markAsViewed]);
 
-  const handleAudioEnded = useCallback(() => {
-    setPlayingAudioUrl(null);
-  }, []);
-
-  const handleAudioError = useCallback(() => {
-    setAudioPlaybackError('Error playing audio.');
-    setPlayingAudioUrl(null);
-  }, []);
-
-  const handleVoiceRecordingComplete = useCallback((artifact: unknown) => {
-    console.log('Voice memo created and processing started:', artifact);
-    queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
-    queryClient.invalidateQueries({ queryKey: ['artifacts', { contact_id: contactId }] });
-  }, [queryClient, contactId]);
-
-  const handleVoiceMemoError = useCallback((error: string) => {
-    console.error('Voice memo recording/upload error:', error);
-    // Show error notification to user, e.g., using a toast library
-    // The component itself shows an error alert.
-  }, []);
-
-  // This function will be passed to and used by the VoiceMemoDetailModal
-  const playAudioFromModal = useCallback(async (audioFilePath: string) => {
-    setAudioPlaybackError(null);
-    setPlayingAudioUrl(null); // Reset any existing playback
-    try {
-      const { data, error } = await supabase.storage
-        .from('voice-memos')
-        .createSignedUrl(audioFilePath, 60 * 1); // 1 minute signed URL
-      
-      if (error) throw error;
-      if (data?.signedUrl) {
-        setPlayingAudioUrl(data.signedUrl); // This will be used by an audio element in the modal
-        return data.signedUrl; // Return for direct use if modal handles audio element itself
-      } else {
-        throw new Error('Failed to get playable URL.');
-      }
-    } catch (e: unknown) {
-      console.error('Error creating signed URL for playback:', e);
-      setAudioPlaybackError(e instanceof Error ? e.message : 'Could not play audio.');
-      throw e; // Re-throw for modal to handle
-    }
-  }, []);
 
   interface ActionItemLike {
     id: string;
@@ -351,12 +294,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       });
   }, [contact?.artifacts]);
 
-  const handleOpenVoiceMemoDetailModal = useCallback((memo: VoiceMemoArtifact) => {
-    setSelectedVoiceMemoForDetail(memo);
-    setIsVoiceMemoDetailModalOpen(true);
-    setPlayingAudioUrl(null); // Clear any main page audio
-    setAudioPlaybackError(null);
-  }, []);
 
   const handleCloseVoiceMemoDetailModal = useCallback(() => {
     setSelectedVoiceMemoForDetail(null);
@@ -389,7 +326,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         queryClient.invalidateQueries({ queryKey: ['artifactTimeline', contactId] });
       } catch (error: unknown) {
          // Check for specific error code if deleteArtifact from useArtifacts provides it
-        if (error instanceof Error && (error as any).code === 'ARTIFACT_IS_SOURCE') {
+        if (error instanceof Error && (error as Error & { code?: string }).code === 'ARTIFACT_IS_SOURCE') {
           showToast('Cannot delete: This voice memo is a source for contact profile data.', 'error');
         } else if (error instanceof Error) {
           showToast(`Error deleting: ${error.message}`, 'error');
@@ -398,7 +335,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         }
       }
     }
-  }, [deleteArtifact, contactId, showToast, queryClient]); // Added queryClient to dependencies
+  }, [deleteArtifact, contactId, showToast, queryClient]);
 
   const handleReprocessVoiceMemoInDetailModal = useCallback(async (memoId: string) => {
     setIsReprocessingMemo(true);
@@ -422,9 +359,85 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     finally { setIsReprocessingMemo(false); }
   }, [reprocessVoiceMemo, showToast, queryClient, contactId, selectedVoiceMemoForDetail?.id]);
 
+  const handleOpenArtifactModal = useCallback((artifact: BaseArtifact) => {
+    if (artifact.type === 'loop') {
+      setSelectedLoopForEnhancedModal(artifact as LoopArtifact);
+      setIsEnhancedLoopModalOpen(true);
+      setIsArtifactModalOpen(false);
+    } else if (artifact.type === 'voice_memo') {
+        setSelectedVoiceMemoForDetail(artifact as VoiceMemoArtifact);
+        setIsVoiceMemoDetailModalOpen(true);
+        setIsArtifactModalOpen(false);
+    } else {
+      fetchArtifactData(artifact.id, contactId);
+      setIsArtifactModalOpen(true);
+      setSelectedLoopForEnhancedModal(null);
+      setIsEnhancedLoopModalOpen(false);
+    }
+  }, [fetchArtifactData, contactId]);
+
+  // ... (useEffect for artifactView query param needs to be aware of handleOpenArtifactModal)
+  useEffect(() => {
+    const artifactIdFromQuery = searchParams.get('artifactView');
+    const artifactTypeFromQuery = searchParams.get('artifactType') as BaseArtifact['type'] | null;
+
+    if (artifactIdFromQuery && artifactTypeFromQuery && contactId) {
+      console.log(`Attempting to open artifact from URL: ID=${artifactIdFromQuery}, Type=${artifactTypeFromQuery}`);
+      const placeholderArtifact: BaseArtifact = {
+          id: artifactIdFromQuery,
+          type: artifactTypeFromQuery,
+          contact_id: contactId,
+          user_id: 'placeholder_user_id', // Ensure this is present
+          created_at: new Date().toISOString(),
+          timestamp: new Date().toISOString(), // Ensure this is present
+          updated_at: new Date().toISOString(), // Ensure this is present
+          content: {}, 
+      };
+      handleOpenArtifactModal(placeholderArtifact);
+        
+      const currentPathname = window.location.pathname;
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('artifactView');
+      newSearchParams.delete('artifactType');
+      router.replace(`${currentPathname}?${newSearchParams.toString()}`, { scroll: false });
+    }
+  }, [searchParams, contactId, handleOpenArtifactModal, router]);
+
+  // Placeholder handlers for EnhancedLoopModal props
+  // These would ideally interact with a useLoops hook instance available in this scope
+  // or be passed down from a higher-level state management for loops.
+  const handleLoopStatusUpdate = useCallback((loopId: string, newStatus: LoopStatus) => {
+    console.log(`ContactProfilePage: Update status for loop ${loopId} to ${newStatus}`);
+    // Example: get loops hook and call updateLoopStatus({loopId, newStatus})
+    // queryClient.invalidateQueries(['loops', contactId]); // Example invalidation
+  }, []);
+
+  const handleEditLoopDetails = useCallback((loopId: string, updates: Partial<LoopArtifactContent>) => {
+    console.log(`ContactProfilePage: Edit details for loop ${loopId}`, updates);
+    // Open an edit modal or form - perhaps reuse EnhancedCreateLoopModal with initialData
+  }, []);
+
+  const handleDeleteLoop = useCallback((loopId: string) => {
+    console.log(`ContactProfilePage: Delete loop ${loopId}`);
+    // Example: deleteLoop({loopId})
+    // queryClient.invalidateQueries(['loops', contactId]);
+    setIsEnhancedLoopModalOpen(false); // Close modal after delete
+  }, []);
+
+  const handleShareLoopWithContact = useCallback((loopId: string) => {
+    console.log(`ContactProfilePage: Share loop ${loopId} with contact`);
+    // Implement sharing logic
+  }, []);
+
+  const handleCompleteLoop = useCallback((loopId: string, outcome: Partial<Pick<LoopArtifactContent, 'outcome' | 'satisfaction_score' | 'lessons_learned'>>) => {
+    console.log(`ContactProfilePage: Complete loop ${loopId} with outcome`, outcome);
+    // Example: completeLoop({loopId, ...outcome })
+    // queryClient.invalidateQueries(['loops', contactId]);
+  }, []);
+
   // Real-time completion/failure notifications
   useEffect(() => {
-    if (!contactId || !supabase) return;
+    if (!contactId) return;
 
     const channel = supabase
       .channel(`db_artifacts_contact_${contactId}`)
@@ -478,88 +491,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
         supabase.removeChannel(channel).catch(err => console.error('Error removing channel:', err));
       }
     };
-  }, [contactId, contact?.name, showToast, supabase]); // Added supabase to dependencies
-
-  // Modified function to open appropriate modal based on artifact type
-  const handleOpenArtifactModal = useCallback((artifact: ArtifactGlobal) => {
-    if (artifact.type === 'loop') {
-      setSelectedLoopForEnhancedModal(artifact as LoopArtifact);
-      setIsEnhancedLoopModalOpen(true);
-      setSelectedArtifactForModal(null);
-      setIsArtifactModalOpen(false);
-    } else if (artifact.type === 'voice_memo') {
-        setSelectedVoiceMemoForDetail(artifact as VoiceMemoArtifact);
-        setIsVoiceMemoDetailModalOpen(true);
-        setSelectedArtifactForModal(null);
-        setIsArtifactModalOpen(false);
-    } else {
-      fetchArtifactData(artifact.id, contactId);
-      setSelectedArtifactForModal(artifact);
-      setIsArtifactModalOpen(true);
-      setSelectedLoopForEnhancedModal(null);
-      setIsEnhancedLoopModalOpen(false);
-    }
-  }, [fetchArtifactData, contactId]);
-
-  // ... (useEffect for artifactView query param needs to be aware of handleOpenArtifactModal)
-  useEffect(() => {
-    const artifactIdFromQuery = searchParams.get('artifactView');
-    const artifactTypeFromQuery = searchParams.get('artifactType') as ArtifactGlobal['type'] | null;
-
-    if (artifactIdFromQuery && artifactTypeFromQuery && contactId) {
-      console.log(`Attempting to open artifact from URL: ID=${artifactIdFromQuery}, Type=${artifactTypeFromQuery}`);
-      const placeholderArtifact: ArtifactGlobal = {
-          id: artifactIdFromQuery,
-          type: artifactTypeFromQuery,
-          contact_id: contactId,
-          user_id: 'placeholder_user_id', // Ensure this is present
-          created_at: new Date().toISOString(),
-          timestamp: new Date().toISOString(), // Ensure this is present
-          updated_at: new Date().toISOString(), // Ensure this is present
-          content: {} as any, 
-      };
-      handleOpenArtifactModal(placeholderArtifact);
-        
-      const currentPathname = window.location.pathname;
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.delete('artifactView');
-      newSearchParams.delete('artifactType');
-      router.replace(`${currentPathname}?${newSearchParams.toString()}`, { scroll: false });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, contactId, handleOpenArtifactModal]);
-
-  // Placeholder handlers for EnhancedLoopModal props
-  // These would ideally interact with a useLoops hook instance available in this scope
-  // or be passed down from a higher-level state management for loops.
-  const handleLoopStatusUpdate = useCallback((loopId: string, newStatus: LoopStatus) => {
-    console.log(`ContactProfilePage: Update status for loop ${loopId} to ${newStatus}`);
-    // Example: get loops hook and call updateLoopStatus({loopId, newStatus})
-    // queryClient.invalidateQueries(['loops', contactId]); // Example invalidation
-  }, [contactId, queryClient]);
-
-  const handleEditLoopDetails = useCallback((loopId: string, updates: Partial<LoopArtifactContent>) => {
-    console.log(`ContactProfilePage: Edit details for loop ${loopId}`, updates);
-    // Open an edit modal or form - perhaps reuse EnhancedCreateLoopModal with initialData
-  }, []);
-
-  const handleDeleteLoop = useCallback((loopId: string) => {
-    console.log(`ContactProfilePage: Delete loop ${loopId}`);
-    // Example: deleteLoop({loopId})
-    // queryClient.invalidateQueries(['loops', contactId]);
-    setIsEnhancedLoopModalOpen(false); // Close modal after delete
-  }, [contactId, queryClient]);
-
-  const handleShareLoopWithContact = useCallback((loopId: string) => {
-    console.log(`ContactProfilePage: Share loop ${loopId} with contact`);
-    // Implement sharing logic
-  }, []);
-
-  const handleCompleteLoop = useCallback((loopId: string, outcome: Partial<Pick<LoopArtifactContent, 'outcome' | 'satisfaction_score' | 'lessons_learned'>>) => {
-    console.log(`ContactProfilePage: Complete loop ${loopId} with outcome`, outcome);
-    // Example: completeLoop({loopId, ...outcome })
-    // queryClient.invalidateQueries(['loops', contactId]);
-  }, [contactId, queryClient]);
+  }, [contactId, contact?.name, showToast]);
 
   // All hooks have been called. Now we can have conditional returns.
   const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions || isLoadingArtifactModalData;
@@ -569,8 +501,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   if (contactProfileError) {
-    // TODO: Revisit this type assertion. TypeScript incorrectly infers contactProfileError as 'never'.
-    return <Alert severity="error">Error loading contact: {(contactProfileError as any).message || 'An unexpected error occurred.'}</Alert>;
+    return <Alert severity="error">Error loading contact: {contactProfileError.message || 'An unexpected error occurred.'}</Alert>;
   }
 
   if (!contact) {
@@ -584,6 +515,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           name={contact.name || 'Unnamed Contact'}
           title={contact.title}
           company={contact.company}
+          email={contact.email}
           connectCadence={connectCadenceText}
           connectDate={contact.last_interaction_date ? new Date(contact.last_interaction_date) : undefined}
           personalContext={personalContextForHeader}
@@ -623,6 +555,30 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
               <LoopSuggestions contactId={contactId} />
               {/* Existing Loop Dashboard */}
               <LoopDashboard contactId={contactId} contactName={contact.name || 'Contact'} />
+            </Box>
+
+            {/* Meeting Intelligence Integration Point */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h5" gutterBottom component="div" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
+                Meeting Intelligence
+              </Typography>
+              <MeetingManager 
+                contactId={contactId}
+                limit={10}
+                includeUpcoming={true}
+                showAsCards={true}
+              />
+            </Box>
+
+            {/* Email Management Integration Point */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h5" gutterBottom component="div" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
+                Email Management
+              </Typography>
+              <ContactEmailManagement 
+                contactId={contactId}
+                contactName={contact.name || undefined}
+              />
             </Box>
 
             <ContextSections 
@@ -677,7 +633,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           open={isArtifactModalOpen}
           onClose={() => {
             setIsArtifactModalOpen(false);
-            setSelectedArtifactForModal(null);
           }}
           contactId={contactId}
           contactName={artifactModalContactName}
@@ -687,7 +642,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             await deleteArtifactModalFromHook(artifactId, contactId);
             showToast('Artifact deleted successfully.', 'success');
             setIsArtifactModalOpen(false);
-            setSelectedArtifactForModal(null);
             queryClient.invalidateQueries({ queryKey: ['artifactTimeline', contactId] });
           }}
           onReprocess={async (artifactId: string) => {

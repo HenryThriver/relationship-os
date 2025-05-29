@@ -1,5 +1,5 @@
 import type { Database } from '@/lib/supabase/types_db';
-import type { ArtifactGlobal, LinkedInArtifactContent } from './artifact'; // Assuming LinkedInArtifactContent is defined here
+import type { BaseArtifact, LinkedInArtifactContent } from './artifact'; // Assuming LinkedInArtifactContent is defined here
 import type { Json } from '@/lib/supabase/types_db'; // Import Json type
 
 // ----- Professional Context ----- 
@@ -107,7 +107,8 @@ export interface Contact extends ContactDbRow {
   // will have the type Json | null as defined in ContactDbRow.
 
   // Related data that might be joined or fetched separately
-  artifacts?: ArtifactGlobal[] | null; 
+  artifacts?: BaseArtifact[] | null; 
+  contact_emails?: ContactEmail[];
 }
 
 // ----- Next Connection Types ----- 
@@ -141,4 +142,27 @@ export interface NextConnection {
 // ----- FieldSources Type ----- NEW
 export type FieldSources = {
   [fieldPath: string]: string; // Maps a field path (e.g., "personal_context.name") to an artifact_id
-}; 
+};
+
+export interface ContactEmail {
+  id: string;
+  contact_id: string;
+  email: string;
+  email_type: 'primary' | 'work' | 'personal' | 'other';
+  is_primary: boolean;
+  verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Form types for email management
+export interface ContactEmailFormData {
+  email: string;
+  email_type: 'primary' | 'work' | 'personal' | 'other';
+  is_primary: boolean;
+}
+
+export interface EmailValidationResult {
+  isValid: boolean;
+  error?: string;
+} 

@@ -1,18 +1,73 @@
-import { google } from 'googleapis';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { 
-  GoogleCalendarEvent, 
-  ContactEmailMatch, 
-  SyncResults, 
-  CalendarSyncOptions,
-  UserIntegration,
-  CalendarSyncLog
-} from '@/types/calendar';
+// Shared Google Calendar Service for Edge Functions
+// File: supabase/functions/_shared/google-calendar-service.ts
+
+import { google } from 'npm:googleapis@134';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+
+export interface GoogleCalendarEvent {
+  id: string;
+  summary?: string;
+  description?: string;
+  start: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  attendees?: Array<{
+    email: string;
+    displayName?: string;
+    responseStatus?: string;
+    self?: boolean;
+    organizer?: boolean;
+  }>;
+  organizer?: {
+    email: string;
+    displayName?: string;
+    self?: boolean;
+  };
+  location?: string;
+  htmlLink?: string;
+  hangoutLink?: string;
+  conferenceData?: any;
+  recurringEventId?: string;
+  created?: string;
+  updated?: string;
+  status?: string;
+}
+
+export interface ContactEmailMatch {
+  contactId: string;
+  contact: any;
+  matchedEmails: string[];
+  confidence: number;
+}
+
+export interface UserIntegration {
+  id: string;
+  user_id: string;
+  access_token: string;
+  refresh_token?: string;
+  token_expires_at?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CalendarSyncOptions {
+  startDate: Date;
+  endDate: Date;
+  maxResults?: number;
+  includeDeclined?: boolean;
+  singleEvents?: boolean;
+}
 
 export class GoogleCalendarService {
-  private supabase: SupabaseClient;
+  private supabase: any;
 
-  constructor(supabaseClient: SupabaseClient) {
+  constructor(supabaseClient: any) {
     this.supabase = supabaseClient;
   }
 
@@ -39,9 +94,9 @@ export class GoogleCalendarService {
    */
   private async createOAuth2Client(integration: UserIntegration) {
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_SITE_URL}/api/calendar/callback`
+      Deno.env.get('GOOGLE_CLIENT_ID'),
+      Deno.env.get('GOOGLE_CLIENT_SECRET'),
+      `${Deno.env.get('NEXT_PUBLIC_SITE_URL')}/api/calendar/callback`
     );
 
     oauth2Client.setCredentials({
@@ -199,61 +254,56 @@ export class GoogleCalendarService {
       if (contact.email) {
         emailToContactMap.set(contact.email.toLowerCase(), {
           id: contact.id,
-          name: contact.name || 'Unknown',
-          email: contact.email
+          name: contact.name,
+          email: contact.email,
         });
       }
     });
 
-    // Add additional emails from contact_emails table
+    // Add emails from contact_emails table
     if (contactEmails) {
-      contactEmails.forEach(contactEmail => {
-        const contact = contacts.find(c => c.id === contactEmail.contact_id);
-        if (contact && contactEmail.email) {
-          emailToContactMap.set(contactEmail.email.toLowerCase(), {
+      contactEmails.forEach(ce => {
+        const contact = contacts.find(c => c.id === ce.contact_id);
+        if (contact) {
+          emailToContactMap.set(ce.email.toLowerCase(), {
             id: contact.id,
-            name: contact.name || 'Unknown',
-            email: contactEmail.email
+            name: contact.name,
+            email: contact.email || ce.email,
           });
         }
       });
     }
 
+    // Match events to contacts
     const eventToContactsMap = new Map<string, ContactEmailMatch[]>();
 
-    for (const event of events) {
+    events.forEach(event => {
       const matches: ContactEmailMatch[] = [];
-      
-      if (event.attendees) {
-        for (const attendee of event.attendees) {
-          // Skip self (the user)
-          if (attendee.self) continue;
+      const processedContacts = new Set<string>();
 
-          // Find exact email matches only
-          const matchedContact = emailToContactMap.get(attendee.email.toLowerCase());
-
-          if (matchedContact) {
-            matches.push({
-              contactId: matchedContact.id,
-              contactName: matchedContact.name,
-              contactEmail: matchedContact.email,
-              matchedEmail: attendee.email,
-              confidence: 'exact',
-            });
-          }
+      event.attendees?.forEach(attendee => {
+        const contact = emailToContactMap.get(attendee.email.toLowerCase());
+        if (contact && !processedContacts.has(contact.id)) {
+          matches.push({
+            contactId: contact.id,
+            contact: contact,
+            matchedEmails: [attendee.email],
+            confidence: 1.0, // Exact email match
+          });
+          processedContacts.add(contact.id);
         }
-      }
+      });
 
       if (matches.length > 0) {
         eventToContactsMap.set(event.id, matches);
       }
-    }
+    });
 
     return eventToContactsMap;
   }
 
   /**
-   * Create meeting artifacts from matched events
+   * Create meeting artifacts for matched events
    */
   async createMeetingArtifacts(
     eventToContactsMap: Map<string, ContactEmailMatch[]>,
@@ -263,15 +313,12 @@ export class GoogleCalendarService {
     let created = 0;
     const errors: Array<{ eventId: string; error: string }> = [];
 
-    for (const event of events) {
-      const matches = eventToContactsMap.get(event.id);
-      if (!matches || matches.length === 0) continue;
+    for (const [eventId, matches] of eventToContactsMap) {
+      const event = events.find(e => e.id === eventId);
+      if (!event || matches.length === 0) continue;
 
-      // Create artifact for the primary contact (highest confidence match)
-      const primaryMatch = matches.sort((a, b) => {
-        const confidenceOrder = { exact: 3, domain: 2, fuzzy: 1 };
-        return confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
-      })[0];
+      // Use the first match as primary (highest confidence)
+      const primaryMatch = matches[0];
 
       try {
         const meetingDate = event.start.dateTime || event.start.date;
@@ -340,29 +387,7 @@ export class GoogleCalendarService {
               content: event.summary || 'Meeting',
               timestamp: meetingDate,
               ai_parsing_status: 'pending',
-              metadata: {
-                title: event.summary,
-                attendees: event.attendees?.map(a => a.displayName || a.email) || [],
-                meeting_date: event.start?.dateTime || event.start?.date,
-                location: event.location || undefined,
-                google_calendar_id: event.id,
-                google_calendar_link: event.hangoutLink,
-                organizer: event.organizer ? {
-                  email: event.organizer.email,
-                  name: event.organizer.displayName,
-                  self: event.organizer.self,
-                } : undefined,
-                attendee_emails: event.attendees?.map(a => a.email) || [],
-                duration_minutes: durationMinutes,
-                recurring_event_id: event.recurringEventId,
-                conference_data: event.conferenceData ? {
-                  type: event.hangoutLink ? 'google_meet' : 'other',
-                  join_url: event.hangoutLink || event.conferenceData.entryPoints?.[0]?.uri,
-                  conference_id: event.conferenceData.conferenceId,
-                } : undefined,
-                calendar_source: 'google',
-                last_synced_at: new Date().toISOString(),
-              } as any,
+              metadata,
             })
             .select()
             .single();
@@ -392,12 +417,13 @@ export class GoogleCalendarService {
   /**
    * Create a sync log entry
    */
-  async createSyncLog(userId: string): Promise<string> {
+  async createSyncLog(userId: string, metadata: any = {}): Promise<string> {
     const { data, error } = await this.supabase
       .from('calendar_sync_logs')
       .insert({
         user_id: userId,
         status: 'in_progress',
+        metadata,
       })
       .select('id')
       .single();
@@ -414,7 +440,7 @@ export class GoogleCalendarService {
    */
   async updateSyncLog(
     syncLogId: string,
-    results: Partial<CalendarSyncLog>
+    results: any
   ): Promise<void> {
     await this.supabase
       .from('calendar_sync_logs')
@@ -427,33 +453,57 @@ export class GoogleCalendarService {
 }
 
 /**
- * Main sync function
+ * Enhanced sync function with date range support for nightly sync
  */
-export async function syncUserCalendarData(
+export async function syncUserCalendarDataWithRange(
   userId: string,
-  supabaseClient: SupabaseClient,
-  options: CalendarSyncOptions = {
-    startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 3 months ago
-    endDate: new Date(), // Today
-    maxResults: 250,
-    includeDeclined: false,
-    singleEvents: true,
+  supabaseClient: any,
+  options: {
+    lookbackDays: number;
+    lookforwardDays: number;
+    integration?: UserIntegration;
   }
-): Promise<SyncResults> {
+): Promise<{
+  eventsProcessed: number;
+  artifactsCreated: number;
+  contactsUpdated: string[];
+  syncLogId: string;
+}> {
   const service = new GoogleCalendarService(supabaseClient);
   
-  // Create sync log
-  const syncLogId = await service.createSyncLog(userId);
+  // Calculate date range
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - options.lookbackDays);
   
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + options.lookforwardDays);
+
+  // Create sync log
+  const syncLogId = await service.createSyncLog(userId, {
+    sync_type: 'nightly',
+    date_range: {
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      lookbackDays: options.lookbackDays,
+      lookforwardDays: options.lookforwardDays,
+    }
+  });
+
   try {
-    // Get user's integration
-    const integration = await service.getUserIntegration(userId);
+    // Get user's integration if not provided
+    const integration = options.integration || await service.getUserIntegration(userId);
     if (!integration) {
       throw new Error('No Google Calendar integration found for user');
     }
 
     // Fetch calendar events
-    const events = await service.fetchMeetings(integration, options);
+    const events = await service.fetchMeetings(integration, {
+      startDate,
+      endDate,
+      maxResults: 250,
+      includeDeclined: false,
+      singleEvents: true,
+    });
     
     // Match events to contacts
     const eventToContactsMap = await service.matchEventsToContacts(events, userId);
@@ -471,29 +521,26 @@ export async function syncUserCalendarData(
       .map(match => match.contactId)
       .filter((id, index, arr) => arr.indexOf(id) === index); // unique
 
-    const results: SyncResults = {
-      success: true,
-      eventsProcessed: events.length,
-      artifactsCreated: created,
-      contactsUpdated,
-      errors: errors.map(e => ({
-        eventId: e.eventId,
-        error: e.error,
-        timestamp: new Date().toISOString(),
-      })),
-      syncLogId,
-    };
-
     // Update sync log
     await service.updateSyncLog(syncLogId, {
       status: 'completed',
       events_processed: events.length,
       artifacts_created: created,
       contacts_updated: contactsUpdated,
-      errors: results.errors,
+      errors: errors.map(e => ({
+        eventId: e.eventId,
+        error: e.error,
+        timestamp: new Date().toISOString(),
+      })),
     });
 
-    return results;
+    return {
+      eventsProcessed: events.length,
+      artifactsCreated: created,
+      contactsUpdated,
+      syncLogId,
+    };
+
   } catch (error) {
     // Update sync log with error
     await service.updateSyncLog(syncLogId, {

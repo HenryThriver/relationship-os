@@ -148,6 +148,47 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_emails: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          email: string
+          email_type: string | null
+          id: string
+          is_primary: boolean | null
+          updated_at: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          email: string
+          email_type?: string | null
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          email?: string
+          email_type?: string | null
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string | null
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_emails_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_update_suggestions: {
         Row: {
           applied_at: string | null

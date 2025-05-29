@@ -28,8 +28,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Set default sync options
     const options: CalendarSyncOptions = {
-      startDate: syncOptions.startDate ? new Date(syncOptions.startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-      endDate: syncOptions.endDate ? new Date(syncOptions.endDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      startDate: syncOptions.startDate ? new Date(syncOptions.startDate) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 3 months ago
+      endDate: syncOptions.endDate ? new Date(syncOptions.endDate) : new Date(), // Today
       maxResults: syncOptions.maxResults || 250,
       includeDeclined: syncOptions.includeDeclined ?? false,
       singleEvents: syncOptions.singleEvents ?? true,
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Start the sync process
     try {
-      const results = await syncUserCalendarData(user.id, options);
+      const results = await syncUserCalendarData(user.id, supabase, options);
       
       return NextResponse.json({
         success: true,
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET() {
   try {
     const supabase = await createClient();
     

@@ -131,10 +131,10 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
   onLoopShare,
   onLoopComplete,
 }) => {
-  if (!artifact) return null;
-
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+
+  if (!artifact) return null;
 
   const handlePlayAudioInternal = async () => {
     if (!artifact || artifact.type !== 'voice_memo' || !onPlayAudio) return;

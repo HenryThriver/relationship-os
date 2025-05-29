@@ -18,7 +18,7 @@ import { ContactHeader } from '@/components/features/contacts/ContactHeader';
 import { ArtifactModal } from '@/components/features/timeline/ArtifactModal';
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
 import { useLoops } from '@/lib/hooks/useLoops';
-import { ArtifactGlobal, LoopStatus, LoopArtifactContent, LinkedInArtifactContent, LoopCompletionOutcome } from '@/types';
+import { BaseArtifact, LoopStatus, LoopArtifactContent, LinkedInArtifactContent, LoopCompletionOutcome } from '@/types';
 import { PersonalContext as PersonalContextType } from '@/types/contact';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -27,7 +27,7 @@ export default function ContactTimelinePage() {
   const contactId = params.id as string;
   const queryClient = useQueryClient();
   
-  const [selectedArtifact, setSelectedArtifact] = useState<ArtifactGlobal | null>(null);
+  const [selectedArtifact, setSelectedArtifact] = useState<BaseArtifact | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const { contact, isLoading, error } = useContactProfile(contactId);
@@ -47,7 +47,7 @@ export default function ContactTimelinePage() {
       : undefined;
   }, [contact?.connection_cadence_days]);
 
-  const handleArtifactClick = (artifact: ArtifactGlobal) => {
+  const handleArtifactClick = (artifact: BaseArtifact) => {
     setSelectedArtifact(artifact);
     setIsModalOpen(true);
   };

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET() {
   try {
     const supabase = await createClient();
     

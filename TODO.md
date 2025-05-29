@@ -73,4 +73,16 @@ _(Goal: All artifact types should inform contact profiles, POGs, Asks, Conversat
     -   [ ] Define key performance indicators (KPIs) for tracking user engagement, time-to-value, and overall tool effectiveness.
     -   [ ] Plan for how to measure these KPIs for yourself and future users.
 -   [ ] **Scalability & Multi-user Considerations:**
-    -   [ ] Begin thinking about the system architecture and features needed to support multiple users effectively. 
+    -   [ ] Begin thinking about the system architecture and features needed to support multiple users effectively.
+
+## 🔥 High Priority (Post-Consolidation)
+
+### Calendar Sync RLS Issues
+- **Issue**: Manual calendar sync still showing RLS errors in terminal:
+  - "new row violates row-level security policy for table calendar_sync_logs"  
+  - "permission denied for table users"
+- **Status**: Background automation works, but manual UI sync has RLS conflicts
+- **Next Steps**: 
+  - Debug the exact RLS policy conflict between UI and background sync
+  - May need additional policy for authenticated users vs service role context
+  - Check if there are multiple conflicting policies still active 

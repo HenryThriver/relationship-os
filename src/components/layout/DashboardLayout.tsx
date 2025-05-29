@@ -26,6 +26,7 @@ import {
   Dashboard as DashboardIcon,
   Logout as LogoutIcon,
   AccountCircle as AccountCircleIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -76,6 +77,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       text: 'Contacts',
       icon: <PeopleIcon />,
       path: '/dashboard/contacts',
+    },
+    {
+      text: 'Settings',
+      icon: <SettingsIcon />,
+      path: '/dashboard/settings',
     },
   ];
 

@@ -50,7 +50,13 @@ export const LoopDetailModal: React.FC<LoopDetailModalProps> = ({
   loop,
   contactName,
 }) => {
-  if (!loop) return null;
+  const [newActionNotes, setNewActionNotes] = useState('');
+  const [newActionType, setNewActionType] = useState<LoopAction['action_type']>('check_in');
+  const [completionData, setCompletionData] = useState({
+    outcome: 'successful' as 'successful' | 'unsuccessful' | 'partial',
+    satisfaction_score: 5,
+    lessons_learned: ''
+  });
 
   const { 
     addLoopAction, 
@@ -59,15 +65,9 @@ export const LoopDetailModal: React.FC<LoopDetailModalProps> = ({
     isUpdatingLoopStatus, 
     completeLoop, 
     isCompletingLoop 
-  } = useLoops(loop.contact_id);
+  } = useLoops(loop?.contact_id || '');
 
-  const [newActionNotes, setNewActionNotes] = useState('');
-  const [newActionType, setNewActionType] = useState<LoopAction['action_type']>('check_in');
-  const [completionData, setCompletionData] = useState({
-    outcome: 'successful' as 'successful' | 'unsuccessful' | 'partial',
-    satisfaction_score: 5,
-    lessons_learned: ''
-  });
+  if (!loop) return null;
 
   const loopContent = loop.content as LoopArtifactContent;
 
