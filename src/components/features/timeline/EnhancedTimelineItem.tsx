@@ -12,7 +12,9 @@ import {
 } from '@mui/material';
 import { formatDistanceToNow } from 'date-fns';
 import { BaseArtifact, LoopArtifact } from '@/types/artifact';
+import { EmailArtifact } from '@/types/email';
 import { getArtifactConfig } from '@/config/artifactConfig';
+import { EmailTimelineItem } from '@/components/features/emails';
 
 interface EnhancedTimelineItemProps {
   artifact: BaseArtifact<any>;
@@ -25,6 +27,17 @@ export const EnhancedTimelineItem: React.FC<EnhancedTimelineItemProps> = ({
   position,
   onClick
 }) => {
+  // Special handling for email artifacts - use dedicated EmailTimelineItem
+  if (artifact.type === 'email') {
+    return (
+      <EmailTimelineItem
+        artifacts={[artifact as EmailArtifact]}
+        onEmailClick={(emailArtifact) => onClick()}
+        className="mb-4"
+      />
+    );
+  }
+
   const config = getArtifactConfig(artifact.type);
   const IconComponent = config.icon;
 

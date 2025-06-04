@@ -3,7 +3,7 @@ import type { ArtifactType } from '@/types/artifact'; // The main ArtifactType
 import {
   FiFileText, FiMic, FiUsers, FiMail, FiLink, FiClipboard, FiTarget, FiRefreshCw, FiBell, FiBriefcase, FiCheckCircle, FiGift, FiHelpCircle, FiMessageSquare, FiThumbsUp, FiZap, FiVideo
 } from 'react-icons/fi';
-import { ArtifactGlobal, LoopArtifactContent, LoopStatus, MeetingArtifactMetadata } from '@/types'; // Added LoopArtifactContent and LoopStatus
+import { LoopArtifactContent, LoopStatus } from '@/types/artifact'; // Added LoopArtifactContent and LoopStatus
 import { Loop as LoopIcon } from '@mui/icons-material'; // Added for new loop config
 
 // Helper to truncate text for previews
@@ -53,7 +53,22 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiMail,
     color: 'info.main',
     badgeLabel: 'Email',
-    getPreview: (content) => truncateText(content?.subject || 'Email content'),
+    getPreview: (content: any) => {
+      // Handle EmailArtifactContent from metadata
+      if (content && typeof content === 'object') {
+        const subject = content.subject || '';
+        const from = content.from?.name || content.from?.email || '';
+        const threadInfo = content.thread_length > 1 ? ` (${content.thread_position}/${content.thread_length})` : '';
+        const readStatus = content.is_read === false ? '●' : '';
+        const starred = content.is_starred ? '⭐' : '';
+        const attachments = content.has_attachments ? '📎' : '';
+        
+        return `${readStatus}${starred}${attachments} ${from}: ${subject}${threadInfo}`.trim();
+      }
+      
+      // Fallback for legacy format or string content
+      return truncateText(typeof content === 'string' ? content : 'Email content');
+    },
   },
   linkedin_interaction: {
     icon: FiLink,
