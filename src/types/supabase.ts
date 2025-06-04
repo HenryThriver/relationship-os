@@ -189,6 +189,50 @@ export type Database = {
           },
         ]
       }
+      contact_specific_sync_jobs: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          processed_at: string | null
+          status: string | null
+          sync_options: Json
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          status?: string | null
+          sync_options?: Json
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          status?: string | null
+          sync_options?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_specific_sync_jobs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_update_suggestions: {
         Row: {
           applied_at: string | null
@@ -589,6 +633,10 @@ export type Database = {
           scopes: string[]
           metadata: Json
         }[]
+      }
+      is_valid_user: {
+        Args: { p_user_id: string }
+        Returns: boolean
       }
       upsert_user_integration: {
         Args: {
