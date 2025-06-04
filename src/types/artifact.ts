@@ -131,14 +131,16 @@ export interface VoiceMemoArtifact extends BaseArtifact<string | null> { // Assu
   ai_processing_completed_at?: string | null;
 }
 
-// --- Email Artifact --- NEW
+// --- Email Artifact --- UPDATED
+// Comprehensive email types are defined in email.ts
+// Re-export the main email artifact interface here for consistency
 export interface EmailArtifactMetadata {
   subject?: string;
   from?: string | string[];
   to?: string | string[];
   cc?: string | string[];
   date_received?: string; // ISO string
-  // content can be the email body summary, full body in a specific field if needed
+  // More comprehensive types available in email.ts
 }
 export interface EmailArtifact extends BaseArtifact<string | null> {
   type: 'email';

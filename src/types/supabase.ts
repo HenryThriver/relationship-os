@@ -308,7 +308,9 @@ export type Database = {
           connection_cadence_days: number | null
           created_at: string
           email: string | null
+          email_addresses: string[] | null
           field_sources: Json | null
+          gmail_labels: string[] | null
           id: string
           last_interaction_date: string | null
           linkedin_data: Json | null
@@ -328,7 +330,9 @@ export type Database = {
           connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
+          email_addresses?: string[] | null
           field_sources?: Json | null
+          gmail_labels?: string[] | null
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
@@ -348,7 +352,9 @@ export type Database = {
           connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
+          email_addresses?: string[] | null
           field_sources?: Json | null
+          gmail_labels?: string[] | null
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
@@ -360,6 +366,42 @@ export type Database = {
           professional_context?: Json | null
           relationship_score?: number | null
           title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gmail_sync_state: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          last_sync_timestamp: string | null
+          last_sync_token: string | null
+          sync_status: string | null
+          total_emails_synced: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_timestamp?: string | null
+          last_sync_token?: string | null
+          sync_status?: string | null
+          total_emails_synced?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_timestamp?: string | null
+          last_sync_token?: string | null
+          sync_status?: string | null
+          total_emails_synced?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -610,6 +652,36 @@ export type Database = {
           scopes?: string[] | null
           token_expires_at?: string | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tokens: {
+        Row: {
+          created_at: string
+          gmail_access_token: string | null
+          gmail_refresh_token: string | null
+          gmail_token_expiry: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gmail_access_token?: string | null
+          gmail_refresh_token?: string | null
+          gmail_token_expiry?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gmail_access_token?: string | null
+          gmail_refresh_token?: string | null
+          gmail_token_expiry?: string | null
+          id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
