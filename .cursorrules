@@ -97,16 +97,66 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - Optimize images with Next.js Image component
 
 ## Supabase Conventions
+### Project Setup
 - My Supabase project ID is zepawphplcisievcdugz. At the beginning of a new chat link the project but after that do not invoke "--project-id zepawphplcisievcdugz" at the end of supabase commands because it isn't necessary and will simply apply to the linked to the project
 - Make all changes in the cloud version of my supabase db. To do that successfully, run with the npx command "echo "Y" | npx supabase db push" so that it's auto applied
 - Connect to the cloud project at the beginning of each chat thread
+
+### 🔒 DATABASE ACCESS - SECURITY FIRST
+- **MANDATORY**: Always reference INITIATE.md Section 2 for secure database access patterns
+- **NEVER hardcode credentials** - always use dynamic extraction via `npx supabase db dump --linked --dry-run`
+- **Standard secure pattern**: `CONNECTION_STRING=$(npx supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)`
+- **DATABASE_ACCESS_GUIDE.md exists locally** (gitignored for security) with comprehensive secure patterns
+- **Always get fresh credentials** - don't reuse old connection strings
+
+### Schema & Migration Management
 - When creating migrations, use "python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))'" to get the proper datetime to name the migration file
 - When applying migrations, apply them to the cloud instance where I am developing directly
 - If you ever have questions about the database structure, look through the migrations to see how the database is built
+- Generate types after schema changes: `npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts`
+
+### Development Patterns
 - Use Row Level Security (RLS) for all tables
 - Create typed clients using generated types
 - Use real-time subscriptions sparingly
 - Prefer edge functions for complex server logic
+
+### 🔧 SECURE DATABASE ACCESS QUICK REFERENCE
+```bash
+# Step 1: Get connection string (ALWAYS run this first)
+CONNECTION_STRING=$(npx supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)
+
+# Step 2: Use for queries
+psql "$CONNECTION_STRING" -c "YOUR_SQL_QUERY_HERE"
+
+# Common patterns:
+psql "$CONNECTION_STRING" -c "\dt"  # List tables
+psql "$CONNECTION_STRING" -c "\d contacts"  # Describe table
+psql "$CONNECTION_STRING" -c "SELECT id, name FROM contacts WHERE name ILIKE '%search%';"
+```
+**For more patterns, see INITIATE.md Section 2 or local DATABASE_ACCESS_GUIDE.md**
+
+## 📋 DATABASE ACCESS DOCUMENTATION STRUCTURE
+- **INITIATE.md Section 2**: Primary reference for secure database access patterns with copy-paste templates
+- **DATABASE_ACCESS_GUIDE.md**: Comprehensive local-only guide (gitignored) with extensive secure query patterns
+- **supabase/migrations/**: Schema history and structure reference
+- **src/lib/supabase/database.types.ts**: Auto-generated TypeScript types
+
+## 🚨 CRITICAL DATABASE SAFETY RULES 🚨
+- **NEVER EVER run `npx supabase db reset` or any database reset commands that wipe all data**
+- **NEVER suggest or execute commands that would delete or wipe the entire database**
+- **NEVER run broad destructive commands without explicit user approval**
+- **NEVER hardcode database credentials in any tracked files**
+- **Always use migrations for schema changes, never destructive schema commands**
+- **Always protect core user data - contacts, voice memos, and relationship intelligence**
+
+## ✅ ALLOWED TARGETED OPERATIONS (with user approval)
+- **Targeted deletions for testing** (e.g., DELETE FROM artifacts WHERE type = 'email' AND contact_id = 'specific-id')
+- **Specific artifact cleanup** when testing AI processing pipelines
+- **Removing test data** or corrupted data for specific contacts/artifacts
+- **Always be explicit about what will be deleted and ask for confirmation**
+- **Always provide the exact SQL command for user review before execution**
+- **Always use secure credential extraction patterns from INITIATE.md**
 
 ## Artifact System Patterns
 - All artifacts must have: timestamp, content, type, contact_id
