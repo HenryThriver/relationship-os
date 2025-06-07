@@ -12,10 +12,13 @@ This directory contains migrations that have been superseded by consolidated ver
 - `20250605011321_fix_http_post_call.sql` - Correct net.http_post signature
 - `20250605011706_debug_email_trigger.sql` - Added debugging and error handling
 
-**Consolidated Into:**
-- `20250607131723_consolidated_email_ai_processing.sql` - All functionality combined
-- `20250607131724_rollback_email_ai_migrations.sql` - Rollback of old versions
-- `20250607132700_reapply_consolidated_email_ai.sql` - Final working version
+**Consolidation Attempts (also superseded):**
+- `20250607131723_consolidated_email_ai_processing.sql` - First consolidation attempt
+- `20250607131724_rollback_email_ai_migrations.sql` - Rollback migration (ordering issue)
+- `20250607132700_reapply_consolidated_email_ai.sql` - Reapply attempt
+
+**Final Clean Migration:**
+- `20250607133302_final_consolidated_email_ai_processing.sql` - **Single, clean implementation**
 
 ## Why Consolidated?
 
