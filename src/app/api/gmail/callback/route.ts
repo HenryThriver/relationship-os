@@ -62,10 +62,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const redirectUri = `${request.nextUrl.origin}/api/gmail/callback`;
     
     try {
-      await gmailService.exchangeCodeForTokens(code, redirectUri);
+      await gmailService.exchangeCodeForTokensServer(code, redirectUri, user.id);
 
       // Get user's Gmail profile to verify connection
-      const profile = await gmailService.getProfile();
+      const profile = await gmailService.getProfileServer(user.id);
 
       // Redirect to success page
       const successUrl = new URL('/dashboard/settings/gmail', request.nextUrl.origin);

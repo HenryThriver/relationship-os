@@ -21,6 +21,7 @@ import { VoiceMemoArtifact } from '@/types'; // Assuming VoiceMemoArtifact is co
 import { useToast } from '@/lib/contexts/ToastContext'; // Added import
 import { ProcessingIndicator } from '@/components/features/voice/ProcessingIndicator'; // Import ProcessingIndicator
 import { ProcessingStatus as VoiceMemoProcessingStatus } from '@/lib/hooks/useVoiceMemos'; // Import status type
+import { ArtifactSuggestions } from '@/components/features/suggestions/ArtifactSuggestions';
 
 interface VoiceMemoDetailModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ interface VoiceMemoDetailModalProps {
   processingStatus?: VoiceMemoProcessingStatus['status']; // Pass the computed status string
   processingStartTime?: string | null; // Pass the start time for the timer
   contactName?: string; // Optional for context
+  contactId?: string; // Add contact ID for suggestions
 }
 
 export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
@@ -54,6 +56,7 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
   processingStatus,
   processingStartTime,
   contactName,
+  contactId,
 }) => {
   const { showToast } = useToast(); // Added useToast hook
   const [internalAudioUrl, setInternalAudioUrl] = useState<string | null>(null);
@@ -168,6 +171,17 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
           <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto', p:1, border: '1px solid #eee', borderRadius: '4px'}}>
             {voiceMemo.transcription || voiceMemo.content || 'No transcription available.'}
           </Typography>
+        </Box>
+
+        {/* AI Suggestions Section */}
+        <Box sx={{ mb: 2 }}>
+          <ArtifactSuggestions
+            artifactId={voiceMemo.id}
+            artifactType="voice memo"
+            aiParsingStatus={voiceMemo.ai_parsing_status as 'pending' | 'processing' | 'completed' | 'failed'}
+            contactId={contactId}
+            compact={false}
+          />
         </Box>
 
         {voiceMemo.audio_file_path && (

@@ -24,6 +24,10 @@ import {
   Reply as ReplyIcon,
   Forward as ForwardIcon,
   MoreVert as MoreIcon,
+  Send as SendIcon,
+  Inbox as InboxIcon,
+  Schedule as ScheduleIcon,
+  PriorityHigh as PriorityIcon,
 } from '@mui/icons-material';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import type { EmailArtifact, EmailThread } from '@/types/email';
@@ -48,6 +52,39 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
 
+  // Helper function to determine email direction
+  const getEmailDirection = (email: EmailArtifact): 'sent' | 'received' => {
+    const labels = email.metadata?.labels || [];
+    const fromEmail = email.metadata?.from?.email?.toLowerCase() || '';
+    
+    // Check Gmail labels first
+    if (labels.includes('SENT')) return 'sent';
+    if (labels.includes('INBOX')) return 'received';
+    
+    // Fallback: check if sender email matches any known user emails
+    // This is a simplified version - in production you'd check against user's emails
+    if (fromEmail.includes('hfinkelstein@gmail.com') || fromEmail.includes('henry@')) {
+      return 'sent';
+    }
+    
+    return 'received';
+  };
+
+  // Helper function to determine email importance
+  const getEmailImportance = (email: EmailArtifact): 'high' | 'normal' | 'low' => {
+    const labels = email.metadata?.labels || [];
+    
+    if (labels.includes('IMPORTANT') || labels.includes('CATEGORY_PRIMARY')) {
+      return 'high';
+    }
+    
+    if (labels.includes('CATEGORY_PROMOTIONS') || labels.includes('CATEGORY_UPDATES')) {
+      return 'low';
+    }
+    
+    return 'normal';
+  };
+
   // Group emails by thread_id
   const groupedEmails = useMemo((): GroupedEmails => {
     return artifacts.reduce((groups: GroupedEmails, artifact) => {
@@ -63,10 +100,13 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
   // Convert grouped emails to EmailThread objects for display
   const emailThreads = useMemo((): EmailThread[] => {
     return Object.entries(groupedEmails).map(([threadId, emails]) => {
-      // Sort emails by date within thread
-      const sortedEmails = [...emails].sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
+      
+      // Sort emails by date within thread - use created_at if timestamp not available
+      const sortedEmails = [...emails].sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.created_at).getTime();
+        const dateB = new Date(b.timestamp || b.created_at).getTime();
+        return dateA - dateB;
+      });
 
       const latestEmail = sortedEmails[sortedEmails.length - 1];
       const earliestEmail = sortedEmails[0];
@@ -85,6 +125,12 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
       // Combine all labels
       const allLabels = [...new Set(sortedEmails.flatMap(e => e.metadata?.labels || []))];
 
+      // Determine thread characteristics
+      const sentCount = sortedEmails.filter(e => getEmailDirection(e) === 'sent').length;
+      const receivedCount = sortedEmails.filter(e => getEmailDirection(e) === 'received').length;
+      const threadDirection = sentCount > receivedCount ? 'sent' : receivedCount > sentCount ? 'received' : 'mixed';
+      const highImportanceCount = sortedEmails.filter(e => getEmailImportance(e) === 'high').length;
+
       return {
         thread_id: threadId,
         subject: latestEmail.metadata?.subject || 'No Subject',
@@ -93,10 +139,15 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
         unread_count: sortedEmails.filter(e => e.metadata?.is_read === false).length,
         has_starred: sortedEmails.some(e => e.metadata?.is_starred),
         has_attachments: sortedEmails.some(e => e.metadata?.has_attachments),
-        latest_date: latestEmail.timestamp,
-        earliest_date: earliestEmail.timestamp,
+        latest_date: latestEmail.timestamp || latestEmail.created_at,
+        earliest_date: earliestEmail.timestamp || earliestEmail.created_at,
         labels: allLabels,
         messages: sortedEmails,
+        // Enhanced properties
+        direction: threadDirection,
+        sent_count: sentCount,
+        received_count: receivedCount,
+        importance: highImportanceCount > 0 ? 'high' : 'normal',
       };
     });
   }, [groupedEmails]);
@@ -151,7 +202,19 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
             <CardContent sx={{ pb: 1 }}>
               {/* Thread Header */}
               <Box display="flex" alignItems="center" gap={1} mb={1}>
-                <EmailIcon color="primary" fontSize="small" />
+                {/* Direction indicator */}
+                {thread.direction === 'sent' ? (
+                  <SendIcon color="success" fontSize="small" />
+                ) : thread.direction === 'received' ? (
+                  <InboxIcon color="primary" fontSize="small" />
+                ) : (
+                  <EmailIcon color="action" fontSize="small" />
+                )}
+                
+                {/* Importance indicator */}
+                {thread.importance === 'high' && (
+                  <PriorityIcon color="error" fontSize="small" />
+                )}
                 
                 {/* Unread indicator */}
                 {thread.unread_count > 0 && (
@@ -285,6 +348,13 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
                     >
                       <CardContent sx={{ py: 1, px: 2, '&:last-child': { pb: 1 } }}>
                         <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                          {/* Direction indicator for individual email */}
+                          {getEmailDirection(email) === 'sent' ? (
+                            <SendIcon color="success" fontSize="small" />
+                          ) : (
+                            <InboxIcon color="primary" fontSize="small" />
+                          )}
+
                           {/* Position in thread */}
                           <Typography variant="caption" color="primary">
                             #{index + 1}
@@ -294,6 +364,11 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
                           <Typography variant="body2" fontWeight={500}>
                             {email.metadata?.from?.name || email.metadata?.from?.email}
                           </Typography>
+
+                          {/* Importance indicator for individual email */}
+                          {getEmailImportance(email) === 'high' && (
+                            <PriorityIcon color="error" fontSize="small" />
+                          )}
 
                           {/* Status indicators */}
                           {email.metadata?.is_read === false && (
@@ -336,17 +411,76 @@ export const EmailTimelineItem: React.FC<EmailTimelineItemProps> = ({
                 </Box>
               </Collapse>
 
-              {/* Actions */}
-              <Box display="flex" justifyContent="flex-end" gap={1} mt={1}>
-                <Tooltip title="View Full Thread">
-                  <Button
-                    size="small"
-                    startIcon={<EmailIcon />}
-                    onClick={() => handleEmailClick(latestMessage, thread)}
-                  >
-                    View
-                  </Button>
-                </Tooltip>
+              {/* Enhanced Actions */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
+                {/* Thread statistics */}
+                <Box display="flex" gap={1} alignItems="center">
+                  {thread.direction === 'mixed' && (
+                    <Chip
+                      label={`${thread.sent_count}↗ ${thread.received_count}↙`}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: 18 }}
+                    />
+                  )}
+                  {thread.direction === 'sent' && (
+                    <Chip
+                      label={`${thread.sent_count} sent`}
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: 18 }}
+                    />
+                  )}
+                  {thread.direction === 'received' && (
+                    <Chip
+                      label={`${thread.received_count} received`}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: 18 }}
+                    />
+                  )}
+                </Box>
+
+                {/* Action buttons */}
+                <Box display="flex" gap={1}>
+                  <Tooltip title="View Full Thread">
+                    <Button
+                      size="small"
+                      startIcon={<EmailIcon />}
+                      onClick={() => handleEmailClick(latestMessage, thread)}
+                    >
+                      View
+                    </Button>
+                  </Tooltip>
+                  
+                  <Tooltip title="Reply">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implement reply functionality
+                        console.log('Reply to thread:', thread.thread_id);
+                      }}
+                    >
+                      <ReplyIcon />
+                    </IconButton>
+                  </Tooltip>
+                  
+                  <Tooltip title="Forward">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implement forward functionality
+                        console.log('Forward thread:', thread.thread_id);
+                      }}
+                    >
+                      <ForwardIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               </Box>
             </CardContent>
           </Card>

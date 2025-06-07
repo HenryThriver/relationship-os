@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { ContactUpdateSuggestion, UpdateSuggestionRecord } from '@/types/suggestions';
 import { Database, Json } from '@/lib/supabase/database.types'; // Assuming this is your main generated types
+import { validateAndFilterSuggestions } from '@/lib/utils/fieldPathValidation';
 
 // Helper type for context fields
 type ContactContext = { [key: string]: unknown }; // Changed any to unknown
@@ -133,7 +134,14 @@ export async function POST(request: NextRequest) {
     const allSuggestions: ContactUpdateSuggestion[] = suggestionRecord.suggested_updates.suggestions;
     const selectedSuggestions = allSuggestions.filter(s => selectedPaths.includes(s.field_path));
 
-    if (selectedSuggestions.length === 0) {
+    // Validate all selected suggestions against our schema
+    const validatedSuggestions = validateAndFilterSuggestions(selectedSuggestions);
+    
+    if (validatedSuggestions.length < selectedSuggestions.length) {
+      console.warn(`[Apply Suggestions] Filtered out ${selectedSuggestions.length - validatedSuggestions.length} invalid suggestions from ${selectedSuggestions.length} selected suggestions`);
+    }
+
+    if (validatedSuggestions.length === 0) {
       await supabase
         .from('contact_update_suggestions')
         .update({
@@ -142,7 +150,7 @@ export async function POST(request: NextRequest) {
           reviewed_at: new Date().toISOString(),
         })
         .eq('id', suggestionId);
-      return NextResponse.json({ success: true, message: 'No updates selected. Suggestion marked as reviewed.' });
+      return NextResponse.json({ success: true, message: 'No valid updates selected. Suggestion marked as reviewed.' });
     }
     
     // Ensure context fields are objects
@@ -153,7 +161,7 @@ export async function POST(request: NextRequest) {
     const contactUpdates: Partial<Database['public']['Tables']['contacts']['Row']> = {};
     const sourceUpdates: Record<string, string> = { ...(contact.field_sources as object || {}) };
 
-    for (const s of selectedSuggestions) {
+    for (const s of validatedSuggestions) {
       // const action = s.action as 'add' | 'update' | 'remove'; // Keep this for logging if needed
       console.log(`[ApplySuggestions API] Processing suggestion for path: ${s.field_path}, action: ${s.action}, value: ${JSON.stringify(s.suggested_value)}`);
 
@@ -169,15 +177,19 @@ export async function POST(request: NextRequest) {
         pathWithinContext = fullSuggestedPath.replace('professional_context.', '');
         mainContextKey = 'professional_context';
         contextObjectToUpdate = contact.professional_context as ContactContext;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
+        if (pathWithinContext) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
+        }
         contactUpdates.professional_context = JSON.parse(JSON.stringify(contact.professional_context)) as Json;
       } else if (fullSuggestedPath.startsWith('personal_context.')) {
         pathWithinContext = fullSuggestedPath.replace('personal_context.', '');
         mainContextKey = 'personal_context';
         contextObjectToUpdate = contact.personal_context as ContactContext;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
+        if (pathWithinContext) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setValueAtPath(contextObjectToUpdate, pathWithinContext, s.suggested_value, s.action as any);
+        }
         contactUpdates.personal_context = JSON.parse(JSON.stringify(contact.personal_context)) as Json;
       } else {
         // Direct contact field update (e.g., 'company', 'title')
@@ -202,7 +214,7 @@ export async function POST(request: NextRequest) {
             // AI suggested an 'update' to an entire array. Treat as replacing the array.
             // Source each element of the new array value.
             const newArrayValue = Array.isArray(s.suggested_value) ? s.suggested_value : (s.suggested_value !== null && s.suggested_value !== undefined ? [s.suggested_value] : []);
-            newArrayValue.forEach((_, index) => {
+            newArrayValue.forEach((_: unknown, index: number) => {
               sourceUpdates[`${fullSuggestedPath}.${index}`] = artifactId;
             });
           } else if (typeof s.suggested_value === 'object' && s.suggested_value !== null && !Array.isArray(s.suggested_value)) {

@@ -82,14 +82,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
 
     // Start email sync
-    const progress = await gmailService.syncContactEmails({
+    const progress = await gmailService.syncContactEmailsServer({
       contact_id,
       email_addresses,
       date_range,
       max_results: max_results || 100,
       include_labels,
       exclude_labels,
-    });
+    }, user.id);
 
     return NextResponse.json({
       success: true,
@@ -99,6 +99,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   } catch (error) {
     console.error('Gmail sync error:', error);
+
+    // Determine appropriate error message and status code
+    let errorMessage = 'Failed to sync emails';
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      if (error.message.includes('Gmail not connected')) {
+        errorMessage = 'Gmail account not connected. Please connect your Gmail account first.';
+        statusCode = 401;
+      } else if (error.message.includes('refresh token')) {
+        errorMessage = 'Gmail connection expired. Please reconnect your Gmail account.';
+        statusCode = 401;
+      } else if (error.message.includes('401 Unauthorized')) {
+        errorMessage = 'Gmail authentication failed. Please reconnect your Gmail account.';
+        statusCode = 401;
+      } else {
+        errorMessage = error.message;
+      }
+    }
 
     // Update sync state to "error"
     try {
@@ -131,7 +150,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .upsert({
             user_id: user.id,
             sync_status: 'error',
-            error_message: error instanceof Error ? error.message : 'Unknown error',
+            error_message: errorMessage,
           });
       }
     } catch (syncStateError) {
@@ -140,10 +159,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'Failed to sync emails',
-        success: false 
+        error: errorMessage,
+        success: false,
+        requiresReconnection: statusCode === 401
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
@@ -183,7 +203,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // Get sync state
-    const syncState = await gmailService.getSyncState();
+    const syncState = await gmailService.getSyncStateServer(user.id);
 
     // Get Gmail connection status
     const { data: tokens } = await supabase
@@ -197,7 +217,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (isConnected) {
       try {
-        profile = await gmailService.getProfile();
+        profile = await gmailService.getProfileServer(user.id);
       } catch (error) {
         console.error('Error getting Gmail profile:', error);
       }

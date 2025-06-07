@@ -134,6 +134,130 @@ export type Database = {
           },
         ]
       }
+      calendar_sync_logs: {
+        Row: {
+          artifacts_created: number | null
+          contacts_updated: string[] | null
+          errors: Json | null
+          events_processed: number | null
+          id: string
+          metadata: Json | null
+          status: string | null
+          sync_completed_at: string | null
+          sync_started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          artifacts_created?: number | null
+          contacts_updated?: string[] | null
+          errors?: Json | null
+          events_processed?: number | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          sync_completed_at?: string | null
+          sync_started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          artifacts_created?: number | null
+          contacts_updated?: string[] | null
+          errors?: Json | null
+          events_processed?: number | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          sync_completed_at?: string | null
+          sync_started_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contact_emails: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          email: string
+          email_type: string | null
+          id: string
+          is_primary: boolean | null
+          updated_at: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          email: string
+          email_type?: string | null
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          email?: string
+          email_type?: string | null
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string | null
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_emails_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_specific_sync_jobs: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          processed_at: string | null
+          status: string | null
+          sync_options: Json
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          status?: string | null
+          sync_options?: Json
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          status?: string | null
+          sync_options?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_specific_sync_jobs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_update_suggestions: {
         Row: {
           applied_at: string | null
@@ -209,7 +333,9 @@ export type Database = {
           connection_cadence_days: number | null
           created_at: string
           email: string | null
+          email_addresses: string[] | null
           field_sources: Json | null
+          gmail_labels: string[] | null
           id: string
           last_interaction_date: string | null
           linkedin_data: Json | null
@@ -229,7 +355,9 @@ export type Database = {
           connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
+          email_addresses?: string[] | null
           field_sources?: Json | null
+          gmail_labels?: string[] | null
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
@@ -249,7 +377,9 @@ export type Database = {
           connection_cadence_days?: number | null
           created_at?: string
           email?: string | null
+          email_addresses?: string[] | null
           field_sources?: Json | null
+          gmail_labels?: string[] | null
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
@@ -261,6 +391,107 @@ export type Database = {
           professional_context?: Json | null
           relationship_score?: number | null
           title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_sync_jobs: {
+        Row: {
+          contact_id: string
+          created_artifacts: number | null
+          created_at: string
+          date_range_end: string
+          date_range_start: string
+          email_addresses: string[]
+          error_message: string | null
+          id: string
+          max_results: number | null
+          metadata: Json | null
+          processed_at: string | null
+          processed_emails: number | null
+          status: string | null
+          sync_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_artifacts?: number | null
+          created_at?: string
+          date_range_end: string
+          date_range_start: string
+          email_addresses: string[]
+          error_message?: string | null
+          id?: string
+          max_results?: number | null
+          metadata?: Json | null
+          processed_at?: string | null
+          processed_emails?: number | null
+          status?: string | null
+          sync_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_artifacts?: number | null
+          created_at?: string
+          date_range_end?: string
+          date_range_start?: string
+          email_addresses?: string[]
+          error_message?: string | null
+          id?: string
+          max_results?: number | null
+          metadata?: Json | null
+          processed_at?: string | null
+          processed_emails?: number | null
+          status?: string | null
+          sync_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sync_jobs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_sync_state: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          last_sync_timestamp: string | null
+          last_sync_token: string | null
+          sync_status: string | null
+          total_emails_synced: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_timestamp?: string | null
+          last_sync_token?: string | null
+          sync_status?: string | null
+          total_emails_synced?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_timestamp?: string | null
+          last_sync_token?: string | null
+          sync_status?: string | null
+          total_emails_synced?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -476,6 +707,111 @@ export type Database = {
           },
         ]
       }
+      trigger_debug_log: {
+        Row: {
+          artifact_id: string | null
+          artifact_type: string | null
+          created_at: string | null
+          id: number
+          message: string | null
+          new_status: string | null
+          old_status: string | null
+          trigger_name: string | null
+          trigger_operation: string | null
+        }
+        Insert: {
+          artifact_id?: string | null
+          artifact_type?: string | null
+          created_at?: string | null
+          id?: number
+          message?: string | null
+          new_status?: string | null
+          old_status?: string | null
+          trigger_name?: string | null
+          trigger_operation?: string | null
+        }
+        Update: {
+          artifact_id?: string | null
+          artifact_type?: string | null
+          created_at?: string | null
+          id?: number
+          message?: string | null
+          new_status?: string | null
+          old_status?: string | null
+          trigger_name?: string | null
+          trigger_operation?: string | null
+        }
+        Relationships: []
+      }
+      user_integrations: {
+        Row: {
+          access_token: string | null
+          created_at: string | null
+          id: string
+          integration_type: string
+          metadata: Json | null
+          refresh_token: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string | null
+          id?: string
+          integration_type: string
+          metadata?: Json | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string | null
+          id?: string
+          integration_type?: string
+          metadata?: Json | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tokens: {
+        Row: {
+          created_at: string
+          gmail_access_token: string | null
+          gmail_refresh_token: string | null
+          gmail_token_expiry: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gmail_access_token?: string | null
+          gmail_refresh_token?: string | null
+          gmail_token_expiry?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gmail_access_token?: string | null
+          gmail_refresh_token?: string | null
+          gmail_token_expiry?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -483,6 +819,33 @@ export type Database = {
     Functions: {
       get_decrypted_secret: {
         Args: { secret_name: string }
+        Returns: string
+      }
+      get_user_integration: {
+        Args: { p_user_id: string; p_integration_type: string }
+        Returns: {
+          id: string
+          access_token: string
+          refresh_token: string
+          token_expires_at: string
+          scopes: string[]
+          metadata: Json
+        }[]
+      }
+      is_valid_user: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      upsert_user_integration: {
+        Args: {
+          p_user_id: string
+          p_integration_type: string
+          p_access_token: string
+          p_refresh_token?: string
+          p_token_expires_at?: string
+          p_scopes?: string[]
+          p_metadata?: Json
+        }
         Returns: string
       }
     }

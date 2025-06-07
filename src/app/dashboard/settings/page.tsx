@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Container, Box, Typography, Grid, Card, CardContent, CardActionArea, Breadcrumbs, Link } from '@mui/material';
-import { Loop as LoopIcon, Settings as SettingsIcon, CalendarToday } from '@mui/icons-material';
+import { Loop as LoopIcon, Settings as SettingsIcon, CalendarToday, Email } from '@mui/icons-material';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -21,6 +21,12 @@ export default function SettingsPage() {
       description: 'Connect Google Calendar to automatically import meetings and sync your schedule',
       icon: <CalendarToday sx={{ fontSize: 40 }} color="primary" />,
       href: '/dashboard/settings/calendar'
+    },
+    {
+      title: 'Gmail Integration',
+      description: 'Connect Gmail to automatically import email conversations and sync your communications',
+      icon: <Email sx={{ fontSize: 40 }} color="primary" />,
+      href: '/dashboard/settings/gmail'
     },
     // Future settings options can be added here
     // {

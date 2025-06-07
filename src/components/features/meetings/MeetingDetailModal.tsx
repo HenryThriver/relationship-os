@@ -49,6 +49,7 @@ import {
 import { format, formatDuration, intervalToDuration } from 'date-fns';
 import type { MeetingArtifact, MeetingArtifactContent } from '@/types/artifact';
 import type { ActionItem, FollowUpSuggestion, MeetingAttendee } from '@/types/meetings';
+import { ArtifactSuggestions } from '@/components/features/suggestions/ArtifactSuggestions';
 
 interface MeetingDetailModalProps {
   open: boolean;
@@ -58,6 +59,7 @@ interface MeetingDetailModalProps {
   onApplySuggestion?: (artifactId: string, suggestionId: string) => void;
   onAddContent?: (meeting: MeetingArtifact, contentType: 'notes' | 'transcript' | 'recording') => void;
   onEdit?: (meeting: MeetingArtifact) => void;
+  contactId?: string; // Add contact ID for suggestions
 }
 
 export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
@@ -68,6 +70,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
   onApplySuggestion,
   onAddContent,
   onEdit,
+  contactId,
 }) => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     details: true,
@@ -184,6 +187,17 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 
       <DialogContent sx={{ pb: 1 }}>
         {getProcessingStatusDisplay()}
+
+        {/* AI Suggestions Section */}
+        <Box sx={{ mb: 2 }}>
+          <ArtifactSuggestions
+            artifactId={meeting.id}
+            artifactType="meeting"
+            aiParsingStatus={meeting.ai_parsing_status as 'pending' | 'processing' | 'completed' | 'failed'}
+            contactId={contactId}
+            compact={false}
+          />
+        </Box>
 
         {/* Meeting Details */}
         <Accordion 

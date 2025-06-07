@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Paper, Avatar, Button, Stack, Chip } from '@mui/material';
 import { Email } from '@mui/icons-material';
-import { SuggestionNotificationBadge } from '../suggestions/SuggestionNotificationBadge';
+import { SuggestionBellBadge } from '../suggestions/UnifiedSuggestionManager';
 import type { PersonalContext as PersonalContextType } from '@/types';
 
 // RQ Bubble Colors (from your HTML example)
@@ -27,11 +27,9 @@ interface ContactHeaderProps {
   personalContext?: PersonalContextType | null;
   connectDate?: Date;
   connectCadence?: string | null;
-  // Suggestion notification props
-  suggestionCount?: number;
+  // Suggestion notification props - simplified with unified manager
+  contactId?: string;
   suggestionPriority?: 'high' | 'medium' | 'low';
-  hasNewSuggestions?: boolean;
-  onViewSuggestions?: () => void;
   // Action handlers - to be implemented
   onRecordNote?: () => void;
   onSendPOG?: () => void;
@@ -49,10 +47,8 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
   personalContext,
   connectDate,
   connectCadence,
-  suggestionCount = 0,
+  contactId,
   suggestionPriority = 'medium',
-  hasNewSuggestions = false,
-  onViewSuggestions,
   onRecordNote,
   onSendPOG,
   onScheduleConnect,
@@ -134,13 +130,10 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
                     }}
                 />
               )}
-              {suggestionCount > 0 && onViewSuggestions && (
-                <SuggestionNotificationBadge
-                  contactId="" // Will be passed from parent
-                  count={suggestionCount}
-                  onClick={onViewSuggestions}
+              {contactId && (
+                <SuggestionBellBadge
+                  contactId={contactId}
                   priority={suggestionPriority}
-                  hasNewSuggestions={hasNewSuggestions}
                 />
               )}
             </Box>

@@ -5,6 +5,42 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-06-07
+
+### Added
+- **Email AI Processing System**: Complete automated email intelligence processing
+  - Automatic AI processing trigger for email artifacts on INSERT/UPDATE with proper error handling
+  - Edge function integration with secure credential management via Supabase Vault
+  - Email sync jobs system with contact-based email synchronization triggers
+  - Comprehensive debug logging infrastructure for trigger operations and error tracking
+  - AI processing status tracking (`pending`, `processing`, `completed`, `failed`)
+
+### Changed
+- **Database Security Hardening**: Enhanced security practices for production deployment
+  - **SECURITY**: Removed all hardcoded production credentials from documentation
+  - Implemented dynamic credential extraction patterns using `npx supabase db dump --linked --dry-run`
+  - Added `DATABASE_ACCESS_GUIDE.md` to `.gitignore` for secure local-only patterns
+  - Updated `.cursorrules` with comprehensive database access documentation hierarchy
+
+- **Migration Consolidation**: Cleaned up email AI processing development history
+  - **MAJOR**: Consolidated 9 iterative email AI processing migrations into single clean migration
+  - Moved superseded migrations to `supabase/migrations/superseded/` with comprehensive documentation
+  - Professional migration history suitable for production deployment
+  - Reduced migration complexity from 9 debugging iterations to 1 consolidated implementation
+
+### Technical Details
+- **Migration History**: Replaced migrations 20250604221608-20250605011706 with single consolidated migration 20250607133302
+- **Security Infrastructure**: Complete elimination of hardcoded credentials in favor of secure dynamic patterns
+- **AI Processing**: Email artifacts automatically processed via edge function with service role authentication
+- **Debug System**: `trigger_debug_log` table for comprehensive trigger operation monitoring
+- **Database Safety**: Enhanced migration repair system and superseded migration management
+
+### Database Schema
+- Email sync jobs infrastructure with RLS policies and proper indexing
+- AI processing triggers with comprehensive error handling and graceful failure modes
+- Historical email artifact AI processing initialization for existing data
+- Duplicate email cleanup with message_id-based deduplication
+
 ## [0.8.0] - 2025-05-28
 
 ### Added

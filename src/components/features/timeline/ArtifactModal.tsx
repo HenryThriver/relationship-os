@@ -22,15 +22,17 @@ import {
 } from '@mui/icons-material';
 
 import { getArtifactConfig } from '@/config/artifactConfig';
-import type { ArtifactGlobal, LinkedInArtifact, VoiceMemoArtifact, LoopArtifact, LoopStatus, LoopArtifactContent } from '@/types';
+import type { BaseArtifact, LinkedInArtifact, VoiceMemoArtifact, LoopArtifact, LoopStatus, LoopArtifactContent } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { UpdateSuggestionRecord } from '@/types/suggestions';
 import { formatFieldPathForDisplay } from '@/lib/utils/formatting';
 import { LinkedInProfileModal } from '@/components/features/linkedin/LinkedInProfileModal';
 import { EnhancedLoopModal } from '../loops/EnhancedLoopModal';
+import { EmailDetailModal } from '@/components/features/emails/EmailDetailModal';
+import { EmailArtifact } from '@/types/email';
 
 interface ArtifactModalProps {
-  artifact: ArtifactGlobal | null;
+  artifact: BaseArtifact | null;
   open: boolean;
   onClose: () => void;
   contactId?: string;
@@ -96,7 +98,7 @@ const renderContent = (content: any, level = 0): React.ReactNode => {
             {Object.entries(content).map(([key, value]) => (
               <TableRow key={key} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell component="th" scope="row" sx={{ fontWeight: 'medium', width: '30%', verticalAlign: 'top' }}>
-                  {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                 </TableCell>
                 <TableCell sx={{ verticalAlign: 'top' }}>{renderContent(value, level + 1)}</TableCell>
               </TableRow>
@@ -196,13 +198,30 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
     );
   }
 
+  if (artifact.type === 'email') {
+    return (
+      <EmailDetailModal
+        open={open}
+        onClose={onClose}
+        email={artifact as EmailArtifact}
+        // Thread will be built internally in EmailDetailModal if not provided
+        onReply={(email) => console.log('Reply to email:', email.id)}
+        onReplyAll={(email) => console.log('Reply all to email:', email.id)}
+        onForward={(email) => console.log('Forward email:', email.id)}
+        onDelete={onDelete ? (email) => onDelete(email.id) : undefined}
+        onArchive={(email) => console.log('Archive email:', email.id)}
+        onToggleStar={(email) => console.log('Toggle star for email:', email.id)}
+      />
+    );
+  }
+
   return (
     <Modal open={open} onClose={onClose} aria-labelledby="artifact-detail-title">
       <Box sx={modalStyle}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexShrink: 0 }}>
           {Icon && <Icon sx={{ mr: 1.5, color: color || 'inherit', fontSize: '2rem' }} />}
           <Typography id="artifact-detail-title" variant="h6" component="h2" sx={{ flexGrow: 1 }}>
-            {badgeLabel || artifact.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            {badgeLabel || artifact.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
           </Typography>
           <IconButton onClick={onClose} aria-label="close artifact detail">
             <CloseIcon />

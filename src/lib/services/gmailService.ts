@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { decodeBase64ToUtf8, cleanEmailText } from '@/lib/utils/textDecoding';
 import type { 
   GmailMessage, 
   GmailThread, 
@@ -44,7 +45,61 @@ export class GmailService {
   }
 
   /**
-   * Exchange authorization code for tokens
+   * Exchange authorization code for tokens (server-side version)
+   */
+  async exchangeCodeForTokensServer(code: string, redirectUri: string, userId: string): Promise<UserTokens> {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to exchange code for tokens: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    const expiryDate = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
+
+    // Use service role key for server-side operations
+    const { createServerClient } = await import('@supabase/ssr');
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: () => {},
+        },
+      }
+    );
+
+    const { data: tokenRecord, error } = await supabaseServer
+      .from('user_tokens')
+      .upsert({
+        user_id: userId,
+        gmail_access_token: data.access_token,
+        gmail_refresh_token: data.refresh_token,
+        gmail_token_expiry: expiryDate,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return tokenRecord;
+  }
+
+  /**
+   * Exchange authorization code for tokens (client-side version)
    */
   async exchangeCodeForTokens(code: string, redirectUri: string): Promise<UserTokens> {
     const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -185,7 +240,91 @@ export class GmailService {
   }
 
   /**
-   * Get Gmail profile information
+   * Get Gmail profile information (server-side version)
+   */
+  async getProfileServer(userId: string): Promise<GmailProfile> {
+    // Use service role key for server-side operations
+    const { createServerClient } = await import('@supabase/ssr');
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: () => {},
+        },
+      }
+    );
+
+    const { data: tokenRecord, error } = await supabaseServer
+      .from('user_tokens')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !tokenRecord?.gmail_access_token) {
+      throw new Error('Gmail not connected. Please connect your Gmail account first.');
+    }
+
+    // Check if token needs refresh
+    let accessToken = tokenRecord.gmail_access_token;
+    const tokenExpiry = tokenRecord.gmail_token_expiry ? new Date(tokenRecord.gmail_token_expiry) : null;
+    const now = new Date();
+
+    if (tokenExpiry && now >= tokenExpiry) {
+      console.log('📧 Gmail token expired for profile, refreshing...');
+      
+      // Refresh the token
+      const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: tokenRecord.gmail_refresh_token!,
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh Gmail token. Please reconnect your Gmail account.');
+      }
+
+      const refreshData = await refreshResponse.json();
+      
+      // Update token in database
+      const newExpiry = new Date(Date.now() + (refreshData.expires_in * 1000));
+      await supabaseServer
+        .from('user_tokens')
+        .update({
+          gmail_access_token: refreshData.access_token,
+          gmail_token_expiry: newExpiry.toISOString(),
+        })
+        .eq('user_id', userId);
+
+      accessToken = refreshData.access_token;
+      console.log('📧 Gmail token refreshed successfully for profile');
+    }
+
+    // Make direct API call with token
+    const response = await fetch(`${GMAIL_API_BASE}/users/me/profile`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gmail API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get Gmail profile information (client-side version)
    */
   async getProfile(): Promise<GmailProfile> {
     return await this.gmailApiRequest<GmailProfile>('/users/me/profile');
@@ -299,7 +438,7 @@ export class GmailService {
   }
 
   /**
-   * Extract text content from Gmail message payload
+   * Extract text content from Gmail message payload with proper UTF-8 decoding
    */
   private extractTextContent(payload: any): { text: string; html: string } {
     let text = '';
@@ -307,9 +446,13 @@ export class GmailService {
 
     const extractFromPart = (part: any) => {
       if (part.mimeType === 'text/plain' && part.body?.data) {
-        text += atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        // Properly decode base64 to UTF-8 and clean encoding issues
+        const decodedText = decodeBase64ToUtf8(part.body.data);
+        text += cleanEmailText(decodedText);
       } else if (part.mimeType === 'text/html' && part.body?.data) {
-        html += atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        // Properly decode base64 to UTF-8 and clean encoding issues
+        const decodedHtml = decodeBase64ToUtf8(part.body.data);
+        html += cleanEmailText(decodedHtml);
       } else if (part.parts) {
         part.parts.forEach(extractFromPart);
       }
@@ -376,7 +519,7 @@ export class GmailService {
     return {
       message_id: message.id,
       thread_id: message.threadId,
-      subject: headers.subject,
+      subject: cleanEmailText(headers.subject),
       from: headers.from,
       to: headers.to,
       cc: headers.cc,
@@ -384,7 +527,7 @@ export class GmailService {
       date: internalDate,
       body_text: content.text,
       body_html: content.html,
-      snippet: message.snippet,
+      snippet: cleanEmailText(message.snippet || ''),
       
       thread_position: threadPosition,
       thread_length: threadLength,
@@ -411,7 +554,271 @@ export class GmailService {
   }
 
   /**
-   * Sync emails for a specific contact
+   * Sync emails for a specific contact (server-side version)
+   */
+  async syncContactEmailsServer(request: EmailImportRequest, userId: string): Promise<EmailSyncProgress> {
+    const progress: EmailSyncProgress = {
+      total_emails: 0,
+      processed_emails: 0,
+      created_artifacts: 0,
+      updated_artifacts: 0,
+      errors: 0,
+      current_status: 'Starting sync...',
+    };
+
+    try {
+      // Use service role key for server-side operations
+      const { createServerClient } = await import('@supabase/ssr');
+      const supabaseServer = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          cookies: {
+            getAll: () => [],
+            setAll: () => {},
+          },
+        }
+      );
+
+      // Get user's Gmail tokens
+      const { data: tokenRecord, error: tokenError } = await supabaseServer
+        .from('user_tokens')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (tokenError || !tokenRecord?.gmail_access_token) {
+        throw new Error('Gmail not connected. Please connect your Gmail account first.');
+      }
+
+      // Build search query for contact emails
+      const emailQueries = request.email_addresses.map(email => `from:${email} OR to:${email}`);
+      const query = emailQueries.join(' OR ');
+
+      // Add date range if specified
+      let searchQuery = query;
+      if (request.date_range) {
+        const startDate = new Date(request.date_range.start);
+        const endDate = new Date(request.date_range.end);
+        const startFormatted = startDate.toISOString().split('T')[0];
+        const endFormatted = endDate.toISOString().split('T')[0];
+        searchQuery += ` after:${startFormatted} before:${endFormatted}`;
+        console.log(`📧 Date range processed: ${startFormatted} to ${endFormatted} (from ${request.date_range.start} to ${request.date_range.end})`);
+      }
+
+      progress.current_status = 'Searching for emails...';
+
+      console.log(`📧 Gmail search query: "${searchQuery}"`);
+      console.log(`📧 Contact emails being searched: ${request.email_addresses.join(', ')}`);
+
+      // Check if token needs refresh
+      let accessToken = tokenRecord.gmail_access_token;
+      const tokenExpiry = tokenRecord.gmail_token_expiry ? new Date(tokenRecord.gmail_token_expiry) : null;
+      const now = new Date();
+
+      if (tokenExpiry && now >= tokenExpiry) {
+        console.log('📧 Gmail token expired, refreshing...');
+        
+        // Refresh the token
+        const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: tokenRecord.gmail_refresh_token!,
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+          }),
+        });
+
+        if (!refreshResponse.ok) {
+          throw new Error('Failed to refresh Gmail token. Please reconnect your Gmail account.');
+        }
+
+        const refreshData = await refreshResponse.json();
+        
+        // Update token in database
+        const newExpiry = new Date(Date.now() + (refreshData.expires_in * 1000));
+        await supabaseServer
+          .from('user_tokens')
+          .update({
+            gmail_access_token: refreshData.access_token,
+            gmail_token_expiry: newExpiry.toISOString(),
+          })
+          .eq('user_id', userId);
+
+        accessToken = refreshData.access_token;
+        console.log('📧 Gmail token refreshed successfully');
+      }
+
+      // Make direct Gmail API call with token
+      const searchParams = new URLSearchParams({
+        q: searchQuery,
+        maxResults: (request.max_results || 100).toString(),
+      });
+
+      console.log(`📧 Full Gmail API URL: ${GMAIL_API_BASE}/users/me/messages?${searchParams.toString()}`);
+
+      const searchResponse = await fetch(`${GMAIL_API_BASE}/users/me/messages?${searchParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        console.error(`📧 Gmail API search error: ${searchResponse.status} ${searchResponse.statusText}`, errorText);
+        throw new Error(`Gmail API search error: ${searchResponse.status} ${searchResponse.statusText}`);
+      }
+
+      const searchResult = await searchResponse.json();
+      console.log(`📧 Gmail search result:`, searchResult);
+      progress.total_emails = searchResult.messages?.length || 0;
+
+      if (progress.total_emails === 0) {
+        progress.current_status = 'No emails found';
+        return progress;
+      }
+
+      progress.current_status = 'Processing emails...';
+
+      // Process each message
+      for (const messageRef of searchResult.messages || []) {
+        try {
+          // Get full message details
+          const messageResponse = await fetch(`${GMAIL_API_BASE}/users/me/messages/${messageRef.id}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!messageResponse.ok) {
+            throw new Error(`Failed to get message ${messageRef.id}`);
+          }
+
+          const message = await messageResponse.json();
+          
+          // Get thread to determine position
+          const threadResponse = await fetch(`${GMAIL_API_BASE}/users/me/threads/${message.threadId}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!threadResponse.ok) {
+            throw new Error(`Failed to get thread ${message.threadId}`);
+          }
+
+          const thread = await threadResponse.json();
+          const threadPosition = thread.messages.findIndex((m: any) => m.id === message.id) + 1;
+          const threadLength = thread.messages.length;
+
+          // Transform to artifact content
+          const emailContent = await this.transformGmailMessage(message, threadPosition, threadLength);
+
+          // Check if artifact already exists
+          const { data: existing } = await supabaseServer
+            .from('artifacts')
+            .select('id')
+            .eq('type', 'email')
+            .eq('contact_id', request.contact_id)
+            .contains('metadata', { message_id: message.id })
+            .single();
+
+          if (existing) {
+            // Update existing artifact
+            const { error } = await supabaseServer
+              .from('artifacts')
+              .update({
+                content: emailContent.snippet,
+                metadata: emailContent,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existing.id);
+
+            if (error) throw error;
+            progress.updated_artifacts++;
+          } else {
+            // Create new artifact with AI parsing enabled
+            const { error } = await supabaseServer
+              .from('artifacts')
+              .insert({
+                user_id: userId,
+                contact_id: request.contact_id,
+                type: 'email',
+                content: emailContent.snippet,
+                metadata: emailContent,
+                timestamp: emailContent.date,
+                ai_parsing_status: 'pending',
+              });
+
+            if (error) throw error;
+            progress.created_artifacts++;
+          }
+
+          progress.processed_emails++;
+          progress.current_status = `Processed ${progress.processed_emails} of ${progress.total_emails} emails`;
+
+        } catch (error) {
+          console.error('Error processing email:', messageRef.id, error);
+          progress.errors++;
+        }
+      }
+
+      progress.current_status = 'Email sync completed';
+      
+      // Update sync state
+      await supabaseServer
+        .from('gmail_sync_state')
+        .upsert({
+          user_id: userId,
+          total_emails_synced: (tokenRecord.total_emails_synced || 0) + progress.created_artifacts + progress.updated_artifacts,
+          sync_status: 'idle',
+          error_message: undefined,
+          last_sync_timestamp: new Date().toISOString(),
+        });
+
+      return progress;
+
+    } catch (error) {
+      progress.current_status = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      
+      // Update sync state with error
+      try {
+        const { createServerClient } = await import('@supabase/ssr');
+        const supabaseServer = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            cookies: {
+              getAll: () => [],
+              setAll: () => {},
+            },
+          }
+        );
+
+        await supabaseServer
+          .from('gmail_sync_state')
+          .upsert({
+            user_id: userId,
+            sync_status: 'error',
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+          });
+      } catch (syncStateError) {
+        console.error('Error updating sync state:', syncStateError);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Sync emails for a specific contact (client-side version)
    */
   async syncContactEmails(request: EmailImportRequest): Promise<EmailSyncProgress> {
     const progress: EmailSyncProgress = {
@@ -487,7 +894,7 @@ export class GmailService {
             if (error) throw error;
             progress.updated_artifacts++;
           } else {
-            // Create new artifact
+            // Create new artifact with AI parsing enabled
             const { error } = await this.supabase
               .from('artifacts')
               .insert({
@@ -497,6 +904,7 @@ export class GmailService {
                 content: emailContent.snippet,
                 metadata: emailContent,
                 timestamp: emailContent.date,
+                ai_parsing_status: 'pending',
               });
 
             if (error) throw error;
@@ -518,7 +926,7 @@ export class GmailService {
       await this.updateSyncState({
         total_emails_synced: progress.created_artifacts + progress.updated_artifacts,
         sync_status: 'idle',
-        error_message: null,
+        error_message: undefined,
       });
 
       return progress;
@@ -556,7 +964,34 @@ export class GmailService {
   }
 
   /**
-   * Get current sync state
+   * Get current sync state (server-side version)
+   */
+  async getSyncStateServer(userId: string): Promise<GmailSyncState | null> {
+    // Use service role key for server-side operations
+    const { createServerClient } = await import('@supabase/ssr');
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: () => {},
+        },
+      }
+    );
+
+    const { data, error } = await supabaseServer
+      .from('gmail_sync_state')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
+  /**
+   * Get current sync state (client-side version)
    */
   async getSyncState(): Promise<GmailSyncState | null> {
     const { data: { user } } = await this.supabase.auth.getUser();
@@ -583,9 +1018,9 @@ export class GmailService {
     await this.supabase
       .from('user_tokens')
       .update({
-        gmail_access_token: null,
-        gmail_refresh_token: null,
-        gmail_token_expiry: null,
+        gmail_access_token: undefined,
+        gmail_refresh_token: undefined,
+        gmail_token_expiry: undefined,
       })
       .eq('user_id', user.id);
 

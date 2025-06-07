@@ -182,6 +182,12 @@ export interface EmailThread {
   // Messages in chronological order
   messages: EmailArtifact[];
   
+  // Enhanced thread properties
+  direction: 'sent' | 'received' | 'mixed';
+  sent_count: number;
+  received_count: number;
+  importance: 'high' | 'normal' | 'low';
+  
   // Thread summary from AI
   summary?: string;
   key_topics?: string[];
@@ -294,13 +300,14 @@ export interface EmailActionRequest {
 }
 
 // Database type exports
-export type GmailSyncStateRow = Database['public']['Tables']['gmail_sync_state']['Row'];
-export type GmailSyncStateInsert = Database['public']['Tables']['gmail_sync_state']['Insert'];
-export type GmailSyncStateUpdate = Database['public']['Tables']['gmail_sync_state']['Update'];
+// TODO: Add these types when the database tables are available
+// export type GmailSyncStateRow = Database['public']['Tables']['gmail_sync_state']['Row'];
+// export type GmailSyncStateInsert = Database['public']['Tables']['gmail_sync_state']['Insert'];
+// export type GmailSyncStateUpdate = Database['public']['Tables']['gmail_sync_state']['Update'];
 
-export type UserTokensRow = Database['public']['Tables']['user_tokens']['Row'];
-export type UserTokensInsert = Database['public']['Tables']['user_tokens']['Insert'];
-export type UserTokensUpdate = Database['public']['Tables']['user_tokens']['Update'];
+// export type UserTokensRow = Database['public']['Tables']['user_tokens']['Row'];
+// export type UserTokensInsert = Database['public']['Tables']['user_tokens']['Insert'];
+// export type UserTokensUpdate = Database['public']['Tables']['user_tokens']['Update'];
 
 // Email artifact helpers
 export interface EmailArtifactMetadata extends EmailArtifactContent {}

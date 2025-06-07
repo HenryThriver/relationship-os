@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Container,
@@ -18,6 +18,7 @@ import { ContactHeader } from '@/components/features/contacts/ContactHeader';
 import { ArtifactModal } from '@/components/features/timeline/ArtifactModal';
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
 import { useLoops } from '@/lib/hooks/useLoops';
+import { useGmailIntegration } from '@/lib/hooks/useGmailIntegration';
 import { BaseArtifact, LoopStatus, LoopArtifactContent, LinkedInArtifactContent, LoopCompletionOutcome } from '@/types';
 import { PersonalContext as PersonalContextType } from '@/types/contact';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,6 +36,13 @@ export default function ContactTimelinePage() {
     updateLoopStatus,
     refetchLoops
   } = useLoops(contactId);
+  
+  // Gmail integration for automatic email sync
+  const {
+    isConnected: gmailConnected,
+    syncContactEmails,
+    isSyncing: emailSyncing,
+  } = useGmailIntegration();
 
   const personalContextForHeader = useMemo(() => {
     if (!contact?.personal_context) return undefined;
@@ -46,6 +54,87 @@ export default function ContactTimelinePage() {
       ? `Connect every ${contact.connection_cadence_days} days` 
       : undefined;
   }, [contact?.connection_cadence_days]);
+
+  // Automatic email sync when contact loads
+  useEffect(() => {
+    if (!contact || !gmailConnected || emailSyncing || !contactId) return;
+
+    // Get contact email addresses for sync
+    const emailAddresses = [];
+    
+    // Add primary email if exists
+    if (contact.email) {
+      emailAddresses.push(contact.email);
+    }
+    
+    // Add additional emails from contact_emails if available
+    if (contact.contact_emails && Array.isArray(contact.contact_emails)) {
+      const additionalEmails = contact.contact_emails.map((ce: any) => ce.email);
+      emailAddresses.push(...additionalEmails);
+    }
+
+    // Only sync if we have email addresses
+    if (emailAddresses.length === 0) {
+      console.log(`📧 No email addresses found for contact ${contact.name || contactId}`);
+      return;
+    }
+
+    // Check if we've already synced recently (prevent duplicate syncs)
+    const lastSyncKey = `gmail_sync_${contactId}`;
+    const lastSyncTime = localStorage.getItem(lastSyncKey);
+    const now = Date.now();
+    const fiveMinutesAgo = now - (5 * 60 * 1000); // 5 minutes
+
+    if (lastSyncTime && parseInt(lastSyncTime) > fiveMinutesAgo) {
+      console.log(`📧 Skipping sync for ${contact.name || contactId} - synced recently`);
+      return;
+    }
+
+    console.log(`📧 Auto-syncing emails for contact ${contact.name || contactId} with emails:`, emailAddresses);
+
+    // Store sync time to prevent duplicates
+    localStorage.setItem(lastSyncKey, now.toString());
+
+    // Trigger email sync (7 days back similar to calendar)
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    console.log(`📧 Auto-syncing emails for date range: ${sevenDaysAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`);
+
+    // Use direct API call to avoid function reference issues
+    fetch('/api/gmail/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contact_id: contactId,
+        email_addresses: [...new Set(emailAddresses)], // Remove duplicates
+        date_range: {
+          start: sevenDaysAgo.toISOString(),
+          end: today.toISOString(),
+        },
+        max_results: 100,
+      }),
+    })
+    .then(async (response) => {
+      const data = await response.json();
+      if (response.ok) {
+        console.log('📧 Email sync completed:', data);
+        // Invalidate timeline to refresh with new emails
+        queryClient.invalidateQueries({ queryKey: ['artifactTimeline', contactId] });
+      } else {
+        throw new Error(data.error || 'Sync failed');
+      }
+    })
+    .catch((error) => {
+      console.error('📧 Auto email sync failed:', error);
+      // Remove the sync time if it failed so it can retry
+      localStorage.removeItem(lastSyncKey);
+    });
+
+  }, [contact, gmailConnected, contactId, emailSyncing]); // Removed syncContactEmails from dependencies
 
   const handleArtifactClick = (artifact: BaseArtifact) => {
     setSelectedArtifact(artifact);

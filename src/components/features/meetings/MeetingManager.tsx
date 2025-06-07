@@ -143,6 +143,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           onUpdateActionItem={handleUpdateActionItem}
           onApplySuggestion={handleApplySuggestion}
           onAddContent={handleAddContent}
+          contactId={contactId}
         />
       )}
 

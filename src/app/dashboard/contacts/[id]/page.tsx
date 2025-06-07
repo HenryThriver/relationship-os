@@ -36,7 +36,7 @@ const VoiceRecorder = nextDynamic(() =>
 );
 
 // Import new suggestion components
-import { SuggestionsPanel } from '@/components/features/suggestions/SuggestionsPanel';
+import { FullSuggestionManager } from '@/components/features/suggestions/UnifiedSuggestionManager';
 // Placeholder for the new VoiceMemoDetailModal
 import { VoiceMemoDetailModal } from '@/components/features/voice/VoiceMemoDetailModal'; // Uncommented
 
@@ -49,7 +49,7 @@ import { ContactEmailManagement } from '@/components/features/contacts/ContactEm
 // Import hooks and types
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
 import { useVoiceMemos } from '@/lib/hooks/useVoiceMemos';
-// Import useUpdateSuggestions hook
+// Import useUpdateSuggestions hook for priority calculation only
 import { useUpdateSuggestions } from '@/lib/hooks/useUpdateSuggestions';
 import { useArtifacts } from '@/lib/hooks/useArtifacts';
 import { useArtifactModalData } from '@/lib/hooks/useArtifactModalData';
@@ -181,20 +181,8 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
     }
   }, [searchParams, voiceMemos, router, isVoiceMemoDetailModalOpen]);
 
-  // Instantiate useUpdateSuggestions hook
-  const {
-    suggestions,
-    isLoading: isLoadingSuggestions,
-    pendingCount,
-    highConfidenceCount,
-    markAsViewed,
-    bulkApply,
-    bulkReject,
-    isBulkProcessing,
-  } = useUpdateSuggestions({ contactId });
-
-  // State for suggestions panel
-  const [suggestionsPanelOpen, setSuggestionsPanelOpen] = useState(false);
+  // Calculate suggestion priority for UI components
+  const { pendingCount, highConfidenceCount } = useUpdateSuggestions({ contactId });
 
   const {
     deleteArtifact,
@@ -218,13 +206,6 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }, [contact?.connection_cadence_days]);
 
   // Use useCallback for event handlers to prevent re-renders
-  const handleViewSuggestions = useCallback(() => {
-    setSuggestionsPanelOpen(true);
-  }, []);
-
-  const handleCloseSuggestionsPanel = useCallback(() => {
-    setSuggestionsPanelOpen(false);
-  }, []);
 
   const handleUpdateStatus = useCallback((itemId: string, newStatus: ActionQueuesActionItemStatus, type: 'pog' | 'ask') => {
     console.log(`Update ${type} item ${itemId} to ${newStatus}`);
@@ -244,19 +225,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const handleQuickAddAsk = useCallback(() => handleQuickAdd('Ask'), [handleQuickAdd]);
   const handleQuickAddMilestone = useCallback(() => handleQuickAdd('milestone'), [handleQuickAdd]);
 
-  const handleApplySuggestions = useCallback(async (suggestionIds: string[], selectedPathsMap: Record<string, string[]>) => {
-    await bulkApply({ suggestionIds, selectedPathsMap });
-    handleCloseSuggestionsPanel();
-  }, [bulkApply, handleCloseSuggestionsPanel]);
 
-  const handleRejectSuggestions = useCallback(async (suggestionIds: string[]) => {
-    await bulkReject({ suggestionIds });
-    handleCloseSuggestionsPanel();
-  }, [bulkReject, handleCloseSuggestionsPanel]);
-
-  const handleMarkAsViewed = useCallback(async (suggestionId: string) => {
-    await markAsViewed({ suggestionId });
-  }, [markAsViewed]);
 
 
   interface ActionItemLike {
@@ -494,7 +463,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }, [contactId, contact?.name, showToast]);
 
   // All hooks have been called. Now we can have conditional returns.
-  const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingSuggestions || isLoadingArtifactModalData;
+  const isLoading = isLoadingContact || isLoadingVoiceMemos || isLoadingArtifactModalData;
 
   if (isLoading) {
     return <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Container>;
@@ -522,6 +491,8 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           profilePhotoUrl={(contact.linkedin_data as unknown as LinkedInArtifactContent)?.profilePicture || undefined}
           location={contact.location}
           relationshipScore={contact.relationship_score}
+          contactId={contactId}
+          suggestionPriority={suggestionPriority}
         />
 
         <ProcessingStatusBar 
@@ -598,28 +569,15 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
               onAddAsk={handleQuickAddAsk}
               onAddMilestone={handleQuickAddMilestone} 
             />
-            <Button 
-              variant="outlined" 
-              fullWidth 
-              onClick={handleViewSuggestions}
-              color={suggestionPriority === 'high' ? 'error' : 'primary'}
-            >
-              View Suggestions ({pendingCount})
-            </Button>
+            <FullSuggestionManager
+              contactId={contactId}
+              priority={suggestionPriority}
+            />
           </Box>
         </Box>
       </Box>
 
-      <SuggestionsPanel
-        contactId={contactId}
-        isOpen={suggestionsPanelOpen}
-        onClose={handleCloseSuggestionsPanel}
-        suggestions={suggestions || []}
-        onApplySuggestions={handleApplySuggestions}
-        onRejectSuggestions={handleRejectSuggestions}
-        onMarkAsViewed={handleMarkAsViewed}
-        isLoading={isLoadingSuggestions || isBulkProcessing}
-      />
+
 
       <Box sx={{ textAlign: 'center', py: 3, mt: 4, borderTop: 1, borderColor: 'divider'}}>
         <Typography variant="caption" color="text.secondary">
@@ -668,6 +626,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           onReprocess={handleReprocessVoiceMemoInDetailModal}
           isReprocessing={isReprocessingMemo} 
           contactName={contact.name || undefined}
+          contactId={contactId}
           playAudio={playAudio}
           currentPlayingUrl={playingAudioUrl || undefined} 
           audioPlaybackError={audioPlaybackError || undefined}

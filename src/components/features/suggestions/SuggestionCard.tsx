@@ -108,7 +108,7 @@ export const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Typography 
                 variant={compact ? "body2" : "subtitle2"} 
-                component="span" 
+                component="div" 
                 sx={{ fontWeight: 'medium', flexGrow: 1 }}
               >
                 {getFieldName(suggestion.field_path)}

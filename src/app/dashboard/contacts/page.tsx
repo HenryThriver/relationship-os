@@ -21,11 +21,45 @@ import {
 import { Add as AddIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import Link from 'next/link';
 import { useContacts } from '@/lib/hooks/useContacts'; // Assuming this is the correct path
+import { BulkEmailActions } from '@/components/features/emails/BulkEmailActions';
 import type { Contact } from '@/types'; // Assuming this is the correct path for the Contact type
 
 export default function ContactsPage(): React.JSX.Element {
   console.log('[src/app/dashboard/contacts/page.tsx] Rendering');
   const { contacts, isLoadingContacts, contactsError } = useContacts();
+
+  // Transform contacts for bulk email actions
+  const contactsForBulkSync = contacts?.map(contact => {
+    const nameParts = (contact.name || '').split(' ');
+    return {
+      id: contact.id,
+      first_name: nameParts[0] || '',
+      last_name: nameParts.slice(1).join(' ') || '',
+      email_addresses: contact.email ? [contact.email] : [],
+    };
+  }) || [];
+
+  const handleBulkSync = async (contactIds: string[]) => {
+    // TODO: Implement actual bulk sync API call
+    console.log('Bulk syncing contacts:', contactIds);
+    
+    // For now, just simulate the API calls
+    for (const contactId of contactIds) {
+      await fetch('/api/gmail/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: contactId,
+          email_addresses: contactsForBulkSync.find(c => c.id === contactId)?.email_addresses || [],
+          date_range: {
+            start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            end: new Date().toISOString(),
+          },
+          max_results: 100,
+        }),
+      });
+    }
+  };
 
   return (
     <Box sx={{pb: 4}}>
@@ -46,16 +80,22 @@ export default function ContactsPage(): React.JSX.Element {
             Manage your relationship network
           </Typography>
         </Box>
-        <Link href="/dashboard/contacts/new" passHref>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            size="large"
-            sx={{ textTransform: 'none', borderRadius: '0.5rem' }}
-          >
-            Add Contact
-          </Button>
-        </Link>
+        <Box display="flex" gap={2}>
+          <BulkEmailActions
+            contacts={contactsForBulkSync}
+            onBulkSync={handleBulkSync}
+          />
+          <Link href="/dashboard/contacts/new" passHref>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              size="large"
+              sx={{ textTransform: 'none', borderRadius: '0.5rem' }}
+            >
+              Add Contact
+            </Button>
+          </Link>
+        </Box>
       </Box>
 
       {isLoadingContacts && (

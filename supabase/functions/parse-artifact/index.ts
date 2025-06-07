@@ -65,8 +65,9 @@ serve(async (req: Request) => {
     // Process voice memos with completed transcriptions and meetings with content, both with pending AI parsing
     const isVoiceMemo = fetchedArtifactRecord.type === 'voice_memo';
     const isMeeting = fetchedArtifactRecord.type === 'meeting';
+    const isEmail = fetchedArtifactRecord.type === 'email';
     
-    if (!isVoiceMemo && !isMeeting) {
+    if (!isVoiceMemo && !isMeeting && !isEmail) {
       console.log(`Skipping parsing for artifact ${fetchedArtifactRecord.id}: Unsupported type: ${fetchedArtifactRecord.type}`);
       return new Response(JSON.stringify({ message: 'Artifact type not supported for AI parsing.' }), { 
         status: 200,
@@ -83,19 +84,26 @@ serve(async (req: Request) => {
       });
     }
 
-    // Voice memo specific validation
+    // Additional validation for content readiness
     if (isVoiceMemo && (!fetchedArtifactRecord.transcription || fetchedArtifactRecord.transcription_status !== 'completed')) {
-      console.log(`Skipping parsing for voice memo ${fetchedArtifactRecord.id}: Transcription Status: ${fetchedArtifactRecord.transcription_status}`);
-      return new Response(JSON.stringify({ message: 'Voice memo transcription not completed.' }), { 
+      console.log(`Skipping parsing for voice memo ${fetchedArtifactRecord.id}: Transcription not ready`);
+      return new Response(JSON.stringify({ message: 'Voice memo transcription not ready for parsing.' }), { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Meeting specific validation - meetings should have content (title/summary)
     if (isMeeting && !fetchedArtifactRecord.content) {
       console.log(`Skipping parsing for meeting ${fetchedArtifactRecord.id}: No content available`);
-      return new Response(JSON.stringify({ message: 'Meeting has no content to process.' }), { 
+      return new Response(JSON.stringify({ message: 'Meeting content not available for parsing.' }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    if (isEmail && !fetchedArtifactRecord.content) {
+      console.log(`Skipping parsing for email ${fetchedArtifactRecord.id}: No content available`);
+      return new Response(JSON.stringify({ message: 'Email content not available for parsing.' }), { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -136,7 +144,35 @@ serve(async (req: Request) => {
     console.log(`Processing artifact ${fetchedArtifactRecord.id} for contact ${contact.id}`);
 
     // Get content to analyze based on artifact type
-    const contentToAnalyze = isVoiceMemo ? fetchedArtifactRecord.transcription : fetchedArtifactRecord.content;
+    let contentToAnalyze: string;
+    if (isVoiceMemo) {
+      contentToAnalyze = fetchedArtifactRecord.transcription;
+    } else if (isMeeting) {
+      contentToAnalyze = fetchedArtifactRecord.content;
+    } else if (isEmail) {
+      // For emails, include both subject and content AND directionality context
+      const emailSubject = fetchedArtifactRecord.metadata?.subject || '';
+      const emailContent = fetchedArtifactRecord.content || '';
+      const fromEmail = fetchedArtifactRecord.metadata?.from?.email || '';
+      const toEmails = fetchedArtifactRecord.metadata?.to?.map((t: any) => t.email).join(', ') || '';
+      
+      // Determine email direction relative to the contact
+      const isFromContact = fromEmail.toLowerCase().includes(contact.email?.toLowerCase() || contact.name?.toLowerCase());
+      const isToContact = toEmails.toLowerCase().includes(contact.email?.toLowerCase() || contact.name?.toLowerCase());
+      
+      let directionContext = '';
+      if (isFromContact) {
+        directionContext = `\nEMAIL DIRECTION: This email was SENT BY the contact (${contact.name}). Information in first person ("I", "my", "we") refers to the contact.`;
+      } else if (isToContact) {
+        directionContext = `\nEMAIL DIRECTION: This email was SENT TO the contact (${contact.name}) by someone else. Information in first person ("I", "my", "we") refers to the EMAIL SENDER, NOT the contact. Only extract information that is explicitly ABOUT the contact or information the contact would learn from this email.`;
+      } else {
+        directionContext = `\nEMAIL DIRECTION: Unclear email direction. Be very careful about attribution - only extract information that is explicitly about the contact.`;
+      }
+      
+      contentToAnalyze = `Subject: ${emailSubject}\n\nFrom: ${fromEmail}\nTo: ${toEmails}${directionContext}\n\nContent:\n${emailContent}`;
+    } else {
+      contentToAnalyze = fetchedArtifactRecord.content;
+    }
     
     // Call OpenAI for parsing
     // The response from parseWithOpenAI will now be an object: { contact_updates: [], suggested_loops: [] }
@@ -352,14 +388,24 @@ For each potential loop identified, provide:
   // Determine content type and create appropriate prompt
   const isVoiceMemo = fetchedArtifactRecord.type === 'voice_memo';
   const isMeeting = fetchedArtifactRecord.type === 'meeting';
+  const isEmail = fetchedArtifactRecord.type === 'email';
   
-  const contentTypeDescription = isVoiceMemo 
-    ? 'Voice Memo Transcription' 
-    : 'Meeting Summary/Content';
-    
-  const extractionContext = isVoiceMemo
-    ? 'Extract ALL meaningful updates from this voice memo for the contact\'s profile. Be thorough.'
-    : 'Extract ALL meaningful updates from this meeting content for the contact\'s profile. Focus on information shared during the meeting, decisions made, and insights gained about the contact.';
+  let contentTypeDescription: string;
+  let extractionContext: string;
+  
+  if (isVoiceMemo) {
+    contentTypeDescription = 'Voice Memo Transcription';
+    extractionContext = 'Extract ALL meaningful updates from this voice memo for the contact\'s profile. Be thorough.';
+  } else if (isMeeting) {
+    contentTypeDescription = 'Meeting Summary/Content';
+    extractionContext = 'Extract ALL meaningful updates from this meeting content for the contact\'s profile. Focus on information shared during the meeting, decisions made, and insights gained about the contact.';
+  } else if (isEmail) {
+    contentTypeDescription = 'Email Communication';
+    extractionContext = 'Extract ALL meaningful updates from this email communication for the contact\'s profile. CRITICAL: Pay close attention to the EMAIL DIRECTION context provided. If the email was sent TO the contact, information in first person ("I", "my", "we") refers to the EMAIL SENDER, not the contact. Only extract information that is explicitly ABOUT the contact or information the contact would learn from receiving this email. If the email was sent BY the contact, then first person statements refer to the contact themselves.';
+  } else {
+    contentTypeDescription = 'Content';
+    extractionContext = 'Extract ALL meaningful updates from this content for the contact\'s profile.';
+  }
 
   // Keep the existing contact update prompt part largely the same
   // but ensure the overall response format is the new one.
@@ -385,47 +431,80 @@ You are an expert relationship intelligence analyst.
 2. ${LOOP_DETECTION_PROMPT_SNIPPET}
 
 VALID FIELD PATHS FOR CONTACT UPDATES:
+
+DIRECT CONTACT FIELDS:
+- "name" (string)
+- "email" (string)
+- "phone" (string)
+- "title" (string)
+- "company" (string)
+- "location" (string)
+- "linkedin_url" (string)
+- "notes" (string)
+
 PERSONAL CONTEXT:
-- "personal_context.family.partner" (object: { "name": "string", "relationship": "partner" | "spouse" | etc., "details"?: "string" }, action: 'update' to replace the entire object)
-- "personal_context.family.children" (array of objects: [{ "name": "string", "relationship": "child" | "son" | "daughter", "details"?: "string" }], action: 'add' for each new child object)
-- "personal_context.key_life_events" (array of strings - major transitions, moves, milestones, action: 'add')
-- "personal_context.current_challenges" (array of strings - personal challenges they're facing, action: 'add')
-- "personal_context.upcoming_changes" (array of strings - planned moves, transitions, action: 'add')
-- "personal_context.living_situation" (string)
-- "personal_context.interests" (array of strings, action: 'add')
-- "personal_context.hobbies" (array of strings, action: 'add')
-- "personal_context.travel_plans" (array of strings, action: 'add')
-- "personal_context.values" (array of strings, action: 'add')
-- "personal_context.motivations" (array of strings, action: 'add')
+- "personal_context.family.partner.name" (string)
+- "personal_context.family.partner.relationship" (string)
+- "personal_context.family.partner.details" (string)
+- "personal_context.family.children" (array of strings - use action "add" for individual items)
+- "personal_context.family.parents" (string)
+- "personal_context.family.siblings" (string)
+- "personal_context.interests" (array of strings - use action "add" for individual items)
+- "personal_context.values" (array of strings - use action "add" for individual items)
+- "personal_context.milestones" (array of strings - use action "add" for individual items)
+- "personal_context.anecdotes" (array of strings - use action "add" for individual items)
 - "personal_context.communication_style" (string)
-- "personal_context.education" (array of strings, action: 'add')
+- "personal_context.relationship_goal" (string)
+- "personal_context.conversation_starters.personal" (array of strings - use action "add" for individual items)
+- "personal_context.conversation_starters.professional" (array of strings - use action "add" for individual items)
+- "personal_context.key_life_events" (array of strings - use action "add" for individual items)
+- "personal_context.current_challenges" (array of strings - use action "add" for individual items)
+- "personal_context.upcoming_changes" (array of strings - use action "add" for individual items)
+- "personal_context.living_situation" (string)
+- "personal_context.hobbies" (array of strings - use action "add" for individual items)
+- "personal_context.travel_plans" (array of strings - use action "add" for individual items)
+- "personal_context.motivations" (array of strings - use action "add" for individual items)
+- "personal_context.education" (array of strings - use action "add" for individual items)
 
 PROFESSIONAL CONTEXT:
-- "company" (string)
-- "title" (string)
-- "professional_context.current_role.responsibilities" (array of strings, action: 'add')
-- "professional_context.current_role.projects" (array of objects: [{ "name": "string", "status": "active" | "completed" | "planned", "details"?: "string" }], action: 'add')
-- "professional_context.current_role.key_achievements" (array of strings, action: 'add')
-- "professional_context.team.manager" (string)
-- "professional_context.team.direct_reports" (array of strings, action: 'add')
-- "professional_context.industry_insights" (array of strings, action: 'add')
-- "professional_context.career_goals" (array of strings, action: 'add')
-- "professional_context.professional_development" (array of strings, action: 'add')
-- "professional_context.networking_activities" (array of strings, action: 'add')
+- "professional_context.current_role" (string)
+- "professional_context.current_company" (string)
+- "professional_context.goals" (array of strings - use action "add" for individual items)
+- "professional_context.background.focus_areas" (string)
+- "professional_context.background.previous_companies" (array of strings - use action "add" for individual items)
+- "professional_context.background.expertise_areas" (array of strings - use action "add" for individual items)
+- "professional_context.current_ventures" (string)
+- "professional_context.speaking_topics" (array of strings - use action "add" for individual items)
+- "professional_context.achievements" (array of strings - use action "add" for individual items)
+- "professional_context.current_role_description" (string)
+- "professional_context.key_responsibilities" (array of strings - use action "add" for individual items)
+- "professional_context.team_details" (string)
+- "professional_context.work_challenges" (array of strings - use action "add" for individual items)
+- "professional_context.networking_objectives" (array of strings - use action "add" for individual items)
+- "professional_context.skill_development" (array of strings - use action "add" for individual items)
+- "professional_context.career_transitions" (array of strings - use action "add" for individual items)
+- "professional_context.projects_involved" (array of strings - use action "add" for individual items)
+- "professional_context.collaborations" (array of strings - use action "add" for individual items)
+- "professional_context.upcoming_projects" (array of strings - use action "add" for individual items)
+- "professional_context.skills" (array of strings - use action "add" for individual items)
+- "professional_context.industry_knowledge" (array of strings - use action "add" for individual items)
+- "professional_context.mentions.colleagues" (array of strings - use action "add" for individual items)
+- "professional_context.mentions.clients" (array of strings - use action "add" for individual items)
+- "professional_context.mentions.competitors" (array of strings - use action "add" for individual items)
+- "professional_context.mentions.collaborators" (array of strings - use action "add" for individual items)
+- "professional_context.mentions.mentors" (array of strings - use action "add" for individual items)
+- "professional_context.mentions.industry_contacts" (array of strings - use action "add" for individual items)
+- "professional_context.opportunities_to_help" (array of strings - use action "add" for individual items)
+- "professional_context.introduction_needs" (array of strings - use action "add" for individual items)
+- "professional_context.resource_needs" (array of strings - use action "add" for individual items)
+- "professional_context.pending_requests" (array of strings - use action "add" for individual items)
+- "professional_context.collaboration_opportunities" (array of strings - use action "add" for individual items)
 
-GENERAL FIELDS:
-- "name" (string, if a correction or full name is mentioned)
-- "email" (string, if mentioned as primary or update)
-- "phone" (string, if mentioned)
-- "linkedin_url" (string, if mentioned)
-- "location.city" (string)
-- "location.state" (string)
-- "location.country" (string)
-- "next_steps" (array of strings for general todos related to this contact, action: 'add')
-- "summary_of_conversation" (string, brief overview of key topics discussed)
-- "key_pain_points_discussed" (array of strings, action: 'add')
-- "opportunities_identified" (array of strings, action: 'add')
-- "shared_interests_discovered" (array of strings, action: 'add')
+IMPORTANT RULES:
+- Only use field paths from this exact list
+- For array fields, use action "add" with individual string items, not entire arrays
+- For object fields like "personal_context.family.partner", use action "update" with the complete object
+- Never create new field paths not listed above
 
 RESPONSE FORMAT (JSON Object):
 Provide your response as a single JSON object with two top-level keys: "contact_updates" and "suggested_loops".

@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  TextField,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -49,6 +50,7 @@ export const GmailConnectionCard: React.FC<GmailConnectionCardProps> = ({
     syncProgress,
     syncState,
     refreshStatus,
+    syncContactEmails,
   } = useGmailIntegration();
 
   const handleConnect = () => {
@@ -232,6 +234,64 @@ export const GmailConnectionCard: React.FC<GmailConnectionCardProps> = ({
             </>
           )}
         </CardActions>
+
+        {isConnected && (
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              <strong>How to sync emails:</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              • Go to any contact's profile page<br/>
+              • View their timeline to automatically sync emails<br/>
+              • Or visit a contact and emails will sync in the background
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              <strong>Test Email Sync:</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              You can test email sync by providing a contact ID and email address:
+            </Typography>
+            
+            {/* Manual sync form for testing */}
+            <Box component="form" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const testContactId = formData.get('contactId') as string;
+              const testEmail = formData.get('email') as string;
+              
+              if (testContactId && testEmail) {
+                syncContactEmails({
+                  contact_id: testContactId,
+                  email_addresses: [testEmail],
+                  max_results: 50
+                });
+              }
+            }} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <TextField
+                name="contactId"
+                placeholder="Contact ID (from URL)"
+                size="small"
+                variant="outlined"
+              />
+              <TextField
+                name="email"
+                placeholder="Email address to sync"
+                size="small"
+                variant="outlined"
+                type="email"
+              />
+              <Button
+                type="submit"
+                variant="outlined"
+                size="small"
+                disabled={isSyncing}
+                startIcon={isSyncing ? <CircularProgress size={16} /> : undefined}
+              >
+                {isSyncing ? 'Syncing...' : 'Test Sync'}
+              </Button>
+            </Box>
+          </CardContent>
+        )}
       </Card>
 
       {/* Disconnect Confirmation Dialog */}
