@@ -66,8 +66,9 @@ serve(async (req: Request) => {
     const isVoiceMemo = fetchedArtifactRecord.type === 'voice_memo';
     const isMeeting = fetchedArtifactRecord.type === 'meeting';
     const isEmail = fetchedArtifactRecord.type === 'email';
+    const isLinkedInPost = fetchedArtifactRecord.type === 'linkedin_post';
     
-    if (!isVoiceMemo && !isMeeting && !isEmail) {
+    if (!isVoiceMemo && !isMeeting && !isEmail && !isLinkedInPost) {
       console.log(`Skipping parsing for artifact ${fetchedArtifactRecord.id}: Unsupported type: ${fetchedArtifactRecord.type}`);
       return new Response(JSON.stringify({ message: 'Artifact type not supported for AI parsing.' }), { 
         status: 200,
@@ -104,6 +105,14 @@ serve(async (req: Request) => {
     if (isEmail && !fetchedArtifactRecord.content) {
       console.log(`Skipping parsing for email ${fetchedArtifactRecord.id}: No content available`);
       return new Response(JSON.stringify({ message: 'Email content not available for parsing.' }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    if (isLinkedInPost && (!fetchedArtifactRecord.metadata?.content || !fetchedArtifactRecord.metadata?.author)) {
+      console.log(`Skipping parsing for LinkedIn post ${fetchedArtifactRecord.id}: Insufficient post data`);
+      return new Response(JSON.stringify({ message: 'LinkedIn post data not sufficient for parsing.' }), { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -170,6 +179,40 @@ serve(async (req: Request) => {
       }
       
       contentToAnalyze = `Subject: ${emailSubject}\n\nFrom: ${fromEmail}\nTo: ${toEmails}${directionContext}\n\nContent:\n${emailContent}`;
+    } else if (isLinkedInPost) {
+      // For LinkedIn posts, analyze the post content and engagement
+      const postMetadata = fetchedArtifactRecord.metadata;
+      const isAuthor = postMetadata.is_author;
+      const author = postMetadata.author;
+      const postContent = postMetadata.content;
+      const postType = postMetadata.post_type;
+      const engagement = postMetadata.engagement || {};
+      const hashtags = postMetadata.hashtags || [];
+      const mentions = postMetadata.mentions || [];
+      const postedAt = postMetadata.posted_at;
+      
+      let authorshipContext = '';
+      if (isAuthor) {
+        authorshipContext = `\nPOST AUTHORSHIP: This post was AUTHORED BY the contact (${contact.name}). This reveals the contact's professional opinions, activities, achievements, and interests.`;
+      } else {
+        authorshipContext = `\nPOST AUTHORSHIP: This post was authored by ${author}, not the contact. Only extract information that is explicitly ABOUT the contact or where the contact is mentioned/tagged.`;
+      }
+      
+      contentToAnalyze = `LinkedIn ${postType} by ${author}
+Posted on: ${postedAt}${authorshipContext}
+
+Post Content:
+${postContent}
+
+Hashtags: ${hashtags.join(', ')}
+Mentions: ${mentions.join(', ')}
+
+Engagement Metrics:
+- Likes: ${engagement.likes || 0}
+- Comments: ${engagement.comments || 0}  
+- Shares: ${engagement.shares || 0}
+
+ANALYSIS FOCUS: Extract professional updates, achievements, interests, company changes, project involvement, or relationship intelligence that can help maintain and strengthen the relationship with this contact.`;
     } else {
       contentToAnalyze = fetchedArtifactRecord.content;
     }

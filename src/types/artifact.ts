@@ -383,6 +383,66 @@ export interface LoopAnalytic {
   // updated_at is not in the schema for loop_analytics, but can be added if needed for mutations
 }
 
+// --- LinkedIn Post Artifact --- NEW
+export interface LinkedInPostMedia {
+  type: 'image' | 'video' | 'article' | 'document';
+  url: string;
+  title?: string;
+}
+
+export interface LinkedInPostArtifactContent {
+  post_id: string;
+  author: string;
+  is_author: boolean; // true if contact is author, false if mentioned/engaged
+  post_type: 'original' | 'reshare' | 'article';
+  content: string;
+  media?: LinkedInPostMedia[];
+  engagement: {
+    likes: number;
+    comments: number;
+    shares: number;
+  };
+  linkedin_url: string;
+  posted_at: string;
+  hashtags?: string[];
+  mentions?: string[];
+  last_synced_at: string;
+  
+  // AI-populated fields from processing
+  content_topics?: string[];
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  business_relevance?: 'high' | 'medium' | 'low';
+  
+  // Context about why this post is relevant
+  relevance_reason?: 'authored_by_contact' | 'mentioned_contact' | 'engaged_with_contact' | 'topic_relevant';
+}
+
+export interface LinkedInPostArtifact extends BaseArtifact<string> {
+  type: 'linkedin_post';
+  content: string; // Brief summary for timeline display
+  metadata: LinkedInPostArtifactContent;
+}
+
+// RapidAPI types for LinkedIn posts
+export interface RapidLinkedInPost {
+  postId: string;
+  authorName: string;
+  postContent: string;
+  postType: string;
+  publishedDate: string;
+  postUrl: string;
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+  media?: Array<{
+    type: string;
+    url: string;
+    title?: string;
+  }>;
+  hashtags?: string[];
+  mentions?: string[];
+}
+
 // Union type for all specific artifacts + a fallback
 export type Artifact =
   | LinkedInArtifact
@@ -393,6 +453,7 @@ export type Artifact =
   | MeetingArtifact
   | NoteArtifact
   | LoopArtifact
+  | LinkedInPostArtifact
   | BaseArtifact; // Fallback for generic artifacts or those not yet strictly typed
 
 // It might be useful to have what's stored in the 'artifacts' table directly

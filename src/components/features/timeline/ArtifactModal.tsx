@@ -26,10 +26,11 @@ import type { BaseArtifact, LinkedInArtifact, VoiceMemoArtifact, LoopArtifact, L
 import { format, parseISO } from 'date-fns';
 import { UpdateSuggestionRecord } from '@/types/suggestions';
 import { formatFieldPathForDisplay } from '@/lib/utils/formatting';
-import { LinkedInProfileModal } from '@/components/features/linkedin/LinkedInProfileModal';
+import { LinkedInProfileModal, LinkedInPostModal } from '@/components/features/linkedin';
 import { EnhancedLoopModal } from '../loops/EnhancedLoopModal';
 import { EmailDetailModal } from '@/components/features/emails/EmailDetailModal';
 import { EmailArtifact } from '@/types/email';
+import type { LinkedInPostArtifact } from '@/types/artifact';
 
 interface ArtifactModalProps {
   artifact: BaseArtifact | null;
@@ -178,6 +179,17 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
         contactId={contactId}
         contactName={contactName}
         contactLinkedInUrl={contactLinkedInUrl}
+      />
+    );
+  }
+
+  if (artifact.type === 'linkedin_post') {
+    return (
+      <LinkedInPostModal 
+        open={open} 
+        onClose={onClose} 
+        artifact={artifact as LinkedInPostArtifact} 
+        contactName={contactName}
       />
     );
   }

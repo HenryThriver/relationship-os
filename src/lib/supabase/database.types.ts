@@ -339,6 +339,8 @@ export type Database = {
           id: string
           last_interaction_date: string | null
           linkedin_data: Json | null
+          linkedin_posts_last_sync_at: string | null
+          linkedin_posts_sync_status: string | null
           linkedin_url: string
           location: string | null
           name: string | null
@@ -361,6 +363,8 @@ export type Database = {
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
+          linkedin_posts_last_sync_at?: string | null
+          linkedin_posts_sync_status?: string | null
           linkedin_url: string
           location?: string | null
           name?: string | null
@@ -383,6 +387,8 @@ export type Database = {
           id?: string
           last_interaction_date?: string | null
           linkedin_data?: Json | null
+          linkedin_posts_last_sync_at?: string | null
+          linkedin_posts_sync_status?: string | null
           linkedin_url?: string
           location?: string | null
           name?: string | null

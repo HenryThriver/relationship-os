@@ -143,7 +143,30 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiLink,
     color: '#0077B5',
     badgeLabel: 'LinkedIn Post',
-    getPreview: (content) => truncateText(content?.post_content || 'LinkedIn post'),
+    getPreview: (content: any) => {
+      // Handle LinkedIn post artifact metadata
+      if (content && typeof content === 'object') {
+        const post = content as any;
+        const preview = post.content || post.post_content || 'LinkedIn post';
+        const truncated = truncateText(preview, 120);
+        
+        // Add engagement metrics if available
+        if (post.engagement) {
+          const likes = post.engagement.likes || 0;
+          const comments = post.engagement.comments || 0;
+          const engagement = `👍 ${likes} 💬 ${comments}`;
+          
+          // Add author context if not authored by contact
+          const authorContext = post.is_author === false ? ` • by ${post.author}` : '';
+          
+          return `${truncated}\n${engagement}${authorContext}`;
+        }
+        
+        return truncated;
+      }
+      
+      return truncateText(typeof content === 'string' ? content : 'LinkedIn post');
+    },
   },
   file: {
     icon: FiFileText,
