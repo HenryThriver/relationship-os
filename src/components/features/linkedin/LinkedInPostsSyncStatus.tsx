@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -13,10 +13,23 @@ import {
 import {
   Sync,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Schedule,
   LinkedIn,
 } from '@mui/icons-material';
+
+interface SyncResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+interface StatusResponse {
+  success: boolean;
+  lastSyncAt: string | null;
+  syncStatus: string | null;
+  postsCount: number;
+}
 
 interface LinkedInPostsSyncStatusProps {
   contactId: string;
@@ -31,15 +44,41 @@ interface LinkedInPostsSyncStatusProps {
 export const LinkedInPostsSyncStatus: React.FC<LinkedInPostsSyncStatusProps> = ({
   contactId,
   contactName,
-  lastSyncAt,
-  syncStatus = 'never',
-  postsCount = 0,
+  lastSyncAt: propLastSyncAt,
+  syncStatus: propSyncStatus = 'never',
+  postsCount: propPostsCount = 0,
   onManualSync,
   className,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // State for fetched data (overrides props when available)
+  const [fetchedData, setFetchedData] = useState<StatusResponse | null>(null);
+  
+  // Use fetched data if available, otherwise fall back to props
+  const lastSyncAt = fetchedData?.lastSyncAt ?? propLastSyncAt;
+  const syncStatus = fetchedData?.syncStatus ?? propSyncStatus ?? 'never';
+  const postsCount = fetchedData?.postsCount ?? propPostsCount;
+
+  // Fetch current sync status from API
+  const fetchSyncStatus = async () => {
+    try {
+      const response = await fetch(`/api/linkedin/sync-posts?contactId=${contactId}`);
+      if (response.ok) {
+        const data: StatusResponse = await response.json();
+        setFetchedData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch sync status:', err);
+    }
+  };
+
+  // Fetch status on mount
+  useEffect(() => {
+    fetchSyncStatus();
+  }, [contactId]);
 
   const getSyncStatusChip = () => {
     switch (syncStatus) {
@@ -66,7 +105,7 @@ export const LinkedInPostsSyncStatus: React.FC<LinkedInPostsSyncStatusProps> = (
           <Chip 
             label="Failed" 
             color="error" 
-            icon={<Error />} 
+            icon={<ErrorIcon />} 
             size="small" 
           />
         );
@@ -124,12 +163,14 @@ export const LinkedInPostsSyncStatus: React.FC<LinkedInPostsSyncStatusProps> = (
         body: JSON.stringify({ contactId }),
       });
 
-      const result = await response.json();
+      const result: SyncResponse = await response.json();
       
       if (result.success) {
-        setSuccessMessage((result as any).message);
+        setSuccessMessage(result.message || 'Sync completed successfully');
+        // Fetch fresh status data
+        await fetchSyncStatus();
       } else {
-        throw new Error((result as any).error || 'Sync failed');
+        throw new Error(result.error || 'Sync failed');
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sync LinkedIn posts';

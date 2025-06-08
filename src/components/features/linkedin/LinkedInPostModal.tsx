@@ -26,12 +26,14 @@ import {
   Business,
 } from '@mui/icons-material';
 import type { LinkedInPostArtifact } from '@/types/artifact';
+import { ArtifactSuggestions } from '@/components/features/suggestions/ArtifactSuggestions';
 
 interface LinkedInPostModalProps {
   open: boolean;
   onClose: () => void;
   artifact: LinkedInPostArtifact;
   contactName?: string;
+  contactId?: string;
 }
 
 const modalStyle = {
@@ -68,6 +70,7 @@ export const LinkedInPostModal: React.FC<LinkedInPostModalProps> = ({
   onClose,
   artifact,
   contactName,
+  contactId,
 }) => {
   if (!artifact?.metadata) return null;
 
@@ -161,6 +164,17 @@ export const LinkedInPostModal: React.FC<LinkedInPostModalProps> = ({
                   {post.post_type === 'article' ? 'Published an article' : 'Shared a post'}
                 </Typography>
               </Box>
+            </Box>
+
+            {/* AI Processing Status and Suggestions */}
+            <Box mb={3}>
+              <ArtifactSuggestions
+                artifactId={artifact.id}
+                artifactType="linkedin_post"
+                aiParsingStatus={artifact.ai_parsing_status as 'pending' | 'processing' | 'completed' | 'failed'}
+                contactId={contactId}
+                compact={false}
+              />
             </Box>
 
             {/* Post Content */}

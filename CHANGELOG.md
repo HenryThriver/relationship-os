@@ -5,6 +5,91 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-06-07
+
+### Added
+- **LinkedIn Posts AI Integration**: Complete end-to-end LinkedIn posts sync and AI processing system
+  - Automated LinkedIn posts synchronization with proper batch handling and rate limiting
+  - Server-side date filtering for efficient API usage and duplicate prevention
+  - Robust duplicate handling with unique constraints and graceful error recovery
+  - Standardized AI processing UI across all artifact modals (LinkedIn posts, profiles, emails, voice memos, meetings, loops)
+  - Centralized AI processing configuration system supporting any artifact type without code changes
+  - LinkedIn profile reprocessing support through unified artifact processing system
+
+### Changed
+- **Database Architecture Modernization**: Centralized and extensible artifact processing system
+  - **MAJOR**: Replaced hardcoded artifact type checking with database-driven configuration (`artifact_processing_config` table)
+  - Consolidated 7 iterative LinkedIn development migrations into single clean migration
+  - Enhanced `parse-artifact` edge function with dynamic type support based on database configuration
+  - Unified reprocess endpoint supporting all artifact types through configuration lookup
+  - Future-proof architecture where new artifact types only require database configuration, no code changes
+
+- **User Experience Standardization**: Consistent AI processing UI across all modals
+  - ✅ AI processing status alerts with color-coded icons (pending → processing → completed)
+  - 📊 Suggestion count display with expandable details
+  - 🔄 RE-ANALYZE buttons for manual reprocessing
+  - 👁️ VIEW X SUGGESTIONS expandable sections with apply/reject actions
+  - 🧠 Individual suggestions with confidence scores and reasoning
+
+### Architectural Centralization Achievements
+This release represents a major architectural milestone, centralizing scattered artifact processing features into a unified, extensible system:
+
+- **🏗️ Unified Artifact Processing Architecture**:
+  - **Before**: Separate trigger functions for each artifact type (emails, meetings, voice memos, LinkedIn posts)
+  - **After**: Single unified trigger function with database-driven configuration
+  - **Benefit**: Adding new artifact types requires only database configuration, zero code changes
+
+- **🎨 Standardized AI Processing UI Components**:
+  - **Before**: Inconsistent suggestion display across different artifact modals
+  - **After**: Shared `ArtifactSuggestions` component used across all artifact types
+  - **Benefit**: Consistent user experience and reduced UI maintenance overhead
+
+- **⚙️ Configuration-Driven Processing Rules**:
+  - **Before**: Hardcoded validation logic scattered across multiple files
+  - **After**: Centralized `artifact_processing_config` table defining processing requirements
+  - **Benefit**: Non-technical users can enable/disable processing for artifact types via database
+
+- **🔄 Generic Reprocessing System**:
+  - **Before**: Type-specific reprocess endpoints with hardcoded validation
+  - **After**: Single generic endpoint with dynamic validation based on configuration
+  - **Benefit**: All current and future artifact types automatically support reprocessing
+
+- **🎯 Edge Function Extensibility**:
+  - **Before**: Edge function with hardcoded supported types list
+  - **After**: Dynamic type support with database configuration lookup
+  - **Benefit**: New artifact types automatically supported without edge function redeployment
+
+### Technical Implementation
+- **LinkedIn Posts Sync Service**: Efficient batch processing with server-side filtering
+  - Proper batch numbering with dedicated counter (fixed jumping batch numbers during rate limiting)
+  - Graceful duplicate constraint handling with fast path batch inserts and fallback individual inserts
+  - LinkedIn API integration with proper error handling and retry logic
+  - Contact-based sync tracking with status management (`never`, `in_progress`, `completed`, `failed`)
+
+- **Centralized Processing System**: Generic, configuration-driven architecture
+  - `artifact_processing_config` table defining processing rules for each artifact type
+  - Dynamic validation based on `requires_content`, `requires_transcription`, `requires_metadata_fields`
+  - Unified trigger function handling all artifact types with extensible validation logic
+  - Support for LinkedIn posts, profiles, emails, voice memos, meetings, and future types
+
+- **Enhanced Edge Function**: Database-driven processing with LinkedIn content analysis
+  - Dynamic artifact type support based on configuration table lookup
+  - LinkedIn-specific content analysis for professional updates, achievements, and relationship intelligence
+  - LinkedIn profile processing with headline, about, experience, education, and skills analysis
+  - Comprehensive error handling and status tracking throughout processing pipeline
+
+### Database Schema
+- LinkedIn posts sync tracking columns in `contacts` table with proper indexing
+- Unique constraint preventing LinkedIn post duplicates per contact/user
+- Centralized `artifact_processing_config` table with RLS policies and comprehensive documentation
+- Unified AI processing trigger replacing scattered type-specific triggers
+
+### Migration Consolidation
+- **Clean Migration History**: Consolidated 7 LinkedIn development migrations into single production-ready migration
+- Moved superseded migrations: `20250607143236` through `20250607171106` to `supabase/migrations/superseded/`
+- Professional migration structure suitable for production deployment
+- Single consolidated migration: `20250607180833_linkedin_posts_ai_integration_consolidated.sql`
+
 ## [0.9.0] - 2025-06-07
 
 ### Added

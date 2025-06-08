@@ -5,6 +5,9 @@ export type ArtifactTypeEnum = Database['public']['Enums']['artifact_type_enum']
 export type ExtendedArtifactType = 'pog' | 'ask' | 'prompt_set' | 'goal' | 'linkedin_interaction'; // Types not in the DB enum, handled client-side
 export type ArtifactType = ArtifactTypeEnum | ExtendedArtifactType;
 
+// Global artifact interface (kept for backwards compatibility)
+export type ArtifactGlobal = BaseArtifact;
+
 // Renamed from ArtifactGlobal to BaseArtifact
 export interface BaseArtifact<TContent = Record<string, any> | string | null> { 
   id: string;
@@ -142,6 +145,9 @@ export interface EmailArtifactMetadata {
   date_received?: string; // ISO string
   // More comprehensive types available in email.ts
 }
+
+// Meeting artifact metadata alias for backwards compatibility
+export type MeetingArtifactMetadata = MeetingArtifactContent;
 export interface EmailArtifact extends BaseArtifact<string | null> {
   type: 'email';
   metadata?: EmailArtifactMetadata | null; // Allow null for metadata
@@ -423,24 +429,83 @@ export interface LinkedInPostArtifact extends BaseArtifact<string> {
   metadata: LinkedInPostArtifactContent;
 }
 
-// RapidAPI types for LinkedIn posts
-export interface RapidLinkedInPost {
-  postId: string;
-  authorName: string;
-  postContent: string;
-  postType: string;
-  publishedDate: string;
-  postUrl: string;
-  likesCount: number;
-  commentsCount: number;
-  sharesCount: number;
-  media?: Array<{
-    type: string;
+// RapidAPI types for LinkedIn posts (matching actual API response)
+export interface RapidLinkedInPostAuthor {
+  id: number;
+  firstName: string;
+  lastName: string;
+  headline: string;
+  username: string;
+  url: string;
+  profilePictures: Array<{
+    width: number;
+    height: number;
     url: string;
-    title?: string;
   }>;
-  hashtags?: string[];
-  mentions?: string[];
+  urn: string;
+}
+
+export interface RapidLinkedInPostMention {
+  firstName: string;
+  lastName: string;
+  urn: string;
+  publicIdentifier: string;
+}
+
+export interface RapidLinkedInPostCompanyMention {
+  id: number;
+  name: string;
+  publicIdentifier: string;
+  url: string;
+}
+
+export interface RapidLinkedInPostArticle {
+  title: string;
+  subtitle: string;
+  link: string;
+  image: Array<{
+    width: number;
+    height: number;
+    url: string;
+  }>;
+  newsletter: Record<string, any>;
+}
+
+export interface RapidLinkedInPost {
+  isBrandPartnership: boolean;
+  text: string;
+  totalReactionCount: number;
+  likeCount: number;
+  appreciationCount?: number;
+  empathyCount?: number;
+  InterestCount?: number;
+  praiseCount?: number;
+  funnyCount?: number;
+  commentsCount: number;
+  repostsCount: number;
+  postUrl: string;
+  shareUrl: string;
+  postedAt: string;
+  postedDate: string;
+  postedDateTimestamp: number;
+  urn: string;
+  author: RapidLinkedInPostAuthor;
+  company: Record<string, any>;
+  document: Record<string, any>;
+  celebration: Record<string, any>;
+  poll: Record<string, any>;
+  contentType: string;
+  article?: RapidLinkedInPostArticle;
+  entity: Record<string, any>;
+  mentions?: RapidLinkedInPostMention[];
+  companyMentions?: RapidLinkedInPostCompanyMention[];
+}
+
+export interface RapidLinkedInApiResponse {
+  success: boolean;
+  message: string;
+  data: RapidLinkedInPost[];
+  paginationToken?: string;
 }
 
 // Union type for all specific artifacts + a fallback

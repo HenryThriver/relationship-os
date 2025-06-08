@@ -138,6 +138,36 @@ See [ROADMAP.md](./ROADMAP.md) for detailed development phases:
 - **Sustainable Scale**: Systems that work for 50+ meaningful relationships
 - **Privacy by Design**: User data isolation with Row Level Security
 
+## Centralized Artifact Processing Architecture
+
+Relationship OS features a unified, extensible artifact processing system that automatically handles AI processing and suggestion generation for all artifact types:
+
+### Configuration-Driven Processing
+- **Centralized Configuration**: All artifact processing rules defined in `artifact_processing_config` database table
+- **Zero-Code Extensibility**: New artifact types require only database configuration, no code changes
+- **Dynamic Validation**: Processing requirements (content, transcription, metadata) defined per artifact type
+
+### Unified AI Processing Pipeline
+- **Single Trigger Function**: `trigger_unified_artifact_ai_processing()` handles all artifact types
+- **Database-Driven Logic**: Edge function dynamically supports new types based on configuration
+- **Automatic Processing**: Artifacts with `ai_parsing_status: 'pending'` automatically trigger AI analysis
+
+### Standardized User Experience
+- **Consistent UI Components**: Shared `ArtifactSuggestions` component across all modals
+- **Universal Processing Status**: Color-coded status indicators (pending → processing → completed)
+- **Generic Reprocessing**: Single reprocess endpoint supports all artifact types
+- **Unified Suggestions Display**: Consistent suggestion layout with confidence scores and apply/reject actions
+
+### Supported Artifact Types
+- **Voice Memos**: Transcription + AI insights extraction
+- **Meetings**: Content analysis for action items and key topics  
+- **Emails**: Bidirectional analysis with relationship context
+- **LinkedIn Posts**: Professional update analysis and relationship intelligence
+- **LinkedIn Profiles**: Professional background and skill analysis
+- **Future Types**: Automatic support through configuration table
+
+This architecture ensures that adding new relationship intelligence sources (texts, calendar events, social media, etc.) requires minimal development effort while maintaining consistent user experience across all artifact types.
+
 ## License
 
 Private project - All rights reserved

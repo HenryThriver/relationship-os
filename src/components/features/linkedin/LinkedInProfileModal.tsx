@@ -30,6 +30,7 @@ import LocalActivityIcon from '@mui/icons-material/LocalActivity'; // For Skills
 
 import type { LinkedInArtifact, /* LinkedInArtifactContent, */ LinkedInSkill, LinkedInPosition as ArtifactLinkedInPosition, LinkedInEducation as ArtifactLinkedInEducation } from '@/types/artifact'; // Removed unused LinkedInArtifactContent
 import { useLinkedInModal } from '@/lib/hooks/useLinkedInModal';
+import { ArtifactSuggestions } from '@/components/features/suggestions/ArtifactSuggestions';
 // import { useLinkedInModal } from '@/lib/hooks/useLinkedInModal'; // Will be created later
 
 // Import Slide for modal transition
@@ -435,6 +436,17 @@ export const LinkedInProfileModal: React.FC<LinkedInProfileModalProps> = ({
                 Profile update requested. Data will refresh shortly.
               </Alert>
             )}
+
+            {/* AI Processing Status and Suggestions */}
+            <Box sx={{ mb: 3 }}>
+              <ArtifactSuggestions
+                artifactId={artifact.id}
+                artifactType="linkedin_profile"
+                aiParsingStatus={artifact.ai_parsing_status as 'pending' | 'processing' | 'completed' | 'failed'}
+                contactId={contactId}
+                compact={false}
+              />
+            </Box>
 
             {/* About Section */}
             <Paper elevation={0} sx={{...sectionStyle, borderRadius: '8px' }}> {/* Consistent border radius */}

@@ -183,7 +183,7 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
     queryFn: async () => {
       if (!artifactId) return [];
       
-      console.log('🔍 Querying suggestions for artifact:', artifactId);
+      // Querying suggestions for artifact
       
       const { data, error } = await supabase
         .from('contact_update_suggestions')
@@ -197,7 +197,7 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
         return [];
       }
       
-      console.log('📊 Found suggestions:', data);
+      // Found suggestions for artifact
       return data as Suggestion[] || [];
     },
     enabled: !!artifactId && aiParsingStatus === 'completed',
@@ -292,7 +292,7 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
       queryClient.invalidateQueries({ queryKey: ['artifact-suggestions', artifactId] });
       
       // Optionally show success message or trigger parent re-render
-      console.log('🔄 Artifact reprocessing initiated');
+      // Artifact reprocessing initiated
       
     } catch (error) {
       console.error('Error reprocessing artifact:', error);

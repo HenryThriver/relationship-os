@@ -155,7 +155,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<LinkedInImpor
     };
 
     // --- DEBUG LOG before insert ---
-    console.log("[rescrape/route.ts] artifactMetadata object being inserted:", JSON.stringify(artifactMetadata, null, 2));
+    // Debug: artifactMetadata object being inserted
     // --- END DEBUG LOG ---
 
     // 6. Create a NEW artifact record

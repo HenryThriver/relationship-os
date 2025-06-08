@@ -42,28 +42,47 @@ export async function POST(
       );
     }
 
-    // Check if the artifact is suitable for AI parsing
-    const supportedTypes = ['email', 'voice_memo', 'meeting'];
-    if (!supportedTypes.includes(artifact.type)) {
+    // Check if the artifact type is configured for AI processing
+    const { data: processingConfig, error: configError } = await supabase
+      .from('artifact_processing_config')
+      .select('*')
+      .eq('artifact_type', artifact.type)
+      .eq('enabled', true)
+      .single();
+
+    if (configError || !processingConfig) {
       return NextResponse.json(
-        { error: `Artifact type '${artifact.type}' is not supported for AI parsing` },
+        { error: `Artifact type '${artifact.type}' is not configured for AI parsing` },
         { status: 400 }
       );
     }
 
-    // Additional validation based on artifact type
-    if (artifact.type === 'voice_memo' && (!artifact.transcription || artifact.transcription_status !== 'completed')) {
+    // Validate based on processing configuration
+    if (processingConfig.requires_transcription && (!artifact.transcription || artifact.transcription_status !== 'completed')) {
       return NextResponse.json(
-        { error: 'Voice memo must have completed transcription before AI parsing' },
+        { error: `${artifact.type} must have completed transcription before AI parsing` },
         { status: 400 }
       );
     }
 
-    if ((artifact.type === 'email' || artifact.type === 'meeting') && !artifact.content) {
+    if (processingConfig.requires_content && !artifact.content) {
       return NextResponse.json(
         { error: `${artifact.type} must have content before AI parsing` },
         { status: 400 }
       );
+    }
+
+    // Check required metadata fields
+    if (processingConfig.requires_metadata_fields && processingConfig.requires_metadata_fields.length > 0) {
+      const metadata = artifact.metadata || {};
+      const missingFields = processingConfig.requires_metadata_fields.filter((field: string) => !metadata.hasOwnProperty(field));
+      
+      if (missingFields.length > 0) {
+        return NextResponse.json(
+          { error: `${artifact.type} missing required metadata fields: ${missingFields.join(', ')}` },
+          { status: 400 }
+        );
+      }
     }
 
     // Delete existing suggestions for this artifact (so we start fresh)

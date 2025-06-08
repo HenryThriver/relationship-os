@@ -62,13 +62,15 @@ serve(async (req: Request) => {
       });
     }
     
-    // Process voice memos with completed transcriptions and meetings with content, both with pending AI parsing
-    const isVoiceMemo = fetchedArtifactRecord.type === 'voice_memo';
-    const isMeeting = fetchedArtifactRecord.type === 'meeting';
-    const isEmail = fetchedArtifactRecord.type === 'email';
-    const isLinkedInPost = fetchedArtifactRecord.type === 'linkedin_post';
-    
-    if (!isVoiceMemo && !isMeeting && !isEmail && !isLinkedInPost) {
+    // Check if the artifact type is configured for AI processing
+    const { data: processingConfig, error: configError } = await supabase
+      .from('artifact_processing_config')
+      .select('*')
+      .eq('artifact_type', fetchedArtifactRecord.type)
+      .eq('enabled', true)
+      .single();
+
+    if (configError || !processingConfig) {
       console.log(`Skipping parsing for artifact ${fetchedArtifactRecord.id}: Unsupported type: ${fetchedArtifactRecord.type}`);
       return new Response(JSON.stringify({ message: 'Artifact type not supported for AI parsing.' }), { 
         status: 200,
@@ -85,37 +87,35 @@ serve(async (req: Request) => {
       });
     }
 
-    // Additional validation for content readiness
-    if (isVoiceMemo && (!fetchedArtifactRecord.transcription || fetchedArtifactRecord.transcription_status !== 'completed')) {
-      console.log(`Skipping parsing for voice memo ${fetchedArtifactRecord.id}: Transcription not ready`);
-      return new Response(JSON.stringify({ message: 'Voice memo transcription not ready for parsing.' }), { 
+    // Validate based on processing configuration
+    if (processingConfig.requires_transcription && (!fetchedArtifactRecord.transcription || fetchedArtifactRecord.transcription_status !== 'completed')) {
+      console.log(`Skipping parsing for ${fetchedArtifactRecord.type} ${fetchedArtifactRecord.id}: Transcription not ready`);
+      return new Response(JSON.stringify({ message: `${fetchedArtifactRecord.type} transcription not ready for parsing.` }), { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    if (isMeeting && !fetchedArtifactRecord.content) {
-      console.log(`Skipping parsing for meeting ${fetchedArtifactRecord.id}: No content available`);
-      return new Response(JSON.stringify({ message: 'Meeting content not available for parsing.' }), { 
+    if (processingConfig.requires_content && !fetchedArtifactRecord.content) {
+      console.log(`Skipping parsing for ${fetchedArtifactRecord.type} ${fetchedArtifactRecord.id}: No content available`);
+      return new Response(JSON.stringify({ message: `${fetchedArtifactRecord.type} content not available for parsing.` }), { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    if (isEmail && !fetchedArtifactRecord.content) {
-      console.log(`Skipping parsing for email ${fetchedArtifactRecord.id}: No content available`);
-      return new Response(JSON.stringify({ message: 'Email content not available for parsing.' }), { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
-    if (isLinkedInPost && (!fetchedArtifactRecord.metadata?.content || !fetchedArtifactRecord.metadata?.author)) {
-      console.log(`Skipping parsing for LinkedIn post ${fetchedArtifactRecord.id}: Insufficient post data`);
-      return new Response(JSON.stringify({ message: 'LinkedIn post data not sufficient for parsing.' }), { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+    // Check required metadata fields
+    if (processingConfig.requires_metadata_fields && processingConfig.requires_metadata_fields.length > 0) {
+      const metadata = fetchedArtifactRecord.metadata || {};
+      const missingFields = processingConfig.requires_metadata_fields.filter((field: string) => !metadata.hasOwnProperty(field));
+      
+      if (missingFields.length > 0) {
+        console.log(`Skipping parsing for ${fetchedArtifactRecord.type} ${fetchedArtifactRecord.id}: Missing required metadata fields: ${missingFields.join(', ')}`);
+        return new Response(JSON.stringify({ message: `${fetchedArtifactRecord.type} missing required metadata fields: ${missingFields.join(', ')}` }), { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
     }
 
     // Update parsing status to 'processing'
@@ -154,11 +154,11 @@ serve(async (req: Request) => {
 
     // Get content to analyze based on artifact type
     let contentToAnalyze: string;
-    if (isVoiceMemo) {
+    if (fetchedArtifactRecord.type === 'voice_memo') {
       contentToAnalyze = fetchedArtifactRecord.transcription;
-    } else if (isMeeting) {
+    } else if (fetchedArtifactRecord.type === 'meeting') {
       contentToAnalyze = fetchedArtifactRecord.content;
-    } else if (isEmail) {
+    } else if (fetchedArtifactRecord.type === 'email') {
       // For emails, include both subject and content AND directionality context
       const emailSubject = fetchedArtifactRecord.metadata?.subject || '';
       const emailContent = fetchedArtifactRecord.content || '';
@@ -179,7 +179,7 @@ serve(async (req: Request) => {
       }
       
       contentToAnalyze = `Subject: ${emailSubject}\n\nFrom: ${fromEmail}\nTo: ${toEmails}${directionContext}\n\nContent:\n${emailContent}`;
-    } else if (isLinkedInPost) {
+    } else if (fetchedArtifactRecord.type === 'linkedin_post') {
       // For LinkedIn posts, analyze the post content and engagement
       const postMetadata = fetchedArtifactRecord.metadata;
       const isAuthor = postMetadata.is_author;
@@ -213,8 +213,36 @@ Engagement Metrics:
 - Shares: ${engagement.shares || 0}
 
 ANALYSIS FOCUS: Extract professional updates, achievements, interests, company changes, project involvement, or relationship intelligence that can help maintain and strengthen the relationship with this contact.`;
+    } else if (fetchedArtifactRecord.type === 'linkedin_profile') {
+      // For LinkedIn profiles, analyze the professional information
+      const profileMetadata = fetchedArtifactRecord.metadata;
+      const about = profileMetadata.about || '';
+      const headline = profileMetadata.headline || '';
+      const experience = profileMetadata.experience || [];
+      const education = profileMetadata.education || [];
+      const skills = profileMetadata.skills || [];
+      const certifications = profileMetadata.certifications || [];
+      
+      contentToAnalyze = `LinkedIn Profile for ${contact.name}
+
+Headline: ${headline}
+
+About Section:
+${about}
+
+Experience:
+${experience.map((exp: any) => `- ${exp.title} at ${exp.company} (${exp.duration || 'Present'})`).join('\n')}
+
+Education:
+${education.map((edu: any) => `- ${edu.degree} from ${edu.school} (${edu.year || 'N/A'})`).join('\n')}
+
+Skills: ${skills.join(', ')}
+
+Certifications: ${certifications.map((cert: any) => cert.name).join(', ')}
+
+ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievements, company information, educational background, and relationship intelligence that can help maintain and strengthen the relationship with this contact.`;
     } else {
-      contentToAnalyze = fetchedArtifactRecord.content;
+      contentToAnalyze = fetchedArtifactRecord.content || '';
     }
     
     // Call OpenAI for parsing
@@ -289,7 +317,7 @@ ANALYSIS FOCUS: Extract professional updates, achievements, interests, company c
     }
     
     // For meetings, also extract and store insights in the artifact metadata
-    if (isMeeting && aiParseResult.contact_updates.length > 0) {
+    if (fetchedArtifactRecord.type === 'meeting' && aiParseResult.contact_updates.length > 0) {
       try {
         // Extract action items and insights from the AI response
         const actionItems = aiParseResult.contact_updates

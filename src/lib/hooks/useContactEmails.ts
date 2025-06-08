@@ -3,6 +3,16 @@ import { supabase } from '@/lib/supabase/client';
 import { ContactEmail, ContactEmailFormData, EmailValidationResult } from '@/types/contact';
 import { useToast } from '@/lib/contexts/ToastContext';
 
+// Helper function to cast database row to ContactEmail type
+const castToContactEmail = (item: any): ContactEmail => ({
+  ...item,
+  email_type: (item.email_type || 'other') as 'primary' | 'work' | 'personal' | 'other',
+  is_primary: item.is_primary || false,
+  verified: item.verified || false,
+  created_at: item.created_at || new Date().toISOString(),
+  updated_at: item.updated_at || new Date().toISOString()
+});
+
 export const useContactEmails = (contactId: string) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -24,7 +34,7 @@ export const useContactEmails = (contactId: string) => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(castToContactEmail);
     },
     enabled: !!contactId,
   });

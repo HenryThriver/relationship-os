@@ -29,7 +29,7 @@ import {
   CalendarToday,
   Sync,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Warning,
   Info,
   Refresh,
@@ -207,7 +207,7 @@ export const CalendarSyncDashboard: React.FC<CalendarSyncDashboardProps> = ({ cl
   const getStatusIcon = (status: string): React.ReactElement => {
     switch (status) {
       case 'completed': return <CheckCircle color="success" />;
-      case 'failed': return <Error color="error" />;
+      case 'failed': return <ErrorIcon color="error" />;
       case 'in_progress': return <CloudSync color="warning" />;
       default: return <Info color="info" />;
     }

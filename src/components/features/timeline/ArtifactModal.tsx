@@ -31,6 +31,7 @@ import { EnhancedLoopModal } from '../loops/EnhancedLoopModal';
 import { EmailDetailModal } from '@/components/features/emails/EmailDetailModal';
 import { EmailArtifact } from '@/types/email';
 import type { LinkedInPostArtifact } from '@/types/artifact';
+import { ArtifactSuggestions } from '@/components/features/suggestions/ArtifactSuggestions';
 
 interface ArtifactModalProps {
   artifact: BaseArtifact | null;
@@ -190,6 +191,7 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
         onClose={onClose} 
         artifact={artifact as LinkedInPostArtifact} 
         contactName={contactName}
+        contactId={contactId}
       />
     );
   }
@@ -201,6 +203,7 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
         onClose={onClose}
         artifact={artifact as LoopArtifact}
         contactName={contactName || 'Contact'}
+        contactId={contactId}
         onStatusUpdate={onLoopStatusUpdate || (async () => console.warn('onLoopStatusUpdate not provided'))}
         onEdit={onLoopEdit || (async () => console.warn('onLoopEdit not provided'))}
         onDelete={onLoopDelete || (async () => console.warn('onLoopDelete not provided'))}
@@ -263,6 +266,17 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
             <Typography variant="caption" color="text.secondary">
               {artifact.timestamp ? format(parseISO(artifact.timestamp), 'PPP p') : 'Date/Time unknown'}
             </Typography>
+          </Box>
+
+          {/* AI Processing Status and Suggestions */}
+          <Box sx={{ mb: 2 }}>
+            <ArtifactSuggestions
+              artifactId={artifact.id}
+              artifactType={artifact.type}
+              aiParsingStatus={artifact.ai_parsing_status as 'pending' | 'processing' | 'completed' | 'failed'}
+              contactId={contactId}
+              compact={false}
+            />
           </Box>
 
           {artifact.type !== 'voice_memo' && renderContent(detailContentToRender)}

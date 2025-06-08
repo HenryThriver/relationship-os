@@ -46,6 +46,9 @@ import { MeetingManager } from '@/components/features/meetings/MeetingManager';
 // Import ContactEmailManagement for email management
 import { ContactEmailManagement } from '@/components/features/contacts/ContactEmailManagement';
 
+// Import LinkedIn components
+import { LinkedInPostsSyncStatus } from '@/components/features/linkedin';
+
 // Import hooks and types
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
 import { useVoiceMemos } from '@/lib/hooks/useVoiceMemos';
@@ -551,6 +554,19 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                 contactName={contact.name || undefined}
               />
             </Box>
+
+            {/* LinkedIn Posts Integration Point */}
+            {contact.linkedin_url && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h5" gutterBottom component="div" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
+                  LinkedIn Posts
+                </Typography>
+                <LinkedInPostsSyncStatus 
+                  contactId={contactId}
+                  contactName={contact.name || undefined}
+                />
+              </Box>
+            )}
 
             <ContextSections 
               contactData={contact}

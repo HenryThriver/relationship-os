@@ -1,4 +1,4 @@
-import type { RapidLinkedInPost, LinkedInPostArtifactContent } from '@/types/artifact';
+import type { RapidLinkedInPost, LinkedInPostArtifactContent, RapidLinkedInApiResponse } from '@/types/artifact';
 
 export class LinkedInPostsService {
   private rapidApiKey: string;
@@ -6,7 +6,7 @@ export class LinkedInPostsService {
 
   constructor() {
     this.rapidApiKey = process.env.RAPIDAPI_KEY!;
-    this.rapidApiHost = process.env.RAPIDAPI_LINKEDIN_HOST || 'linkedin-api8.p.rapidapi.com';
+    this.rapidApiHost = process.env.RAPIDAPI_HOST || 'linkedin-api8.p.rapidapi.com';
     
     if (!this.rapidApiKey) {
       throw new Error('RAPIDAPI_KEY is required for LinkedIn posts service');
@@ -23,38 +23,234 @@ export class LinkedInPostsService {
   ): Promise<RapidLinkedInPost[]> {
     try {
       const username = this.extractUsernameFromUrl(linkedinUrl);
-      const url = new URL(`https://${this.rapidApiHost}/get-profile-posts`);
-      
-      url.searchParams.append('username', username);
-      url.searchParams.append('limit', limit.toString());
-      
-      if (startDate) {
-        url.searchParams.append('start_date', startDate);
-      }
+      const allPosts: RapidLinkedInPost[] = [];
+      let paginationToken: string | undefined;
+      const cutoffDate = startDate ? new Date(startDate) : null;
+      const batchSize = 50; // API returns ~50 posts per request
+      let totalFetched = 0;
 
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'X-RapidAPI-Key': this.rapidApiKey,
-          'X-RapidAPI-Host': this.rapidApiHost,
+      console.log(`Starting LinkedIn posts fetch for ${username}, limit: ${limit}, startDate: ${startDate}`);
+
+      while (totalFetched < limit) {
+        const url = new URL(`https://${this.rapidApiHost}/get-profile-posts`);
+        url.searchParams.append('username', username);
+        url.searchParams.append('start', '0');
+        url.searchParams.append('count', batchSize.toString());
+        
+        // Add unofficial postedAt date filter to get only recent posts
+        if (startDate) {
+          // Convert ISO date to the format expected by the API (YYYY-MM-DD HH:MM)
+          const dateObj = new Date(startDate);
+          const formattedDate = dateObj.toISOString().slice(0, 16).replace('T', ' ');
+          url.searchParams.append('postedAt', formattedDate);
+          console.log(`Using server-side date filter: postedAt=${formattedDate}`);
         }
-      });
+        
+        // Add pagination token if we have one
+        if (paginationToken) {
+          url.searchParams.append('paginationToken', paginationToken);
+        }
 
-      if (!response.ok) {
-        throw new Error(`LinkedIn API error: ${response.status} ${response.statusText}`);
+        console.log(`Fetching batch ${Math.floor(totalFetched / batchSize) + 1} - Posts so far: ${totalFetched}`);
+
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'X-RapidAPI-Key': this.rapidApiKey,
+            'X-RapidAPI-Host': this.rapidApiHost,
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`LinkedIn API error: ${response.status} ${response.statusText}`);
+        }
+
+        const apiResponse: RapidLinkedInApiResponse = await response.json();
+        
+        if (!apiResponse.success) {
+          throw new Error(`LinkedIn API returned error: ${apiResponse.message || 'Unknown error'}`);
+        }
+
+        const batchPosts = apiResponse.data || [];
+        console.log(`Received ${batchPosts.length} posts in this batch`);
+
+        if (batchPosts.length === 0) {
+          console.log('No more posts available, stopping pagination');
+          break;
+        }
+
+        // Server-side date filtering via postedAt parameter eliminates need for client-side filtering
+        // All returned posts should already be within our date range
+        console.log(`Received ${batchPosts.length} posts from server (already date-filtered)`);
+        
+        // Add all posts from this batch (no duplicate detection in basic method)
+        allPosts.push(...batchPosts);
+        totalFetched += batchPosts.length;
+
+        // Check if we have more pages
+        paginationToken = apiResponse.paginationToken;
+        if (!paginationToken) {
+          console.log('No pagination token found, stopping pagination');
+          break;
+        }
+
+        // If this batch had fewer posts than expected, we might be at the end
+        if (batchPosts.length < batchSize) {
+          console.log('Received incomplete batch, likely at end of posts');
+          break;
+        }
+
+        // Add a small delay to be respectful to the API
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      const data = await response.json();
-      
-      // Handle different response structures from RapidAPI
-      if (data.posts && Array.isArray(data.posts)) {
-        return data.posts;
-      } else if (Array.isArray(data)) {
-        return data;
-      } else {
-        console.warn('Unexpected LinkedIn posts response structure:', data);
-        return [];
+      console.log(`Pagination complete. Total posts fetched: ${allPosts.length}`);
+      return allPosts;
+
+    } catch (error) {
+      console.error('Failed to fetch LinkedIn posts:', error);
+      throw new Error(`Failed to fetch posts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Fetch user posts with duplicate detection to stop early when hitting existing posts
+   */
+  async fetchUserPostsWithDuplicateDetection(
+    linkedinUrl: string, 
+    limit: number = 300,
+    startDate?: string,
+    existingPostIds?: Set<string>
+  ): Promise<RapidLinkedInPost[]> {
+    try {
+      const username = this.extractUsernameFromUrl(linkedinUrl);
+      const allPosts: RapidLinkedInPost[] = [];
+      let paginationToken: string | undefined;
+      const batchSize = 25; // Reduced from 50 to be more API-friendly and make better progress
+      let totalFetched = 0;
+      let consecutiveDuplicateBatches = 0;
+      let retryCount = 0;
+      let batchNumber = 1; // Track actual batch attempts separately from posts fetched
+      const maxConsecutiveDuplicates = 2; // Stop if we get 2 batches in a row with mostly duplicates
+
+      console.log(`Starting LinkedIn posts fetch for ${username}, limit: ${limit}, startDate: ${startDate}`);
+      console.log(`Existing posts to check against: ${existingPostIds?.size || 0}`);
+
+      while (totalFetched < limit) {
+        const url = new URL(`https://${this.rapidApiHost}/get-profile-posts`);
+        url.searchParams.append('username', username);
+        url.searchParams.append('start', '0');
+        url.searchParams.append('count', batchSize.toString());
+        
+        // Add unofficial postedAt date filter to get only recent posts
+        if (startDate) {
+          // Convert ISO date to the format expected by the API (YYYY-MM-DD HH:MM)
+          const dateObj = new Date(startDate);
+          const formattedDate = dateObj.toISOString().slice(0, 16).replace('T', ' ');
+          url.searchParams.append('postedAt', formattedDate);
+          console.log(`Using server-side date filter: postedAt=${formattedDate}`);
+        }
+        
+        // Add pagination token if we have one
+        if (paginationToken) {
+          url.searchParams.append('paginationToken', paginationToken);
+        }
+
+        console.log(`Fetching batch ${batchNumber} - Posts so far: ${totalFetched}`);
+
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'X-RapidAPI-Key': this.rapidApiKey,
+            'X-RapidAPI-Host': this.rapidApiHost,
+          }
+        });
+
+        if (!response.ok) {
+          // Handle rate limiting with exponential backoff
+          if (response.status === 429) {
+            const retryDelay = Math.min(5000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
+            console.log(`Rate limited. Waiting ${retryDelay}ms before retrying...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            retryCount++;
+            continue; // Retry the same batch
+          }
+          throw new Error(`LinkedIn API error: ${response.status} ${response.statusText}`);
+        }
+
+        // Reset retry count on successful request
+        retryCount = 0;
+
+        const apiResponse: RapidLinkedInApiResponse = await response.json();
+        
+        if (!apiResponse.success) {
+          throw new Error(`LinkedIn API returned error: ${apiResponse.message || 'Unknown error'}`);
+        }
+
+        const batchPosts = apiResponse.data || [];
+        console.log(`Received ${batchPosts.length} posts in this batch`);
+
+        if (batchPosts.length === 0) {
+          console.log('No more posts available, stopping pagination');
+          break;
+        }
+
+        // Server-side date filtering via postedAt parameter eliminates need for client-side filtering
+        // All returned posts should already be within our date range
+        console.log(`Received ${batchPosts.length} posts from server (already date-filtered)`);
+        
+        // Check for duplicates if we have existing post IDs
+        let newPosts = batchPosts;
+        if (existingPostIds && existingPostIds.size > 0) {
+          const beforeDuplicateFilter = newPosts.length;
+          newPosts = batchPosts.filter(post => !existingPostIds.has(post.urn));
+          const duplicatesInBatch = beforeDuplicateFilter - newPosts.length;
+          
+          console.log(`Duplicate filter: ${beforeDuplicateFilter} -> ${newPosts.length} posts (${duplicatesInBatch} duplicates found)`);
+          
+          // If more than 80% of the batch are duplicates, increment consecutive duplicate counter
+          if (duplicatesInBatch / beforeDuplicateFilter > 0.8) {
+            consecutiveDuplicateBatches++;
+            console.log(`High duplicate batch detected (${consecutiveDuplicateBatches}/${maxConsecutiveDuplicates})`);
+            
+            // If we've hit too many consecutive duplicate batches, stop
+            if (consecutiveDuplicateBatches >= maxConsecutiveDuplicates) {
+              console.log(`Stopping pagination due to consecutive duplicate batches`);
+              // Add the few new posts from this batch before stopping
+              allPosts.push(...newPosts);
+              break;
+            }
+          } else {
+            // Reset counter if we have a batch with mostly new posts
+            consecutiveDuplicateBatches = 0;
+          }
+        }
+
+        allPosts.push(...newPosts);
+        totalFetched += newPosts.length;
+        
+        // Increment batch number after successful processing
+        batchNumber++;
+
+        // Check if we have more pages
+        paginationToken = apiResponse.paginationToken;
+        if (!paginationToken) {
+          console.log('No pagination token found, stopping pagination');
+          break;
+        }
+
+        // If this batch had fewer posts than expected, we might be at the end
+        if (batchPosts.length < batchSize) {
+          console.log('Received incomplete batch, likely at end of posts');
+          break;
+        }
+
+        // Add a small delay to be respectful to the API
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Increased from 200ms to 1000ms
       }
+
+      console.log(`Pagination complete. Total new posts fetched: ${allPosts.length}`);
+      return allPosts;
 
     } catch (error) {
       console.error('Failed to fetch LinkedIn posts:', error);
@@ -70,28 +266,38 @@ export class LinkedInPostsService {
     contactId: string,
     contactName: string
   ): LinkedInPostArtifactContent {
-    const isAuthor = this.isContactAuthor(post.authorName, contactName);
+    const authorName = `${post.author.firstName} ${post.author.lastName}`;
+    const isAuthor = this.isContactAuthor(authorName, contactName);
+    
+    // Extract hashtags from post text
+    const hashtags = this.extractHashtags(post.text);
+    
+    // Transform mentions
+    const mentions = post.mentions?.map(m => `${m.firstName} ${m.lastName}`) || [];
+    
+    // Handle media from article if present
+    const media = post.article?.image?.map(img => ({
+      type: 'image' as const,
+      url: img.url,
+      title: post.article?.title,
+    })) || [];
     
     return {
-      post_id: post.postId,
-      author: post.authorName,
+      post_id: post.urn,
+      author: authorName,
       is_author: isAuthor,
-      post_type: this.normalizePostType(post.postType),
-      content: post.postContent || '',
-      media: post.media?.map(m => ({
-        type: this.normalizeMediaType(m.type),
-        url: m.url,
-        title: m.title,
-      })),
+      post_type: this.normalizePostType(post.contentType),
+      content: post.text || '',
+      media: media.length > 0 ? media : undefined,
       engagement: {
-        likes: post.likesCount || 0,
+        likes: post.likeCount || 0,
         comments: post.commentsCount || 0,
-        shares: post.sharesCount || 0,
+        shares: post.repostsCount || 0,
       },
       linkedin_url: post.postUrl,
-      posted_at: post.publishedDate,
-      hashtags: post.hashtags || [],
-      mentions: post.mentions || [],
+      posted_at: this.normalizeTimestamp(post.postedDate, post.postedDateTimestamp),
+      hashtags: hashtags.length > 0 ? hashtags : undefined,
+      mentions: mentions.length > 0 ? mentions : undefined,
       last_synced_at: new Date().toISOString(),
       
       // Set relevance reason based on contact relationship
@@ -203,14 +409,15 @@ export class LinkedInPostsService {
     contactName: string
   ): LinkedInPostArtifactContent['relevance_reason'] {
     // Check if contact is mentioned in content
-    if (post.postContent && post.postContent.toLowerCase().includes(contactName.toLowerCase())) {
+    if (post.text && post.text.toLowerCase().includes(contactName.toLowerCase())) {
       return 'mentioned_contact';
     }
     
     // Check mentions array
-    if (post.mentions?.some(mention => 
-      mention.toLowerCase().includes(contactName.toLowerCase())
-    )) {
+    if (post.mentions?.some(mention => {
+      const mentionName = `${mention.firstName} ${mention.lastName}`;
+      return mentionName.toLowerCase().includes(contactName.toLowerCase());
+    })) {
       return 'mentioned_contact';
     }
     
@@ -234,5 +441,41 @@ export class LinkedInPostsService {
     const mentionPattern = /@[\w-]+/g;
     const matches = content.match(mentionPattern);
     return matches || [];
+  }
+
+  /**
+   * Normalize timestamp from LinkedIn API to PostgreSQL-compatible format
+   */
+  private normalizeTimestamp(timestamp: string, timestampMs?: number): string {
+    try {
+      // If we have a Unix timestamp in milliseconds, use that (it's more reliable)
+      if (timestampMs && typeof timestampMs === 'number') {
+        return new Date(timestampMs).toISOString();
+      }
+      
+      // Otherwise, parse the string timestamp
+      // LinkedIn API returns: "2024-05-31 18:35:54.163 +0000 UTC"
+      // PostgreSQL expects ISO format: "2024-05-31T18:35:54.163Z"
+      
+      // Remove " UTC" suffix and replace space with "T"
+      let normalized = timestamp.replace(' UTC', '').replace(' ', 'T');
+      
+      // Ensure timezone is in ISO format (+0000 -> Z)
+      normalized = normalized.replace(' +0000', 'Z');
+      
+      // Validate and parse the date to ensure it's valid
+      const date = new Date(normalized);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp from LinkedIn API:', timestamp);
+        // Fallback to current timestamp
+        return new Date().toISOString();
+      }
+      
+      return date.toISOString();
+    } catch (error) {
+      console.error('Error normalizing timestamp:', timestamp, error);
+      // Fallback to current timestamp
+      return new Date().toISOString();
+    }
   }
 } 

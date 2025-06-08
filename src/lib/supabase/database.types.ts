@@ -34,6 +34,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      artifact_processing_config: {
+        Row: {
+          artifact_type: string
+          created_at: string | null
+          enabled: boolean | null
+          requires_content: boolean | null
+          requires_metadata_fields: string[] | null
+          requires_transcription: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          artifact_type: string
+          created_at?: string | null
+          enabled?: boolean | null
+          requires_content?: boolean | null
+          requires_metadata_fields?: string[] | null
+          requires_transcription?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          artifact_type?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          requires_content?: boolean | null
+          requires_metadata_fields?: string[] | null
+          requires_transcription?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       artifacts: {
         Row: {
           ai_parsing_status: string | null

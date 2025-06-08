@@ -59,12 +59,14 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { LoopArtifact, LoopStatus, LoopArtifactContent } from '@/types/artifact';
 import { LoopStatusBadge } from '@/components/ui/LoopStatusBadge';
+import { ArtifactSuggestions } from '@/components/features/suggestions/ArtifactSuggestions';
 
 interface EnhancedLoopModalProps {
   open: boolean;
   onClose: () => void;
   artifact: LoopArtifact | null;
   contactName: string;
+  contactId?: string;
   onStatusUpdate: (loopId: string, newStatus: LoopStatus) => void;
   onEdit: (loopId: string, updates: Partial<LoopArtifactContent>) => void;
   onDelete: (loopId: string) => void;
@@ -93,6 +95,7 @@ export const EnhancedLoopModal: React.FC<EnhancedLoopModalProps> = ({
   onClose,
   artifact,
   contactName,
+  contactId,
   onStatusUpdate,
   onEdit,
   onDelete,
@@ -235,6 +238,19 @@ export const EnhancedLoopModal: React.FC<EnhancedLoopModalProps> = ({
                         </Paper>
                       </>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* AI Processing Status and Suggestions */}
+                <Card variant="outlined" sx={{ mb: 2.5 }}>
+                  <CardContent>
+                    <ArtifactSuggestions
+                      artifactId={artifact.id}
+                      artifactType="loop"
+                      aiParsingStatus={artifact.ai_parsing_status as 'pending' | 'processing' | 'completed' | 'failed'}
+                      contactId={contactId}
+                      compact={false}
+                    />
                   </CardContent>
                 </Card>
 
