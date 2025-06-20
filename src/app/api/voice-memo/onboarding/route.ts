@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import type { OnboardingVoiceMemoType } from '@/types/userProfile';
 
 export async function POST(request: NextRequest) {
@@ -86,12 +87,30 @@ export async function POST(request: NextRequest) {
       selfContact = newSelfContact;
     }
 
-    // Create voice memo artifact
-    const { data: artifact, error: artifactError } = await supabase
+    // Verify self-contact exists and belongs to user (for RLS)
+    const { data: verifyContact, error: verifyError } = await supabase
+      .from('contacts')
+      .select('id, user_id')
+      .eq('id', selfContact.id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (verifyError || !verifyContact) {
+      console.error('Self-contact verification failed:', verifyError);
+      return NextResponse.json({ error: 'Failed to verify user profile' }, { status: 500 });
+    }
+
+    // Create voice memo artifact using service role to bypass RLS for onboarding
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: artifact, error: artifactError } = await serviceSupabase
       .from('artifacts')
-              .insert({
-          user_id: user.id,
-          contact_id: selfContact.id,
+      .insert({
+        user_id: user.id,
+        contact_id: selfContact.id,
         type: 'voice_memo',
         content: JSON.stringify({
           transcript: '', // Will be filled by transcription service
@@ -110,8 +129,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (artifactError) {
-      console.error('Artifact creation error:', artifactError);
-      return NextResponse.json({ error: 'Failed to create voice memo record' }, { status: 500 });
+      console.error('Artifact creation error:', {
+        error: artifactError,
+        userId: user.id,
+        contactId: selfContact.id,
+        authUid: 'server-side' // We can't access auth.uid() directly here
+      });
+      return NextResponse.json({ 
+        error: 'Failed to create voice memo record',
+        details: artifactError.message 
+      }, { status: 500 });
     }
 
     // TODO: Trigger transcription and AI processing
