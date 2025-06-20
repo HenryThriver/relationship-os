@@ -11,11 +11,11 @@ _(Goal: All artifact types should inform contact profiles, POGs, Asks, Conversat
 
 -   [ ] **Gmail Integration:**
     -   [ ] Import Gmail messages as artifacts.
--   [ ] **Google Calendar Integration:**
-    -   [ ] Import Google Calendar meetings as artifacts.
--   [ ] **Meeting Artifact Enhancements:**
-    -   [ ] Allow uploading meeting recordings (video/audio) with automatic transcription.
-    -   [ ] Allow uploading pre-existing meeting transcripts.
+-   [x] **Google Calendar Integration:**
+    -   [x] Import Google Calendar meetings as artifacts.
+-   [x] **Meeting Artifact Enhancements:**
+    -   [x] Allow uploading meeting recordings (video/audio) with automatic transcription.
+    -   [x] Allow uploading pre-existing meeting transcripts.
 -   [ ] **LinkedIn Integrations:**
     -   [ ] Import LinkedIn posts (individual posts by contacts or self) as artifacts. (Re-confirming if already listed, ensuring it's captured)
     -   [ ] Integrate LinkedIn direct messages as artifacts.

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
 import type { OnboardingVoiceMemoType } from '@/types/userProfile';
 
 export async function POST(request: NextRequest) {
@@ -100,13 +99,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to verify user profile' }, { status: 500 });
     }
 
-    // Create voice memo artifact using service role to bypass RLS for onboarding
-    const serviceSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { data: artifact, error: artifactError } = await serviceSupabase
+    // Create voice memo artifact with proper RLS policy
+    const { data: artifact, error: artifactError } = await supabase
       .from('artifacts')
       .insert({
         user_id: user.id,
@@ -122,7 +116,8 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
         metadata: {
           source: 'onboarding_voice_recorder',
-          memo_type: memoType
+          memo_type: memoType,
+          is_onboarding: 'true'
         }
       })
       .select()
@@ -133,11 +128,15 @@ export async function POST(request: NextRequest) {
         error: artifactError,
         userId: user.id,
         contactId: selfContact.id,
-        authUid: 'server-side' // We can't access auth.uid() directly here
+        code: artifactError.code,
+        message: artifactError.message,
+        details: artifactError.details,
+        hint: artifactError.hint
       });
       return NextResponse.json({ 
         error: 'Failed to create voice memo record',
-        details: artifactError.message 
+        details: artifactError.message,
+        code: artifactError.code
       }, { status: 500 });
     }
 
