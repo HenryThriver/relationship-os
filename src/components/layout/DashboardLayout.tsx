@@ -79,6 +79,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       path: '/dashboard/contacts',
     },
     {
+      text: 'Profile',
+      icon: <AccountCircleIcon />,
+      path: '/dashboard/profile',
+    },
+    {
       text: 'Settings',
       icon: <SettingsIcon />,
       path: '/dashboard/settings',
@@ -191,7 +196,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={handleProfileMenuClose}>
+        <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/dashboard/profile'); }}>
           <Avatar
             src={user?.user_metadata?.avatar_url}
             alt={user?.user_metadata?.full_name}
