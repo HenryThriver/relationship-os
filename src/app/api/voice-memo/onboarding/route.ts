@@ -8,7 +8,15 @@ export async function POST(request: NextRequest) {
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('Authentication check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      authError: authError?.message
+    });
+    
     if (authError || !user) {
+      console.error('Authentication failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -89,15 +97,30 @@ export async function POST(request: NextRequest) {
     // Verify self-contact exists and belongs to user (for RLS)
     const { data: verifyContact, error: verifyError } = await supabase
       .from('contacts')
-      .select('id, user_id')
+      .select('id, user_id, is_self_contact, name')
       .eq('id', selfContact.id)
       .eq('user_id', user.id)
       .single();
+
+    console.log('Self-contact verification:', {
+      contact: verifyContact,
+      error: verifyError
+    });
 
     if (verifyError || !verifyContact) {
       console.error('Self-contact verification failed:', verifyError);
       return NextResponse.json({ error: 'Failed to verify user profile' }, { status: 500 });
     }
+
+    // Debug information before artifact creation
+    console.log('About to create artifact with:', {
+      user_id: user.id,
+      contact_id: selfContact.id,
+      contact_user_id: verifyContact.user_id,
+      type: 'voice_memo',
+      metadata_source: 'onboarding_voice_recorder',
+      metadata_is_onboarding: 'true'
+    });
 
     // Create voice memo artifact with proper RLS policy
     const { data: artifact, error: artifactError } = await supabase
