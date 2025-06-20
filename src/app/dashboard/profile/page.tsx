@@ -3,10 +3,12 @@
 import React from 'react';
 import { Box, Container, Typography, Card, CardContent, Chip, LinearProgress, Button } from '@mui/material';
 import { Person, Psychology, Handshake, Flag } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 
 export default function UserProfilePage() {
+  const router = useRouter();
   const { profile, isLoading, profileCompletion } = useUserProfile();
   const { state: onboardingState, isComplete: onboardingComplete } = useOnboardingState();
 
@@ -189,7 +191,11 @@ export default function UserProfilePage() {
             </Box>
             {!onboardingComplete && (
               <Box sx={{ mt: 2 }}>
-                <Button variant="contained" color="primary">
+                <Button 
+                  variant="contained" 
+                  color="primary"
+                  onClick={() => router.push('/onboarding')}
+                >
                   Continue Onboarding
                 </Button>
               </Box>
