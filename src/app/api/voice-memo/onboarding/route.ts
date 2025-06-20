@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     const filename = `onboarding/${user.id}/${memoType}-${timestamp}.wav`;
 
     // Upload to Supabase Storage
+    console.log('Attempting storage upload to:', filename);
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('voice-memos')
       .upload(filename, buffer, {
@@ -50,9 +51,15 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
+      console.error('Storage upload error:', {
+        error: uploadError,
+        filename,
+        bufferSize: buffer.length
+      });
       return NextResponse.json({ error: 'Failed to upload audio file' }, { status: 500 });
     }
+
+    console.log('Storage upload successful:', uploadData);
 
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
@@ -74,6 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Create self-contact if it doesn't exist
     if (!selfContact) {
+      console.log('Creating new self-contact for user:', user.id);
       const { data: newSelfContact, error: createError } = await supabase
         .from('contacts')
         .insert({
@@ -91,7 +99,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
       }
 
+      console.log('Self-contact created successfully:', newSelfContact);
       selfContact = newSelfContact;
+
+      // Small delay to ensure the contact creation is fully committed
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     // Verify self-contact exists and belongs to user (for RLS)
