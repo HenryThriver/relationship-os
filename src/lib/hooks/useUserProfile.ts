@@ -26,35 +26,15 @@ export const useUserProfile = () => {
     queryFn: async (): Promise<UserProfile | null> => {
       if (!user) return null;
 
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_self_contact', true)
-        .single();
-
-      if (error) {
-        // If no self-contact exists, create one
-        if (error.code === 'PGRST116') {
-          const { data: newProfile, error: createError } = await supabase
-            .rpc('get_or_create_self_contact', { user_uuid: user.id });
-
-          if (createError) throw createError;
-
-          // Fetch the newly created profile
-          const { data: createdProfile, error: fetchError } = await supabase
-            .from('contacts')
-            .select('*')
-            .eq('id', newProfile)
-            .single();
-
-          if (fetchError) throw fetchError;
-          return createdProfile as UserProfile;
-        }
-        throw error;
+      // Use the API endpoint which handles profile creation
+      const response = await fetch('/api/user/profile');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
       }
 
-      return data as UserProfile;
+      const result = await response.json();
+      return result.profile as UserProfile;
     },
     enabled: !!user,
   });

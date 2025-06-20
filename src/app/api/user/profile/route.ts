@@ -55,6 +55,24 @@ export async function GET(): Promise<NextResponse> {
           );
         }
 
+        // Also ensure onboarding state exists
+        const { error: onboardingError } = await (supabase as any)
+          .from('onboarding_state')
+          .insert({
+            user_id: user.id,
+            current_screen: 1,
+            completed_screens: [],
+            started_at: new Date().toISOString(),
+            last_activity_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        // Don't fail if onboarding state already exists
+        if (onboardingError && onboardingError.code !== '23505') {
+          console.warn('Warning: Could not create onboarding state:', onboardingError);
+        }
+
         return NextResponse.json({ profile: createdProfile });
       }
 

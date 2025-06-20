@@ -25,8 +25,21 @@ export default function UserProfilePage() {
   if (!profile) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-          <Typography>No profile found</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', textAlign: 'center' }}>
+          <Typography variant="h4" gutterBottom>
+            Welcome to Connection OS!
+          </Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+            Let's get started by setting up your profile
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => router.push('/onboarding')}
+            sx={{ px: 6, py: 2 }}
+          >
+            Start Onboarding
+          </Button>
         </Box>
       </Container>
     );
