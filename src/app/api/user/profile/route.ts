@@ -56,7 +56,7 @@ export async function GET(): Promise<NextResponse> {
         }
 
         // Also ensure onboarding state exists
-        const { error: onboardingError } = await (supabase as any)
+        const { error: onboardingError } = await supabase
           .from('onboarding_state')
           .insert({
             user_id: user.id,
