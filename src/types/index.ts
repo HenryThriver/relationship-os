@@ -2,6 +2,7 @@
 export * from './contact';
 export * from './artifact';
 export * from './timeline';
+export * from './userProfile';
 
 // Keep existing types that might be used elsewhere or by other parts of the old Contact structure.
 // Their usage should be reviewed after the main Contact refactor is complete.

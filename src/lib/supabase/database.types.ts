@@ -366,21 +366,34 @@ export type Database = {
           email_addresses: string[] | null
           field_sources: Json | null
           gmail_labels: string[] | null
+          goal_description: string | null
+          goal_success_criteria: string | null
+          goal_timeline: string | null
           id: string
+          introduction_opportunities: string[] | null
+          is_self_contact: boolean | null
+          knowledge_to_share: string[] | null
           last_interaction_date: string | null
+          linkedin_analysis_completed_at: string | null
           linkedin_data: Json | null
           linkedin_posts_last_sync_at: string | null
           linkedin_posts_sync_status: string | null
           linkedin_url: string
           location: string | null
           name: string | null
+          networking_challenges: string[] | null
           notes: string | null
+          onboarding_completed_at: string | null
+          onboarding_voice_memo_ids: string[] | null
           personal_context: Json | null
+          primary_goal: string | null
           professional_context: Json | null
+          profile_completion_score: number | null
           relationship_score: number | null
           title: string | null
           updated_at: string
           user_id: string
+          ways_to_help_others: string[] | null
         }
         Insert: {
           company?: string | null
@@ -390,21 +403,34 @@ export type Database = {
           email_addresses?: string[] | null
           field_sources?: Json | null
           gmail_labels?: string[] | null
+          goal_description?: string | null
+          goal_success_criteria?: string | null
+          goal_timeline?: string | null
           id?: string
+          introduction_opportunities?: string[] | null
+          is_self_contact?: boolean | null
+          knowledge_to_share?: string[] | null
           last_interaction_date?: string | null
+          linkedin_analysis_completed_at?: string | null
           linkedin_data?: Json | null
           linkedin_posts_last_sync_at?: string | null
           linkedin_posts_sync_status?: string | null
           linkedin_url: string
           location?: string | null
           name?: string | null
+          networking_challenges?: string[] | null
           notes?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_voice_memo_ids?: string[] | null
           personal_context?: Json | null
+          primary_goal?: string | null
           professional_context?: Json | null
+          profile_completion_score?: number | null
           relationship_score?: number | null
           title?: string | null
           updated_at?: string
           user_id: string
+          ways_to_help_others?: string[] | null
         }
         Update: {
           company?: string | null
@@ -414,21 +440,34 @@ export type Database = {
           email_addresses?: string[] | null
           field_sources?: Json | null
           gmail_labels?: string[] | null
+          goal_description?: string | null
+          goal_success_criteria?: string | null
+          goal_timeline?: string | null
           id?: string
+          introduction_opportunities?: string[] | null
+          is_self_contact?: boolean | null
+          knowledge_to_share?: string[] | null
           last_interaction_date?: string | null
+          linkedin_analysis_completed_at?: string | null
           linkedin_data?: Json | null
           linkedin_posts_last_sync_at?: string | null
           linkedin_posts_sync_status?: string | null
           linkedin_url?: string
           location?: string | null
           name?: string | null
+          networking_challenges?: string[] | null
           notes?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_voice_memo_ids?: string[] | null
           personal_context?: Json | null
+          primary_goal?: string | null
           professional_context?: Json | null
+          profile_completion_score?: number | null
           relationship_score?: number | null
           title?: string | null
           updated_at?: string
           user_id?: string
+          ways_to_help_others?: string[] | null
         }
         Relationships: []
       }
@@ -743,6 +782,82 @@ export type Database = {
           },
         ]
       }
+      onboarding_state: {
+        Row: {
+          calendar_connected: boolean | null
+          challenge_voice_memo_id: string | null
+          completed_screens: number[] | null
+          created_at: string | null
+          current_screen: number | null
+          gmail_connected: boolean | null
+          goal_voice_memo_id: string | null
+          id: string
+          last_activity_at: string | null
+          linkedin_connected: boolean | null
+          linkedin_contacts_added: number | null
+          profile_enhancement_voice_memo_id: string | null
+          started_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          calendar_connected?: boolean | null
+          challenge_voice_memo_id?: string | null
+          completed_screens?: number[] | null
+          created_at?: string | null
+          current_screen?: number | null
+          gmail_connected?: boolean | null
+          goal_voice_memo_id?: string | null
+          id?: string
+          last_activity_at?: string | null
+          linkedin_connected?: boolean | null
+          linkedin_contacts_added?: number | null
+          profile_enhancement_voice_memo_id?: string | null
+          started_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          calendar_connected?: boolean | null
+          challenge_voice_memo_id?: string | null
+          completed_screens?: number[] | null
+          created_at?: string | null
+          current_screen?: number | null
+          gmail_connected?: boolean | null
+          goal_voice_memo_id?: string | null
+          id?: string
+          last_activity_at?: string | null
+          linkedin_connected?: boolean | null
+          linkedin_contacts_added?: number | null
+          profile_enhancement_voice_memo_id?: string | null
+          started_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_state_challenge_voice_memo_id_fkey"
+            columns: ["challenge_voice_memo_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_state_goal_voice_memo_id_fkey"
+            columns: ["goal_voice_memo_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_state_profile_enhancement_voice_memo_id_fkey"
+            columns: ["profile_enhancement_voice_memo_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trigger_debug_log: {
         Row: {
           artifact_id: string | null
@@ -855,6 +970,10 @@ export type Database = {
     Functions: {
       get_decrypted_secret: {
         Args: { secret_name: string }
+        Returns: string
+      }
+      get_or_create_self_contact: {
+        Args: { user_uuid: string }
         Returns: string
       }
       get_user_integration: {
