@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `onboarding/${user.id}/${memoType}-${timestamp}.wav`;
+    const filename = `${user.id}/onboarding/${memoType}-${timestamp}.wav`;
 
     // Upload to Supabase Storage
     console.log('Attempting storage upload to:', filename);
