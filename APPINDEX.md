@@ -3521,3 +3521,88 @@ echo "Y" | npx supabase db push
 - **Documentation**: Comprehensive API and component documentation
 - **Development Tools**: Better debugging, profiling tools
 - **Automation**: Automated testing, deployment, monitoring
+
+# Connection OS - Application Index
+
+## Core Architecture
+Connection OS is built on a **unified artifact system** where all relationship data flows through a single processing pipeline. The system treats users as special contacts in their own network, maximizing code reuse while enabling personalized experiences.
+
+### Key Architectural Principles
+- **Artifact-Centric Design**: All relationship data (voice memos, emails, LinkedIn posts, meetings) are processed as artifacts
+- **User-as-Contact Model**: Users are treated as special contacts (`is_self_contact: true`) in their own network
+- **Unified AI Processing**: Single `parse-artifact` edge function with internal routing for specialized processing
+- **Progressive Data Collection**: Onboarding flow designed to gather user context for personalized relationship intelligence
+
+## Application Structure
+
+### 🏠 **Pages & Routing**
+```
+src/app/
+├── page.tsx                    # Landing page
+├── auth/
+│   ├── login/page.tsx         # Authentication
+│   └── callback/page.tsx      # Auth callback
+├── onboarding/
+│   ├── layout.tsx             # Onboarding flow layout with progress tracking
+│   └── page.tsx               # 9-screen onboarding router
+├── dashboard/
+│   ├── layout.tsx             # Main dashboard layout
+│   ├── page.tsx               # Dashboard home
+│   ├── profile/page.tsx       # User profile management ✨ NEW
+│   ├── contacts/
+│   │   ├── page.tsx           # Contact list
+│   │   ├── new/page.tsx       # Add contact
+│   │   └── [id]/
+│   │       ├── page.tsx       # Contact detail
+│   │       └── timeline/page.tsx # Contact timeline
+│   └── settings/
+│       ├── page.tsx           # Settings home
+│       ├── gmail/page.tsx     # Gmail integration
+│       ├── calendar/page.tsx  # Calendar sync
+│       └── loops/page.tsx     # Loop templates
+└── debug/
+    └── voice-memo-test/page.tsx # Debug utilities
+```
+
+### 🔌 **API Routes**
+```
+src/app/api/
+├── user/
+│   ├── profile/route.ts       # User profile CRUD ✨ NEW
+│   └── linkedin-analysis/route.ts # LinkedIn profile analysis
+├── voice-memo/
+│   ├── onboarding/route.ts    # Onboarding voice memos ✨ NEW
+│   └── [id]/
+│       ├── delete/route.ts    # Delete voice memo
+│       └── reprocess/route.ts # Reprocess voice memo
+├── artifacts/[id]/
+│   ├── route.ts               # Artifact CRUD
+│   └── reprocess/route.ts     # Reprocess artifact
+├── gmail/                     # Gmail integration endpoints
+├── calendar/                  # Calendar sync endpoints
+├── linkedin/                  # LinkedIn integration endpoints
+├── suggestions/               # AI suggestion endpoints
+└── debug/                     # Debug endpoints
+```
+
+### 🧩 **Component Architecture**
+
+#### **Onboarding Flow Components** ✨ NEW
+```
+src/components/features/onboarding/
+├── WelcomeScreen.tsx          # Introduction and feature overview
+├── ChallengesScreen.tsx       # Voice memo for networking challenges
+├── RecognitionScreen.tsx      # Acknowledgment screen
+├── BridgeScreen.tsx           # Transition to goal setting
+├── GoalsScreen.tsx            # Professional goal setting
+├── LinkedInScreen.tsx         # LinkedIn profile connection
+├── ProcessingScreen.tsx       # AI analysis feedback
+├── ProfileScreen.tsx          # Profile review and customization
+├── CompleteScreen.tsx         # Celebration and next steps
+└── OnboardingVoiceRecorder.tsx # Specialized voice recorder for onboarding
+```
+
+#### **Contact Management**
+```
+src/components/features/contacts/
+├── ContactList.tsx            # Contact grid view

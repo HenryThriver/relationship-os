@@ -150,18 +150,18 @@ serve(async (req) => {
     await updateArtifact(supabaseAdmin, record.id, aiParsingUpdatePayload);
     console.log(`Artifact ${record.id} status updated for AI parsing.`);
 
-    // Invoke the parse-voice-memo Edge Function
+    // Invoke the unified parse-artifact Edge Function
     const { data: functionData, error: functionError } = await supabaseAdmin.functions.invoke(
-      'parse-voice-memo',
+      'parse-artifact',
       { body: { artifactId: record.id } } 
     );
 
     if (functionError) {
-      console.error(`Error invoking parse-voice-memo Edge Function for ${record.id}:`, functionError);
+      console.error(`Error invoking parse-artifact Edge Function for ${record.id}:`, functionError);
       // Optionally, update artifact to reflect this invocation error if critical
       // await updateArtifact(supabaseAdmin, record.id, { metadata: { ...record.metadata, ai_invocation_error: functionError.message } });
     } else {
-      console.log(`Successfully invoked parse-voice-memo Edge Function for ${record.id}. Response:`, functionData);
+      console.log(`Successfully invoked parse-artifact Edge Function for ${record.id}. Response:`, functionData);
     }
 
     return new Response(JSON.stringify({ message: 'Transcription successful, AI parsing initiated', artifactId: record.id, transcription: transcriptionText }), {

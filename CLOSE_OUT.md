@@ -53,7 +53,9 @@ If you made changes to the database schema:
 Keep project documentation current with your changes.
 
 - **`CHANGELOG.md`**:
+    - **ALWAYS check the current system date first** with `date` command before writing changelog entries
     - Add a new entry summarizing the changes. Use conventional commit types (e.g., `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`).
+    - Use the actual current date, not historical dates
     - Example: `feat(contacts): Add ability to filter contacts by tag`
     - Include any breaking changes or migration notes
 - **`APPINDEX.md`**:

@@ -8,15 +8,7 @@ export async function POST(request: NextRequest) {
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log('Authentication check:', {
-      hasUser: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      authError: authError?.message
-    });
-    
     if (authError || !user) {
-      console.error('Authentication failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -42,7 +34,6 @@ export async function POST(request: NextRequest) {
     const filename = `${user.id}/onboarding/${memoType}-${timestamp}.wav`;
 
     // Upload to Supabase Storage
-    console.log('Attempting storage upload to:', filename);
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('voice-memos')
       .upload(filename, buffer, {
@@ -51,15 +42,9 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', {
-        error: uploadError,
-        filename,
-        bufferSize: buffer.length
-      });
+      console.error('Storage upload error:', uploadError);
       return NextResponse.json({ error: 'Failed to upload audio file' }, { status: 500 });
     }
-
-    console.log('Storage upload successful:', uploadData);
 
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
@@ -81,7 +66,6 @@ export async function POST(request: NextRequest) {
 
     // Create self-contact if it doesn't exist
     if (!selfContact) {
-      console.log('Creating new self-contact for user:', user.id);
       const { data: newSelfContact, error: createError } = await supabase
         .from('contacts')
         .insert({
@@ -99,90 +83,58 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
       }
 
-      console.log('Self-contact created successfully:', newSelfContact);
       selfContact = newSelfContact;
-
-      // Small delay to ensure the contact creation is fully committed
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     // Verify self-contact exists and belongs to user (for RLS)
     const { data: verifyContact, error: verifyError } = await supabase
       .from('contacts')
-      .select('id, user_id, is_self_contact, name')
+      .select('id, user_id, is_self_contact')
       .eq('id', selfContact.id)
       .eq('user_id', user.id)
       .single();
-
-    console.log('Self-contact verification:', {
-      contact: verifyContact,
-      error: verifyError
-    });
 
     if (verifyError || !verifyContact) {
       console.error('Self-contact verification failed:', verifyError);
       return NextResponse.json({ error: 'Failed to verify user profile' }, { status: 500 });
     }
 
-    // Debug information before artifact creation
-    console.log('About to create artifact with:', {
-      user_id: user.id,
-      contact_id: selfContact.id,
-      contact_user_id: verifyContact.user_id,
-      type: 'voice_memo',
-      metadata_source: 'onboarding_voice_recorder',
-      metadata_is_onboarding: 'true'
-    });
-
-    // Create voice memo artifact with proper RLS policy
+    // Create voice memo artifact with proper fields for transcription processing
     const { data: artifact, error: artifactError } = await supabase
       .from('artifacts')
       .insert({
         user_id: user.id,
         contact_id: selfContact.id,
         type: 'voice_memo',
-        content: JSON.stringify({
-          transcript: '', // Will be filled by transcription service
-          audio_url: publicUrl,
-          duration: 0, // Will be updated after processing
-          memo_type: memoType,
-          is_onboarding: true
-        }),
+        content: `Voice memo recorded for onboarding`, // Initial content
+        audio_file_path: uploadData.path, // Required by transcription service
+        transcription_status: 'pending', // Required by transcription service
+        ai_parsing_status: 'pending', // Will be set to pending after transcription
         timestamp: new Date().toISOString(),
         metadata: {
           source: 'onboarding_voice_recorder',
           memo_type: memoType,
-          is_onboarding: 'true'
+          is_onboarding: 'true',
+          file_size: buffer.length,
+          original_filename: filename
         }
       })
       .select()
       .single();
 
     if (artifactError) {
-      console.error('Artifact creation error:', {
-        error: artifactError,
-        userId: user.id,
-        contactId: selfContact.id,
-        code: artifactError.code,
-        message: artifactError.message,
-        details: artifactError.details,
-        hint: artifactError.hint
-      });
+      console.error('Artifact creation error:', artifactError);
       return NextResponse.json({ 
-        error: 'Failed to create voice memo record',
-        details: artifactError.message,
-        code: artifactError.code
+        error: 'Failed to create voice memo record'
       }, { status: 500 });
     }
 
-    // TODO: Trigger transcription and AI processing
-    // This would typically call the transcribe-voice-memo edge function
-    // For now, we'll mark it as successful
-
+    // Transcription and AI processing will be automatically triggered by database trigger
+    
     return NextResponse.json({
       success: true,
       artifact_id: artifact.id,
-      message: 'Voice memo uploaded successfully'
+      message: 'Voice memo uploaded successfully and processing started'
     });
 
   } catch (error) {

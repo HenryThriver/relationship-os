@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import type { UserProfile, UserProfileUpdate } from '@/types/userProfile';
+import type { UserProfileUpdate } from '@/types/userProfile';
 
 export async function GET(): Promise<NextResponse> {
   try {

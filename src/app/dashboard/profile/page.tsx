@@ -30,7 +30,7 @@ export default function UserProfilePage() {
             Welcome to Connection OS!
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
-            Let's get started by setting up your profile
+            Let&apos;s get started by setting up your profile
           </Typography>
           <Button
             variant="contained"

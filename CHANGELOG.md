@@ -360,4 +360,59 @@ This release represents a major architectural milestone, centralizing scattered 
 - **Enhanced Contact Profile & Data Management:**
   - Significantly expanded `
 
+## [Unreleased] - 2025-06-22
+
+### Added - User Profile Foundations (Phase 1)
+- **User-as-Contact Architecture**: Implemented "user-as-contact" approach where users are treated as special contacts in their own network
+- **Database Schema Extensions**: 
+  - Extended `contacts` table with user profile fields (`is_self_contact`, goal tracking, networking challenges)
+  - Added `onboarding_state` table for 9-screen onboarding flow management
+  - Created helper functions `get_or_create_self_contact()` and `initialize_user_onboarding()`
+  - Proper RLS policies and automatic onboarding initialization on user signup
+
+- **TypeScript Type System**: 
+  - Created comprehensive `UserProfile` interfaces extending Contact
+  - Added `OnboardingState` and `OnboardingScreen` types
+  - Request/response types for voice memo processing and LinkedIn analysis
+
+- **React Hooks Infrastructure**:
+  - `useUserProfile` hook with profile completion scoring algorithm
+  - `useOnboardingState` hook managing 9-screen flow progression
+  - Profile update mutations with optimistic updates
+
+- **API Routes**:
+  - `/api/user/profile` - GET/PUT endpoints for user profile management
+  - `/api/voice-memo/onboarding` - Specialized onboarding voice memo processing
+  - Proper authentication and self-contact creation logic
+
+- **User Interface Components**:
+  - Complete 9-screen onboarding flow (Welcome → Challenges → Recognition → Bridge → Goals → LinkedIn → Processing → Profile → Complete)
+  - `OnboardingVoiceRecorder` with real-time recording, playback, and re-record capabilities
+  - User profile dashboard with completion progress and goal management
+  - Onboarding layout with progress tracking and navigation
+
+- **Specialized AI Processing**:
+  - Dual-prompt system in unified `parse-artifact` edge function
+  - User profile extraction prompt for self-reflection onboarding voice memos
+  - Detection logic routing between user profile and relationship intelligence prompts
+  - Proper handling of `is_self_contact` flag and onboarding metadata
+
+- **Voice Memo Processing**:
+  - Fixed storage RLS policies for onboarding voice memos
+  - Proper file path structure (`user_id/onboarding/filename`)
+  - Integration with transcription and AI parsing pipeline
+  - Specialized prompts for user self-reflection vs. contact relationship intelligence
+
+### Technical Improvements
+- **Navigation Enhancement**: Added Profile navigation to dashboard sidebar
+- **Database Types**: Regenerated TypeScript types for new schema additions
+- **Error Handling**: Improved profile creation fallback logic and error states
+- **Code Organization**: Followed established patterns for artifact processing and user interface
+
+### Architecture Decisions
+- **User-as-Contact Model**: Maximizes code reuse while maintaining flexibility for user-specific features
+- **Unified Edge Function**: Maintained single `parse-artifact` entry point with internal routing for specialized processing
+- **Progressive Onboarding**: 9-screen flow designed for optimal user experience and data collection
+- **Profile Completion Scoring**: Algorithm-based completion percentage to drive user engagement
+
 

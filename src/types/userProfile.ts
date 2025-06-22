@@ -95,7 +95,7 @@ export interface UserLinkedInAnalysisRequest {
 
 export interface UserLinkedInAnalysisResponse {
   success: boolean;
-  analysis: {
+  analysis?: {
     professional_interests: string[];
     expertise_areas: string[];
     communication_style: string;
@@ -103,6 +103,7 @@ export interface UserLinkedInAnalysisResponse {
     introduction_opportunities: string[];
     knowledge_to_share: string[];
   };
+  error?: string;
 }
 
 // Profile Update Types

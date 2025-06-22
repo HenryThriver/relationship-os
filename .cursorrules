@@ -99,13 +99,14 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 ## Supabase Conventions
 ### Project Setup
 - My Supabase project ID is zepawphplcisievcdugz. At the beginning of a new chat link the project but after that do not invoke "--project-id zepawphplcisievcdugz" at the end of supabase commands because it isn't necessary and will simply apply to the linked to the project
-- Make all changes in the cloud version of my supabase db. To do that successfully, run with the npx command "echo "Y" | npx supabase db push" so that it's auto applied
+- **NEVER use npx with Supabase commands** - always use `supabase` directly as the CLI is installed globally
+- Make all changes in the cloud version of my supabase db. To do that successfully, run with the command "echo "Y" | supabase db push" so that it's auto applied
 - Connect to the cloud project at the beginning of each chat thread
 
 ### 🔒 DATABASE ACCESS - SECURITY FIRST
 - **MANDATORY**: Always reference INITIATE.md Section 2 for secure database access patterns
-- **NEVER hardcode credentials** - always use dynamic extraction via `npx supabase db dump --linked --dry-run`
-- **Standard secure pattern**: `CONNECTION_STRING=$(npx supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)`
+- **NEVER hardcode credentials** - always use dynamic extraction via `supabase db dump --linked --dry-run`
+- **Standard secure pattern**: `CONNECTION_STRING=$(supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)`
 - **DATABASE_ACCESS_GUIDE.md exists locally** (gitignored for security) with comprehensive secure patterns
 - **Always get fresh credentials** - don't reuse old connection strings
 
@@ -113,7 +114,7 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - When creating migrations, use "python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))'" to get the proper datetime to name the migration file
 - When applying migrations, apply them to the cloud instance where I am developing directly
 - If you ever have questions about the database structure, look through the migrations to see how the database is built
-- Generate types after schema changes: `npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts`
+- Generate types after schema changes: `supabase gen types typescript --linked > src/lib/supabase/database.types.ts`
 
 ### Development Patterns
 - Use Row Level Security (RLS) for all tables
@@ -124,7 +125,7 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 ### 🔧 SECURE DATABASE ACCESS QUICK REFERENCE
 ```bash
 # Step 1: Get connection string (ALWAYS run this first)
-CONNECTION_STRING=$(npx supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)
+CONNECTION_STRING=$(supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)
 
 # Step 2: Use for queries
 psql "$CONNECTION_STRING" -c "YOUR_SQL_QUERY_HERE"
@@ -135,6 +136,145 @@ psql "$CONNECTION_STRING" -c "\d contacts"  # Describe table
 psql "$CONNECTION_STRING" -c "SELECT id, name FROM contacts WHERE name ILIKE '%search%';"
 ```
 **For more patterns, see INITIATE.md Section 2 or local DATABASE_ACCESS_GUIDE.md**
+
+## 🚀 EDGE FUNCTION ARCHITECTURE PATTERNS
+
+### UNIFIED PROCESSING PATTERN (ESTABLISHED)
+The codebase uses a **unified edge function architecture** where:
+
+1. **Single Entry Point**: `parse-artifact` is the unified edge function for ALL artifact AI processing
+2. **Database Triggers**: All triggers call `parse-artifact`, NOT specialized functions
+3. **Internal Routing**: The unified function routes to appropriate processing logic based on artifact type and metadata
+
+### Current Edge Function Structure
+```
+supabase/functions/
+├── parse-artifact/          # 🎯 UNIFIED AI PROCESSING (main entry point)
+│   └── index.ts             # Handles ALL artifact types via internal routing
+├── transcribe-voice-memo/   # Audio transcription only
+├── gmail-sync/              # Gmail integration
+└── nightly-calendar-sync/   # Calendar automation
+```
+
+### 🚨 Critical Edge Function Rules
+
+1. **NEVER create separate edge functions for different artifact types**
+   - All AI processing goes through `parse-artifact`
+   - Use internal routing for specialized logic
+
+2. **NEVER modify database triggers to call different functions**
+   - All triggers call `parse-artifact`
+   - Specialization happens inside the unified function
+
+3. **Service Key Management**
+   - Always retrieve from Vault: `vault.decrypted_secrets` table
+   - Key name: `INTERNAL_SERVICE_ROLE_KEY`
+   - Never hardcode in functions or migrations
+
+4. **URL Pattern**
+   - Always use: `https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact`
+   - Never use dynamic URL construction in production
+
+### Adding New Artifact Processing
+When adding new artifact types or specialized processing:
+
+1. **Add to processing config table**:
+   ```sql
+   INSERT INTO artifact_processing_config (artifact_type, enabled, requires_content, requires_transcription)
+   VALUES ('new_type', true, true, false);
+   ```
+
+2. **Add routing logic to parse-artifact**:
+   ```typescript
+   // Inside parse-artifact/index.ts
+   if (artifact.type === 'new_type') {
+     result = await parseNewType(artifact, contact);
+   }
+   ```
+
+3. **NEVER create new edge functions or modify triggers**
+
+### Self-Contact / Onboarding Pattern
+For user profile processing (onboarding voice memos):
+
+```typescript
+// Detection pattern
+const isOnboardingMemo = contact.is_self_contact && 
+                        (artifact.metadata?.is_onboarding === 'true' || 
+                         artifact.metadata?.source === 'onboarding_voice_recorder');
+
+// Routing pattern
+if (isOnboardingMemo) {
+  // Use user profile extraction prompt
+  result = await parseOnboardingVoiceMemo(transcription, contact, metadata);
+} else {
+  // Use relationship intelligence prompt  
+  result = await parseStandardVoiceMemo(transcription, contact);
+}
+```
+
+### Database Trigger Pattern
+All AI processing triggers follow this established pattern:
+
+```sql
+-- Unified trigger function (current implementation)
+CREATE OR REPLACE FUNCTION public.trigger_unified_artifact_ai_processing()
+RETURNS TRIGGER AS $$
+DECLARE
+  service_key TEXT;
+  edge_function_base_url TEXT;
+BEGIN
+  -- Validation logic...
+  
+  -- Always call the unified function
+  PERFORM net.http_post(
+    url := 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || service_key
+    ),
+    body := jsonb_build_object('artifactId', NEW.id)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### Edge Function Testing & Deployment
+
+#### Testing Edge Functions
+Edge functions are invoked via HTTP requests, NOT CLI commands:
+
+```bash
+# ❌ WRONG - No CLI invoke command exists
+supabase functions invoke parse-artifact
+
+# ✅ CORRECT - Use HTTP requests (curl, fetch, etc.)
+# Test deployed function:
+curl -X POST 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact' \
+  --header 'Authorization: Bearer YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{"artifactId": "your-uuid-here"}'
+
+# Test local function (with supabase functions serve running):
+curl -X POST 'http://localhost:54321/functions/v1/parse-artifact' \
+  --header 'Authorization: Bearer SUPABASE_ANON_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{"artifactId": "your-uuid-here"}'
+```
+
+#### Deployment & Monitoring
+```bash
+# Deploy specific function
+supabase functions deploy parse-artifact
+
+# Monitor logs
+supabase functions logs parse-artifact
+
+# Serve functions locally for testing
+supabase functions serve
+```
+
+**Key Lesson**: This architecture has been battle-tested across multiple artifact types (voice memos, emails, meetings, LinkedIn posts). Follow the established patterns rather than creating new ones.
 
 ## 📋 DATABASE ACCESS DOCUMENTATION STRUCTURE
 - **INITIATE.md Section 2**: Primary reference for secure database access patterns with copy-paste templates

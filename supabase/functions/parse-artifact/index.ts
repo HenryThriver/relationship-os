@@ -154,8 +154,16 @@ serve(async (req: Request) => {
 
     // Get content to analyze based on artifact type
     let contentToAnalyze: string;
+    let isOnboardingMemo = false;
+    let isSelfLinkedInProfile = false;
+    
     if (fetchedArtifactRecord.type === 'voice_memo') {
       contentToAnalyze = fetchedArtifactRecord.transcription;
+      
+      // Check if this is a self-contact (user's own profile) and if it's an onboarding voice memo
+      isOnboardingMemo = contact.is_self_contact && 
+                        (fetchedArtifactRecord.metadata?.is_onboarding === 'true' || 
+                         fetchedArtifactRecord.metadata?.source === 'onboarding_voice_recorder');
     } else if (fetchedArtifactRecord.type === 'meeting') {
       contentToAnalyze = fetchedArtifactRecord.content;
     } else if (fetchedArtifactRecord.type === 'email') {
@@ -214,6 +222,9 @@ Engagement Metrics:
 
 ANALYSIS FOCUS: Extract professional updates, achievements, interests, company changes, project involvement, or relationship intelligence that can help maintain and strengthen the relationship with this contact.`;
     } else if (fetchedArtifactRecord.type === 'linkedin_profile') {
+      // Check if this is the user's own LinkedIn profile
+      isSelfLinkedInProfile = contact.is_self_contact;
+      
       // For LinkedIn profiles, analyze the professional information
       const profileMetadata = fetchedArtifactRecord.metadata;
       const about = profileMetadata.about || '';
@@ -223,7 +234,30 @@ ANALYSIS FOCUS: Extract professional updates, achievements, interests, company c
       const skills = profileMetadata.skills || [];
       const certifications = profileMetadata.certifications || [];
       
-      contentToAnalyze = `LinkedIn Profile for ${contact.name}
+      if (isSelfLinkedInProfile) {
+        // For user's own profile, focus on self-analysis
+        contentToAnalyze = `User's LinkedIn Profile - Self Analysis
+
+Name: ${contact.name}
+Headline: ${headline}
+
+About Section:
+${about}
+
+Experience:
+${experience.map((exp: any) => `- ${exp.title} at ${exp.company} (${exp.duration || 'Present'})`).join('\n')}
+
+Education:
+${education.map((edu: any) => `- ${edu.degree} from ${edu.school} (${edu.year || 'N/A'})`).join('\n')}
+
+Skills: ${skills.map((skill: any) => skill.name || skill).join(', ')}
+
+Certifications: ${certifications.map((cert: any) => cert.name).join(', ')}
+
+SELF-ANALYSIS FOCUS: Extract insights about the user's professional strengths, expertise areas, communication style, ways they can help others, introduction opportunities, and knowledge they can share. This is for building the user's own profile to improve their networking and relationship management.`;
+      } else {
+        // For other contacts' profiles
+        contentToAnalyze = `LinkedIn Profile for ${contact.name}
 
 Headline: ${headline}
 
@@ -236,18 +270,25 @@ ${experience.map((exp: any) => `- ${exp.title} at ${exp.company} (${exp.duration
 Education:
 ${education.map((edu: any) => `- ${edu.degree} from ${edu.school} (${edu.year || 'N/A'})`).join('\n')}
 
-Skills: ${skills.join(', ')}
+Skills: ${skills.map((skill: any) => skill.name || skill).join(', ')}
 
 Certifications: ${certifications.map((cert: any) => cert.name).join(', ')}
 
 ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievements, company information, educational background, and relationship intelligence that can help maintain and strengthen the relationship with this contact.`;
+      }
     } else {
       contentToAnalyze = fetchedArtifactRecord.content || '';
     }
     
-    // Call OpenAI for parsing
-    // The response from parseWithOpenAI will now be an object: { contact_updates: [], suggested_loops: [] }
-    const aiParseResult = await parseWithOpenAI(contentToAnalyze, contact, fetchedArtifactRecord);
+    // Call appropriate OpenAI parsing function based on artifact type and context
+    let aiParseResult;
+    if (isOnboardingMemo) {
+      aiParseResult = await parseOnboardingVoiceMemo(contentToAnalyze, contact, fetchedArtifactRecord.metadata);
+    } else if (isSelfLinkedInProfile) {
+      aiParseResult = await parseSelfLinkedInProfile(contentToAnalyze, contact, fetchedArtifactRecord.metadata);
+    } else {
+      aiParseResult = await parseWithOpenAI(contentToAnalyze, contact, fetchedArtifactRecord);
+    }
 
     if (aiParseResult === null) {
       console.error(`AI parsing failed for artifact ${fetchedArtifactRecord.id}. parseWithOpenAI returned null.`);
@@ -264,9 +305,76 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
 
     let suggestionsStoredCount = 0;
     let loopsSuggestedCount = 0;
+    let directUpdatesApplied = 0;
 
-    // Store contact update suggestions (if any)
-    if (contactUpdateSuggestions.length > 0) {
+    // For onboarding voice memos and self-LinkedIn profiles, apply updates directly to the user's self-contact
+    if ((isOnboardingMemo || isSelfLinkedInProfile) && contactUpdateSuggestions.length > 0) {
+      console.log(`Applying ${contactUpdateSuggestions.length} direct updates to self-contact for onboarding memo`);
+      
+      // Build the update object from the AI suggestions
+      const contactUpdates: any = {};
+      
+      for (const suggestion of contactUpdateSuggestions) {
+        if (suggestion.confidence >= 0.6) { // Only apply high-confidence updates
+          const { field_path, action, suggested_value } = suggestion;
+          
+          // Handle nested field paths (e.g., "professional_context.career_goals")
+          const pathParts = field_path.split('.');
+          
+          if (pathParts.length === 1) {
+            // Simple field (e.g., "primary_goal", "networking_challenges")
+            if (action === 'add' && Array.isArray(suggested_value)) {
+              // For array fields, merge with existing values and any previous updates
+              const currentValue = contactUpdates[field_path] || contact[field_path] || [];
+              contactUpdates[field_path] = [...currentValue, ...suggested_value];
+            } else if (action === 'add' && Array.isArray(contact[field_path])) {
+              // For adding single values to arrays
+              const currentValue = contactUpdates[field_path] || contact[field_path] || [];
+              contactUpdates[field_path] = [...currentValue, suggested_value];
+            } else {
+              // For simple updates/replacements
+              contactUpdates[field_path] = suggested_value;
+            }
+          } else if (pathParts.length === 2) {
+            // Nested field (e.g., "professional_context.career_goals")
+            const [parentField, childField] = pathParts;
+            
+            if (!contactUpdates[parentField]) {
+              contactUpdates[parentField] = contact[parentField] || {};
+            }
+            
+            if (action === 'add' && Array.isArray(suggested_value)) {
+              const currentValue = contactUpdates[parentField]?.[childField] || contact[parentField]?.[childField] || [];
+              contactUpdates[parentField][childField] = [...currentValue, ...suggested_value];
+            } else if (action === 'add' && Array.isArray(contactUpdates[parentField]?.[childField] || contact[parentField]?.[childField])) {
+              const currentValue = contactUpdates[parentField]?.[childField] || contact[parentField]?.[childField] || [];
+              contactUpdates[parentField][childField] = [...currentValue, suggested_value];
+            } else {
+              contactUpdates[parentField][childField] = suggested_value;
+            }
+          }
+          
+          directUpdatesApplied++;
+          console.log(`Applied update: ${field_path} = ${JSON.stringify(suggested_value)}`);
+        }
+      }
+      
+      // Apply the updates to the contact record
+      if (Object.keys(contactUpdates).length > 0) {
+        const { error: updateContactError } = await supabase
+          .from('contacts')
+          .update(contactUpdates)
+          .eq('id', contact.id)
+          .eq('user_id', userId);
+          
+        if (updateContactError) {
+          console.error(`Error applying direct updates to self-contact:`, updateContactError);
+        } else {
+          console.log(`Successfully applied ${directUpdatesApplied} updates to self-contact`);
+        }
+      }
+    } else if (contactUpdateSuggestions.length > 0) {
+      // For non-onboarding memos, store as suggestions for manual review
       const { error: insertSuggestionsError } = await supabase
         .from('contact_update_suggestions')
         .insert({
@@ -676,12 +784,295 @@ Do not include fields in "contact_updates" or "suggested_loops" if confidence is
   }
 }
 
+async function parseSelfLinkedInProfile(profileContent: string, contact: any, metadata: any): Promise<AiParseResult | null> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    console.error('OPENAI_API_KEY is not set in environment variables.');
+    throw new Error('OpenAI API key is missing.');
+  }
+
+  const promptContent = `
+USER PROFILE EXTRACTION - LINKEDIN SELF-ANALYSIS
+
+User Name: ${contact.name || 'User'}
+Current User Profile (JSON): 
+${JSON.stringify({
+  professional_context: contact.professional_context || {},
+  personal_context: contact.personal_context || {},
+  ways_to_help_others: contact.ways_to_help_others || [],
+  introduction_opportunities: contact.introduction_opportunities || [],
+  knowledge_to_share: contact.knowledge_to_share || [],
+  primary_goal: contact.primary_goal || null,
+  goal_description: contact.goal_description || null
+}, null, 2)}
+
+LinkedIn Profile Data: 
+${profileContent}
+
+EXTRACTION INSTRUCTIONS:
+You are analyzing the USER'S OWN LinkedIn profile to extract insights about their professional strengths, expertise, and how they can provide value to others in their network. This is for building a comprehensive user profile that will drive personalized networking recommendations.
+
+VALID FIELD PATHS FOR USER PROFILE UPDATES:
+PROFESSIONAL STRENGTHS & EXPERTISE:
+- "professional_context.expertise_areas" (array of strings - their areas of expertise, action: 'add')
+- "professional_context.professional_interests" (array of strings - their professional interests, action: 'add')
+- "professional_context.industry_insights" (array of strings - insights they can share, action: 'add')
+- "professional_context.communication_style" (string - their communication style based on profile tone)
+- "professional_context.current_role.responsibilities" (array of strings, action: 'add')
+- "professional_context.career_goals" (array of strings - inferred career aspirations, action: 'add')
+
+WAYS TO HELP OTHERS:
+- "ways_to_help_others" (array of strings - specific ways they can help others, action: 'add')
+- "introduction_opportunities" (array of strings - types of introductions they can facilitate, action: 'add')
+- "knowledge_to_share" (array of strings - specific knowledge/expertise they can share, action: 'add')
+
+PERSONAL CONTEXT:
+- "personal_context.interests" (array of strings - professional/personal interests, action: 'add')
+- "personal_context.values" (array of strings - values evident from their profile, action: 'add')
+- "personal_context.motivations" (array of strings - what drives them professionally, action: 'add')
+
+BASIC INFO UPDATES:
+- "company" (string - current company)
+- "title" (string - current job title)
+- "location.city" (string)
+- "location.state" (string)
+- "location.country" (string)
+
+RESPONSE FORMAT (JSON Object):
+{
+  "contact_updates": [
+    {
+      "field_path": "ways_to_help_others",
+      "action": "add",
+      "suggested_value": "Mentoring early-career professionals in tech",
+      "confidence": 0.9,
+      "reasoning": "Profile shows senior role and mentions mentoring in experience section."
+    }
+  ],
+  "suggested_loops": []
+}
+
+Focus on extracting actionable insights about how the user can provide value to others in their network.
+Only include updates with confidence >= 0.7.
+Return empty suggested_loops array as this is self-analysis, not relationship loops with others.
+Extract specific, actionable ways they can help based on their experience, skills, and achievements.
+`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openAIApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo-preview',
+        messages: [{ role: 'user', content: promptContent }],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text();
+      console.error(`OpenAI API error for self LinkedIn analysis: ${res.status} ${res.statusText}`, errorBody);
+      throw new Error(`OpenAI API request failed: ${res.status} ${res.statusText}. Body: ${errorBody}`);
+    }
+
+    const data = await res.json();
+    
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error('Invalid response structure from OpenAI for self LinkedIn analysis:', data);
+      return null;
+    }
+    
+    const suggestionsJson = data.choices[0].message.content;
+    console.log("Self LinkedIn analysis AI response:", suggestionsJson);
+
+    try {
+      const parsedResult = JSON.parse(suggestionsJson) as AiParseResult;
+      return {
+        contact_updates: parsedResult.contact_updates || [],
+        suggested_loops: parsedResult.suggested_loops || [], // Should be empty for self-analysis
+      };
+    } catch (e) {
+      console.error('Error parsing OpenAI JSON response for self LinkedIn analysis:', e, suggestionsJson);
+      return null;
+    }
+
+  } catch (error) {
+    console.error('Error in parseSelfLinkedInProfile:', error);
+    return null; 
+  }
+}
+
+async function parseOnboardingVoiceMemo(transcription: string, contact: any, metadata: any): Promise<AiParseResult | null> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    console.error('OPENAI_API_KEY is not set in environment variables.');
+    throw new Error('OpenAI API key is missing.');
+  }
+
+  // Determine the type of onboarding memo to customize the prompt
+  const memoType = metadata?.memo_type || 'general';
+  
+  let promptContent: string;
+  
+  if (memoType === 'challenge' || memoType === 'challenges') {
+    promptContent = `
+USER PROFILE EXTRACTION - NETWORKING CHALLENGES ANALYSIS
+
+User Name: ${contact.name || 'User'}
+Current User Profile (JSON): 
+${JSON.stringify({
+  professional_context: contact.professional_context || {},
+  personal_context: contact.personal_context || {},
+  networking_challenges: contact.networking_challenges || [],
+  ways_to_help_others: contact.ways_to_help_others || [],
+  primary_goal: contact.primary_goal || null,
+  goal_description: contact.goal_description || null
+}, null, 2)}
+
+Voice Memo Transcription (User describing their networking challenges): 
+"${transcription}"
+
+EXTRACTION INSTRUCTIONS:
+You are analyzing a voice memo where the USER is describing their own networking challenges, goals, and areas where they want to improve their relationship-building skills. Extract insights about the USER THEMSELVES (not about other people).
+
+VALID FIELD PATHS FOR USER PROFILE UPDATES:
+USER GOALS & CHALLENGES:
+- "networking_challenges" (array of strings - specific networking/relationship challenges they face, action: 'add')
+- "primary_goal" (string - their main professional or networking goal)
+- "goal_description" (string - detailed description of what they want to achieve)
+- "goal_timeline" (string - when they want to achieve this goal)
+- "goal_success_criteria" (string - how they'll measure success)
+
+WAYS TO HELP OTHERS:
+- "ways_to_help_others" (array of strings - areas where the user can provide value to others, action: 'add')
+- "introduction_opportunities" (array of strings - types of introductions they can facilitate, action: 'add')
+- "knowledge_to_share" (array of strings - expertise they can share with others, action: 'add')
+
+PROFESSIONAL CONTEXT (about the user):
+- "company" (string - their company)
+- "title" (string - their job title)
+- "professional_context.current_role.responsibilities" (array of strings, action: 'add')
+- "professional_context.career_goals" (array of strings, action: 'add')
+- "professional_context.professional_development" (array of strings - areas they want to develop, action: 'add')
+- "professional_context.industry_insights" (array of strings - their knowledge/insights, action: 'add')
+
+PERSONAL CONTEXT (about the user):
+- "personal_context.interests" (array of strings, action: 'add')
+- "personal_context.hobbies" (array of strings, action: 'add')
+- "personal_context.values" (array of strings, action: 'add')
+- "personal_context.motivations" (array of strings, action: 'add')
+- "personal_context.communication_style" (string)
+
+GENERAL FIELDS:
+- "location.city" (string)
+- "location.state" (string)
+- "location.country" (string)
+
+RESPONSE FORMAT (JSON Object):
+{
+  "contact_updates": [
+    {
+      "field_path": "networking_challenges",
+      "action": "add",
+      "suggested_value": "Difficulty following up after networking events",
+      "confidence": 0.9,
+      "reasoning": "User explicitly mentioned struggling with follow-up after meeting new people."
+    }
+  ],
+  "suggested_loops": []
+}
+
+Focus on extracting the user's own challenges, goals, strengths, and areas for improvement. Do not extract information about other people mentioned in the transcript.
+Only include updates with confidence >= 0.6.
+Return empty suggested_loops array as this is about self-reflection, not relationship loops with others.
+`;
+  } else {
+    // General onboarding memo prompt (for other types like goals, profile setup, etc.)
+    promptContent = `
+USER PROFILE EXTRACTION - ONBOARDING ANALYSIS
+
+User Name: ${contact.name || 'User'}
+Current User Profile (JSON): 
+${JSON.stringify({
+  professional_context: contact.professional_context || {},
+  personal_context: contact.personal_context || {},
+  primary_goal: contact.primary_goal || null,
+  goal_description: contact.goal_description || null
+}, null, 2)}
+
+Voice Memo Transcription (User describing themselves): 
+"${transcription}"
+
+EXTRACTION INSTRUCTIONS:
+Extract information about the USER THEMSELVES from this onboarding voice memo. Focus on their professional background, personal interests, goals, and how they want to use this relationship management system.
+
+VALID FIELD PATHS FOR USER PROFILE UPDATES:
+[Use the same field paths as the challenges prompt above]
+
+Focus on building a comprehensive profile of the user themselves.
+Only include updates with confidence >= 0.6.
+Return empty suggested_loops array for onboarding memos.
+`;
+  }
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openAIApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo-preview',
+        messages: [{ role: 'user', content: promptContent }],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text();
+      console.error(`OpenAI API error for onboarding memo: ${res.status} ${res.statusText}`, errorBody);
+      throw new Error(`OpenAI API request failed: ${res.status} ${res.statusText}. Body: ${errorBody}`);
+    }
+
+    const data = await res.json();
+    
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error('Invalid response structure from OpenAI for onboarding memo:', data);
+      return null;
+    }
+    
+    const suggestionsJson = data.choices[0].message.content;
+    console.log("Onboarding memo AI response:", suggestionsJson);
+
+    try {
+      const parsedResult = JSON.parse(suggestionsJson) as AiParseResult;
+      return {
+        contact_updates: parsedResult.contact_updates || [],
+        suggested_loops: parsedResult.suggested_loops || [], // Should be empty for onboarding
+      };
+    } catch (e) {
+      console.error('Error parsing OpenAI JSON response for onboarding memo:', e, suggestionsJson);
+      return null;
+    }
+
+  } catch (error) {
+    console.error('Error in parseOnboardingVoiceMemo:', error);
+    return null; 
+  }
+}
+
 /* To invoke locally:
 
   1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
   2. Make an HTTP request:
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/parse-voice-memo' \
+  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/parse-artifact' \
     --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
     --header 'Content-Type: application/json' \
     --data '{"name":"Functions"}'
