@@ -572,6 +572,196 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_contacts: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          goal_id: string
+          how_they_help: string | null
+          id: string
+          interaction_frequency: string | null
+          last_interaction_date: string | null
+          next_planned_interaction: string | null
+          notes: string | null
+          relationship_type: string | null
+          relevance_score: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          goal_id: string
+          how_they_help?: string | null
+          id?: string
+          interaction_frequency?: string | null
+          last_interaction_date?: string | null
+          next_planned_interaction?: string | null
+          notes?: string | null
+          relationship_type?: string | null
+          relevance_score?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          goal_id?: string
+          how_they_help?: string | null
+          id?: string
+          interaction_frequency?: string | null
+          last_interaction_date?: string | null
+          next_planned_interaction?: string | null
+          notes?: string | null
+          relationship_type?: string | null
+          relevance_score?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_contacts_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          goal_id: string
+          id: string
+          order_index: number | null
+          status: string | null
+          target_date: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          goal_id: string
+          id?: string
+          order_index?: number | null
+          status?: string | null
+          target_date?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          goal_id?: string
+          id?: string
+          order_index?: number | null
+          status?: string | null
+          target_date?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_milestones_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          category: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_from: string | null
+          description: string | null
+          id: string
+          is_primary: boolean | null
+          notes: string | null
+          priority: number | null
+          progress_percentage: number | null
+          status: string | null
+          success_criteria: string | null
+          tags: string[] | null
+          target_date: string | null
+          timeline: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          voice_memo_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_from?: string | null
+          description?: string | null
+          id?: string
+          is_primary?: boolean | null
+          notes?: string | null
+          priority?: number | null
+          progress_percentage?: number | null
+          status?: string | null
+          success_criteria?: string | null
+          tags?: string[] | null
+          target_date?: string | null
+          timeline?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          voice_memo_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_from?: string | null
+          description?: string | null
+          id?: string
+          is_primary?: boolean | null
+          notes?: string | null
+          priority?: number | null
+          progress_percentage?: number | null
+          status?: string | null
+          success_criteria?: string | null
+          tags?: string[] | null
+          target_date?: string | null
+          timeline?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          voice_memo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_voice_memo_id_fkey"
+            columns: ["voice_memo_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loop_analytics: {
         Row: {
           completion_time_days: number | null
@@ -790,8 +980,10 @@ export type Database = {
           created_at: string | null
           current_screen: number | null
           gmail_connected: boolean | null
+          goal_contact_urls: string[] | null
           goal_voice_memo_id: string | null
           id: string
+          imported_goal_contacts: Json | null
           last_activity_at: string | null
           linkedin_connected: boolean | null
           linkedin_contacts_added: number | null
@@ -807,8 +999,10 @@ export type Database = {
           created_at?: string | null
           current_screen?: number | null
           gmail_connected?: boolean | null
+          goal_contact_urls?: string[] | null
           goal_voice_memo_id?: string | null
           id?: string
+          imported_goal_contacts?: Json | null
           last_activity_at?: string | null
           linkedin_connected?: boolean | null
           linkedin_contacts_added?: number | null
@@ -824,8 +1018,10 @@ export type Database = {
           created_at?: string | null
           current_screen?: number | null
           gmail_connected?: boolean | null
+          goal_contact_urls?: string[] | null
           goal_voice_memo_id?: string | null
           id?: string
+          imported_goal_contacts?: Json | null
           last_activity_at?: string | null
           linkedin_connected?: boolean | null
           linkedin_contacts_added?: number | null
@@ -968,6 +1164,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_goal_from_voice_memo: {
+        Args: {
+          p_user_id: string
+          p_voice_memo_id: string
+          p_title: string
+          p_description?: string
+          p_category?: string
+          p_timeline?: string
+          p_success_criteria?: string
+          p_is_primary?: boolean
+        }
+        Returns: string
+      }
       get_decrypted_secret: {
         Args: { secret_name: string }
         Returns: string
@@ -975,6 +1184,19 @@ export type Database = {
       get_or_create_self_contact: {
         Args: { user_uuid: string }
         Returns: string
+      }
+      get_primary_goal: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          title: string
+          description: string
+          category: string
+          timeline: string
+          success_criteria: string
+          progress_percentage: number
+          created_at: string
+        }[]
       }
       get_user_integration: {
         Args: { p_user_id: string; p_integration_type: string }
