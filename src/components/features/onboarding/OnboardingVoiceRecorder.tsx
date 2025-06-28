@@ -129,7 +129,11 @@ export default function OnboardingVoiceRecorder({
   };
 
   return (
-    <Card>
+    <Card sx={{ 
+      borderRadius: 3,
+      border: '1px solid #f0f0f0',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+    }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>
           {title}
@@ -243,7 +247,7 @@ export default function OnboardingVoiceRecorder({
         </Box>
 
         {/* Instructions */}
-        <Box sx={{ mt: 4, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+        <Box sx={{ mt: 4, p: 3, backgroundColor: '#fafafa', borderRadius: 3, border: '1px solid #f0f0f0' }}>
           <Typography variant="body2" color="text.secondary">
             💡 <strong>Tips:</strong> Speak clearly and take your time. 
             You can always re-record if you're not happy with the result.

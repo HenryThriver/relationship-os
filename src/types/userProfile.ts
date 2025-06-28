@@ -41,6 +41,17 @@ export interface OnboardingState {
   challenge_voice_memo_id?: string | null;
   goal_voice_memo_id?: string | null;
   profile_enhancement_voice_memo_id?: string | null;
+  goal_contact_urls?: string[] | null;
+  imported_goal_contacts?: Array<{
+    id: string;
+    name: string;
+    linkedin_url: string;
+    company?: string;
+    title?: string;
+    profile_picture?: string;
+    headline?: string;
+    recent_posts_count: number;
+  }> | null;
   linkedin_contacts_added: number | null;
   
   // Integration Status
@@ -59,6 +70,8 @@ export type OnboardingScreen =
   | 'recognition'
   | 'bridge'
   | 'goals'
+  | 'contacts'
+  | 'contact_confirmation'
   | 'linkedin'
   | 'processing'
   | 'profile'
@@ -126,6 +139,17 @@ export interface OnboardingStateUpdate {
   challenge_voice_memo_id?: string;
   goal_voice_memo_id?: string;
   profile_enhancement_voice_memo_id?: string;
+  goal_contact_urls?: string[];
+  imported_goal_contacts?: Array<{
+    id: string;
+    name: string;
+    linkedin_url: string;
+    company?: string;
+    title?: string;
+    profile_picture?: string;
+    headline?: string;
+    recent_posts_count: number;
+  }>;
   linkedin_connected?: boolean;
   gmail_connected?: boolean;
   calendar_connected?: boolean;

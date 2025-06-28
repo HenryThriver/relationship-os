@@ -34,18 +34,34 @@ export default function RecognitionScreen() {
   useEffect(() => {
     const loadChallengeData = async () => {
       try {
-        // Check if user shared challenges in previous screen
-        const sharedChallenges = onboardingState?.challenge_voice_memo_id !== null;
-        setHasSharedChallenges(sharedChallenges);
+        console.log('RecognitionScreen - Loading data:', {
+          onboardingState,
+          challenge_voice_memo_id: onboardingState?.challenge_voice_memo_id,
+          profile_challenges: profile?.networking_challenges
+        });
         
-        if (sharedChallenges && profile?.networking_challenges) {
-          setChallengeInsights(profile.networking_challenges);
+        // Check if we have onboarding state loaded (don't wait for networking_challenges)
+        if (onboardingState !== undefined) {
+          // Check if user shared challenges in previous screen
+          const sharedChallenges = onboardingState?.challenge_voice_memo_id !== null && onboardingState?.challenge_voice_memo_id !== undefined;
+          setHasSharedChallenges(sharedChallenges);
+          
+          console.log('RecognitionScreen - Challenge status:', {
+            sharedChallenges,
+            challenge_voice_memo_id: onboardingState?.challenge_voice_memo_id
+          });
+          
+          // Set challenge insights if available (they might still be processing)
+          if (sharedChallenges && profile?.networking_challenges && profile.networking_challenges.length > 0) {
+            setChallengeInsights(profile.networking_challenges);
+            console.log('RecognitionScreen - Setting insights:', profile.networking_challenges);
+          }
+          
+          setIsLoading(false);
+          
+          // Trigger fade-in after data loads
+          setTimeout(() => setShowContent(true), 200);
         }
-        
-        setIsLoading(false);
-        
-        // Trigger fade-in after data loads
-        setTimeout(() => setShowContent(true), 200);
       } catch (error) {
         console.error('Error loading challenge data:', error);
         setIsLoading(false);

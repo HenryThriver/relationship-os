@@ -3,8 +3,9 @@
 export const dynamic = 'force-dynamic'; // Ensures the page is always dynamically rendered
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Container, Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
+import { Container, Box, Typography, CircularProgress, Alert, Button, Card, Stack } from '@mui/material';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { Dashboard } from '@mui/icons-material';
 import { supabase } from '@/lib/supabase/client';
 import { default as nextDynamic } from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
@@ -48,6 +49,9 @@ import { ContactEmailManagement } from '@/components/features/contacts/ContactEm
 
 // Import LinkedIn components
 import { LinkedInPostsSyncStatus } from '@/components/features/linkedin';
+
+// Import OnboardingTour for walkthrough
+import { OnboardingTour } from '@/components/features/onboarding/OnboardingTour';
 
 // Import hooks and types
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
@@ -112,6 +116,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   // State for the new Voice Memo Detail Modal
   const [selectedVoiceMemoForDetail, setSelectedVoiceMemoForDetail] = useState<VoiceMemoArtifact | null>(null);
@@ -130,6 +135,24 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Check if walkthrough should be shown
+  useEffect(() => {
+    const shouldShowWalkthrough = searchParams.get('walkthrough') === 'true';
+    if (shouldShowWalkthrough) {
+      // Small delay to ensure page is fully rendered
+      setTimeout(() => setShowWalkthrough(true), 1000);
+    }
+  }, [searchParams]);
+
+  const handleWalkthroughComplete = () => {
+    setShowWalkthrough(false);
+    
+    // Show completion message and redirect to dashboard
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 1000);
+  };
 
   const { 
     contact, 
@@ -477,11 +500,160 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   if (!contact) {
+    // If in walkthrough mode and contact not found, show demo contact
+    if (searchParams.get('walkthrough') === 'true') {
+      const demoContact = {
+        id: 'demo-contact-1',
+        name: 'Alex Chen',
+        title: 'Senior Product Manager',
+        company: 'TechCorp',
+        email: 'alex.chen@techcorp.com',
+        location: 'San Francisco, CA',
+        relationship_score: 85,
+        last_interaction_date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(), // 21 days ago
+        updated_at: new Date().toISOString(),
+        linkedin_url: 'https://linkedin.com/in/alexchen',
+        linkedin_data: {
+          profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
+        },
+        personal_context: {
+          family_situation: 'Married with two young children',
+          interests: ['Product strategy', 'Team leadership', 'Startup growth'],
+          background: 'Former startup founder, now focused on scaling B2B products'
+        }
+      };
+      
+      // Use demo contact for walkthrough
+      return (
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+          <Box>
+            <ContactHeader 
+              name={demoContact.name}
+              title={demoContact.title}
+              company={demoContact.company}
+              email={demoContact.email}
+              connectCadence="Every 6-8 weeks"
+              connectDate={new Date(demoContact.last_interaction_date)}
+              personalContext={demoContact.personal_context}
+              profilePhotoUrl={demoContact.linkedin_data.profilePicture}
+              location={demoContact.location}
+              relationshipScore={demoContact.relationship_score}
+              contactId={demoContact.id}
+              suggestionPriority="high"
+            />
+
+            {/* Demo content for walkthrough */}
+            <Stack spacing={3} sx={{ mt: 3, mb: 3 }}>
+              {/* Professional Context Section */}
+              <Box id="professional-context">
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                  Professional Context
+                </Typography>
+                <Card sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+                  <Typography variant="body1">
+                    Senior Product Manager at TechCorp with 8 years of experience in B2B SaaS platforms. 
+                    Expertise in product strategy, user research, and cross-functional team leadership.
+                  </Typography>
+                </Card>
+              </Box>
+
+              {/* Communication History Section */}
+              <Box id="communication-history">
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                  Communication History
+                </Typography>
+                <Card sx={{ p: 3 }}>
+                  <Typography variant="body1" gutterBottom>
+                    📧 Last email: 3 weeks ago about Q4 product roadmap
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    12 total interactions over 8 months • Strong response rate
+                  </Typography>
+                </Card>
+              </Box>
+
+              {/* Suggested POGs Section */}
+              <Box id="suggested-pogs">
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                  Suggested Generosity
+                </Typography>
+                <Stack spacing={2}>
+                  <Card sx={{ p: 3, border: '1px solid', borderColor: 'success.light' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                      🎯 Share your Product-Market Fit framework
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      They mentioned struggling with PMF validation in their recent post
+                    </Typography>
+                  </Card>
+                </Stack>
+              </Box>
+
+              {/* Goal Alignment Section */}
+              <Box id="goal-alignment">
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                  Goal Alignment
+                </Typography>
+                <Card sx={{ p: 3, backgroundColor: '#e8f5e8' }}>
+                  <Typography variant="body1">
+                    🎯 <strong>Matches your goal:</strong> "Find a senior product role at a growth-stage startup"
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Their company is hiring senior PMs and they influence hiring decisions
+                  </Typography>
+                </Card>
+              </Box>
+
+              {/* Timing Indicator Section */}
+              <Box id="timing-indicator">
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                  Timing Intelligence
+                </Typography>
+                <Card sx={{ p: 3, border: '2px solid', borderColor: 'warning.main', backgroundColor: 'warning.50' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    ⏰ <strong>Perfect timing to reach out NOW</strong>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    They posted yesterday about product strategy challenges - exactly your expertise area
+                  </Typography>
+                </Card>
+              </Box>
+            </Stack>
+
+            {/* Onboarding Tour */}
+            <OnboardingTour 
+              isActive={true}
+              onComplete={handleWalkthroughComplete}
+            />
+          </Box>
+        </Container>
+      );
+    }
+    
     return <Container sx={{ py: 4 }}><Alert severity="warning">Contact not found.</Alert></Container>;
   }
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* Walkthrough completion banner */}
+      {!showWalkthrough && searchParams.get('walkthrough') === 'true' && (
+        <Alert 
+          severity="success" 
+          action={
+            <Button 
+              onClick={() => router.push('/dashboard')}
+              startIcon={<Dashboard />}
+              sx={{ textTransform: 'none' }}
+            >
+              Go to Dashboard
+            </Button>
+          }
+          sx={{ mb: 3 }}
+        >
+          <strong>Tour Complete!</strong> You're now ready to use Connection OS to build meaningful relationships.
+        </Alert>
+      )}
+
       <Box>
         <ContactHeader 
           name={contact.name || 'Unnamed Contact'}
@@ -497,6 +669,86 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           contactId={contactId}
           suggestionPriority={suggestionPriority}
         />
+
+        {/* Demo content for walkthrough */}
+        {showWalkthrough && (
+          <Stack spacing={3} sx={{ mt: 3, mb: 3 }}>
+            {/* Professional Context Section */}
+            <Box id="professional-context">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                Professional Context
+              </Typography>
+              <Card sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="body1">
+                  Senior Product Manager at TechCorp with 8 years of experience in B2B SaaS platforms. 
+                  Expertise in product strategy, user research, and cross-functional team leadership.
+                </Typography>
+              </Card>
+            </Box>
+
+            {/* Communication History Section */}
+            <Box id="communication-history">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                Communication History
+              </Typography>
+              <Card sx={{ p: 3 }}>
+                <Typography variant="body1" gutterBottom>
+                  📧 Last email: 3 weeks ago about Q4 product roadmap
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  12 total interactions over 8 months • Strong response rate
+                </Typography>
+              </Card>
+            </Box>
+
+            {/* Suggested POGs Section */}
+            <Box id="suggested-pogs">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                Suggested Generosity
+              </Typography>
+              <Stack spacing={2}>
+                <Card sx={{ p: 3, border: '1px solid', borderColor: 'success.light' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                    🎯 Share your Product-Market Fit framework
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    They mentioned struggling with PMF validation in their recent post
+                  </Typography>
+                </Card>
+              </Stack>
+            </Box>
+
+            {/* Goal Alignment Section */}
+            <Box id="goal-alignment">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                Goal Alignment
+              </Typography>
+              <Card sx={{ p: 3, backgroundColor: '#e8f5e8' }}>
+                <Typography variant="body1">
+                  🎯 <strong>Matches your goal:</strong> "Find a senior product role at a growth-stage startup"
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Their company is hiring senior PMs and they influence hiring decisions
+                </Typography>
+              </Card>
+            </Box>
+
+            {/* Timing Indicator Section */}
+            <Box id="timing-indicator">
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                Timing Intelligence
+              </Typography>
+              <Card sx={{ p: 3, border: '2px solid', borderColor: 'warning.main', backgroundColor: 'warning.50' }}>
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                  ⏰ <strong>Perfect timing to reach out NOW</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  They posted yesterday about product strategy challenges - exactly your expertise area
+                </Typography>
+              </Card>
+            </Box>
+          </Stack>
+        )}
 
         <ProcessingStatusBar 
           activeProcessingCount={processingCount} 
@@ -664,6 +916,12 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           onComplete={handleCompleteLoop}
         />
       )}
+
+      {/* Onboarding Tour */}
+      <OnboardingTour 
+        isActive={showWalkthrough}
+        onComplete={handleWalkthroughComplete}
+      />
     </Container>
   );
 };

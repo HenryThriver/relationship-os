@@ -41,11 +41,21 @@ export default function ChallengesScreen() {
 
       const result = await response.json();
       
+      console.log('ChallengesScreen - Voice memo upload result:', result);
+      
       if (result.success) {
+        console.log('ChallengesScreen - Updating onboarding state with artifact ID:', result.artifact_id);
+        
         // Update onboarding state with the voice memo ID
-        await updateState({
-          challenge_voice_memo_id: result.artifact_id
-        });
+        try {
+          await updateState({
+            challenge_voice_memo_id: result.artifact_id
+          });
+          console.log('ChallengesScreen - Onboarding state updated successfully');
+        } catch (updateError) {
+          console.error('ChallengesScreen - Failed to update onboarding state:', updateError);
+          throw new Error('Failed to save voice memo reference');
+        }
         
         // Mark this screen as complete
         await completeScreen(currentScreen);

@@ -21,9 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
-    if (!memoType || !['challenge', 'recognition'].includes(memoType)) {
+    if (!memoType || !['challenge', 'recognition', 'goal'].includes(memoType)) {
       return NextResponse.json({ error: 'Invalid memo type' }, { status: 400 });
     }
+
+    // Get optional goal category for goal memos
+    const goalCategory = formData.get('goal_category') as string | null;
 
     // Convert file to buffer for upload
     const arrayBuffer = await audioFile.arrayBuffer();
@@ -116,7 +119,8 @@ export async function POST(request: NextRequest) {
           memo_type: memoType,
           is_onboarding: 'true',
           file_size: buffer.length,
-          original_filename: filename
+          original_filename: filename,
+          ...(goalCategory && { goal_category: goalCategory })
         }
       })
       .select()

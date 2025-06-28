@@ -10,19 +10,21 @@ import type {
 
 // Onboarding flow configuration
 const ONBOARDING_CONFIG: OnboardingFlowConfig = {
-  total_screens: 9,
+  total_screens: 11,
   screen_order: [
-    'welcome',      // 1
-    'challenges',   // 2
-    'recognition',  // 3
-    'bridge',       // 4
-    'goals',        // 5
-    'linkedin',     // 6
-    'processing',   // 7
-    'profile',      // 8
-    'complete'      // 9
+    'welcome',              // 1
+    'challenges',           // 2
+    'recognition',          // 3
+    'bridge',               // 4
+    'goals',                // 5
+    'contacts',             // 6 - Contact Import Screen
+    'contact_confirmation', // 7 - NEW: Contact Confirmation Screen
+    'linkedin',             // 8
+    'processing',           // 9
+    'profile',              // 10
+    'complete'              // 11
   ],
-  required_screens: ['welcome', 'goals', 'complete'],
+  required_screens: ['welcome', 'goals', 'contacts', 'contact_confirmation', 'complete'],
   optional_screens: ['challenges', 'recognition', 'bridge', 'linkedin', 'processing', 'profile']
 };
 
@@ -211,6 +213,76 @@ export const useOnboardingState = () => {
     },
   });
 
+  // Restart onboarding - clear all data and start fresh
+  const restartOnboardingMutation = useMutation({
+    mutationFn: async (): Promise<void> => {
+      if (!user || !state) throw new Error('User not authenticated or state not loaded');
+      
+      // First, get all voice memo IDs from the onboarding state to delete them
+      const voiceMemoIds = [
+        state.challenge_voice_memo_id,
+        state.goal_voice_memo_id,
+        state.profile_enhancement_voice_memo_id
+      ].filter((id): id is string => Boolean(id));
+
+      // Delete voice memo artifacts if they exist
+      if (voiceMemoIds.length > 0) {
+        await supabase
+          .from('artifacts')
+          .delete()
+          .in('id', voiceMemoIds);
+      }
+
+      // Reset onboarding state to initial values
+      await supabase
+        .from('onboarding_state')
+        .update({
+          current_screen: 1,
+          completed_screens: [],
+          challenge_voice_memo_id: null,
+          goal_voice_memo_id: null,
+          profile_enhancement_voice_memo_id: null,
+          linkedin_contacts_added: 0,
+          linkedin_connected: false,
+          gmail_connected: false,
+          calendar_connected: false,
+          goal_contact_urls: [],
+          imported_goal_contacts: null,
+          started_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', state.id)
+        .eq('user_id', user.id);
+
+      // Clear onboarding-related data from user's self-contact record
+      await supabase
+        .from('contacts')
+        .update({
+          primary_goal: null,
+          goal_description: null,
+          goal_timeline: null,
+          goal_success_criteria: null,
+          onboarding_completed_at: null,
+          ways_to_help_others: [],
+          introduction_opportunities: [],
+          knowledge_to_share: [],
+          networking_challenges: [],
+          onboarding_voice_memo_ids: [],
+          // Reset professional context if it was set during onboarding
+          professional_context: null,
+          personal_context: null,
+        })
+        .eq('user_id', user.id)
+        .eq('is_self_contact', true);
+
+      // Invalidate all related caches
+      queryClient.invalidateQueries({ queryKey: ['onboardingState', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['userProfile', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', user.id] });
+    },
+  });
+
   // Helper functions
   const getCurrentScreenName = (): OnboardingScreen | null => {
     if (!state || !state.current_screen) return null;
@@ -281,10 +353,12 @@ export const useOnboardingState = () => {
     nextScreen: nextScreenMutation.mutateAsync,
     previousScreen: previousScreenMutation.mutateAsync,
     completeOnboarding: completeOnboardingMutation.mutateAsync,
+    restartOnboarding: restartOnboardingMutation.mutateAsync,
     
     // Loading states
     isUpdating: updateStateMutation.isPending,
     isNavigating: nextScreenMutation.isPending || previousScreenMutation.isPending,
     isCompleting: completeOnboardingMutation.isPending,
+    isRestarting: restartOnboardingMutation.isPending,
   };
 }; 

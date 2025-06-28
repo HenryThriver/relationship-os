@@ -424,6 +424,47 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
       }
     }
     
+    // For onboarding goal memos, create goal record in goals table
+    if (isOnboardingMemo && (fetchedArtifactRecord.metadata?.memo_type === 'goal' || fetchedArtifactRecord.metadata?.memo_type === 'goals')) {
+      try {
+        // Extract goal information from AI results
+        const goalTitle = aiParseResult.contact_updates.find(u => u.field_path === 'primary_goal')?.suggested_value;
+        const goalDescription = aiParseResult.contact_updates.find(u => u.field_path === 'goal_description')?.suggested_value;
+        const goalTimeline = aiParseResult.contact_updates.find(u => u.field_path === 'goal_timeline')?.suggested_value;
+        const goalSuccessCriteria = aiParseResult.contact_updates.find(u => u.field_path === 'goal_success_criteria')?.suggested_value;
+        const goalCategory = fetchedArtifactRecord.metadata?.goal_category || null;
+
+        if (goalTitle) {
+          // Create goal in new goals table
+          const { data: newGoal, error: goalError } = await supabase
+            .from('goals')
+            .insert({
+              user_id: userId,
+              title: goalTitle,
+              description: goalDescription,
+              category: goalCategory,
+              timeline: goalTimeline,
+              success_criteria: goalSuccessCriteria,
+              is_primary: true, // First goal from onboarding is primary
+              voice_memo_id: fetchedArtifactRecord.id,
+              created_from: 'onboarding',
+              status: 'active'
+            })
+            .select()
+            .single();
+
+          if (goalError) {
+            console.error('Error creating goal record:', goalError);
+          } else {
+            console.log(`Created goal record: ${newGoal.id} for user ${userId}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error processing onboarding goal memo:', error);
+        // Don't fail the whole process if goal creation fails
+      }
+    }
+    
     // For meetings, also extract and store insights in the artifact metadata
     if (fetchedArtifactRecord.type === 'meeting' && aiParseResult.contact_updates.length > 0) {
       try {
@@ -990,8 +1031,77 @@ Focus on extracting the user's own challenges, goals, strengths, and areas for i
 Only include updates with confidence >= 0.6.
 Return empty suggested_loops array as this is about self-reflection, not relationship loops with others.
 `;
+  } else if (memoType === 'goal' || memoType === 'goals') {
+    const goalCategory = metadata?.goal_category || null;
+    
+    promptContent = `
+USER PROFILE EXTRACTION - GOAL SETTING ANALYSIS
+
+User Name: ${contact.name || 'User'}
+Goal Category Selected: ${goalCategory || 'General'}
+Current User Profile (JSON): 
+${JSON.stringify({
+  professional_context: contact.professional_context || {},
+  personal_context: contact.personal_context || {},
+  primary_goal: contact.primary_goal || null,
+  goal_description: contact.goal_description || null,
+  goal_timeline: contact.goal_timeline || null,
+  goal_success_criteria: contact.goal_success_criteria || null
+}, null, 2)}
+
+Voice Memo Transcription (User describing their professional goals and aspirations): 
+"${transcription}"
+
+EXTRACTION INSTRUCTIONS:
+You are analyzing a voice memo where the USER is describing their professional goals and what they want to achieve through networking and relationship building. This follows a "magic wand" framing - they're describing what success looks and feels like.
+
+Extract detailed goal information and associated context that will help personalize their relationship intelligence dashboard.
+
+PRIORITY FIELD PATHS FOR GOAL EXTRACTION:
+GOAL DEFINITION:
+- "primary_goal" (string - their main professional/networking goal, be specific)
+- "goal_description" (string - detailed description of what they want to achieve, include their vision of success)
+- "goal_timeline" (string - when they want to achieve this, extract timeframes mentioned)
+- "goal_success_criteria" (string - how they'll know they've succeeded, what success looks and feels like)
+
+SUPPORTING CONTEXT:
+- "professional_context.career_goals" (array of strings - specific career objectives, action: 'add')
+- "professional_context.aspirations" (array of strings - professional aspirations mentioned, action: 'add')
+- "professional_context.challenges_to_overcome" (array of strings - obstacles they need to overcome, action: 'add')
+- "ways_to_help_others" (array of strings - how achieving their goal will help them serve others, action: 'add')
+
+PERSONAL MOTIVATION:
+- "personal_context.motivations" (array of strings - what drives them toward this goal, action: 'add')
+- "personal_context.values" (array of strings - values that align with their goal, action: 'add')
+
+RESPONSE FORMAT (JSON Object):
+{
+  "contact_updates": [
+    {
+      "field_path": "primary_goal",
+      "action": "update",
+      "suggested_value": "Land a VP of Product role at a Series B+ startup in the health tech space within 12 months",
+      "confidence": 0.95,
+      "reasoning": "User clearly stated this specific role and timeline as their main objective."
+    },
+    {
+      "field_path": "goal_description", 
+      "action": "update",
+      "suggested_value": "I want to lead product strategy for a health tech company that's making a real impact on patient outcomes. Success means having a team of 8-12 PMs, driving product decisions that affect millions of users, and being recognized as a thought leader in health tech product development.",
+      "confidence": 0.9,
+      "reasoning": "User described their vision of success including team size, impact, and recognition goals."
+    }
+  ],
+  "suggested_loops": []
+}
+
+Focus on extracting specific, actionable goal information that will drive personalized networking recommendations.
+Be thorough with goal_description - capture their vision of what success looks and feels like.
+Only include updates with confidence >= 0.7 for goals (higher bar than challenges).
+Return empty suggested_loops array as this is about self-reflection and goal setting.
+`;
   } else {
-    // General onboarding memo prompt (for other types like goals, profile setup, etc.)
+    // General onboarding memo prompt (for other types like profile setup, etc.)
     promptContent = `
 USER PROFILE EXTRACTION - ONBOARDING ANALYSIS
 
@@ -1008,7 +1118,7 @@ Voice Memo Transcription (User describing themselves):
 "${transcription}"
 
 EXTRACTION INSTRUCTIONS:
-Extract information about the USER THEMSELVES from this onboarding voice memo. Focus on their professional background, personal interests, goals, and how they want to use this relationship management system.
+Extract information about the USER THEMSELVES from this onboarding voice memo. Focus on their professional background, personal interests, and how they want to use this relationship management system.
 
 VALID FIELD PATHS FOR USER PROFILE UPDATES:
 [Use the same field paths as the challenges prompt above]

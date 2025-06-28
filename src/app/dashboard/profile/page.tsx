@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Box, Container, Typography, Card, CardContent, Chip, LinearProgress, Button } from '@mui/material';
-import { Person, Psychology, Handshake, Flag } from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Box, Container, Typography, Card, CardContent, Chip, LinearProgress, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert } from '@mui/material';
+import { Person, Psychology, Handshake, Flag, Refresh, Warning } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
@@ -10,7 +10,22 @@ import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 export default function UserProfilePage() {
   const router = useRouter();
   const { profile, isLoading, profileCompletion } = useUserProfile();
-  const { state: onboardingState, isComplete: onboardingComplete } = useOnboardingState();
+  const { state: onboardingState, isComplete: onboardingComplete, restartOnboarding, isRestarting } = useOnboardingState();
+  const [showRestartDialog, setShowRestartDialog] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
+
+  const handleRestartOnboarding = async () => {
+    try {
+      setRestartError(null);
+      await restartOnboarding();
+      setShowRestartDialog(false);
+      // Redirect to onboarding to start fresh
+      router.push('/onboarding');
+    } catch (error) {
+      console.error('Failed to restart onboarding:', error);
+      setRestartError(error instanceof Error ? error.message : 'Failed to restart onboarding');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -202,8 +217,15 @@ export default function UserProfilePage() {
                 </Typography>
               )}
             </Box>
-            {!onboardingComplete && (
-              <Box sx={{ mt: 2 }}>
+            
+            {restartError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {restartError}
+              </Alert>
+            )}
+            
+            <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {!onboardingComplete && (
                 <Button 
                   variant="contained" 
                   color="primary"
@@ -211,11 +233,65 @@ export default function UserProfilePage() {
                 >
                   Continue Onboarding
                 </Button>
-              </Box>
-            )}
+              )}
+              
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<Refresh />}
+                onClick={() => setShowRestartDialog(true)}
+                disabled={isRestarting}
+              >
+                {isRestarting ? 'Restarting...' : 'Restart Onboarding'}
+              </Button>
+            </Box>
           </CardContent>
         </Card>
       </Box>
+      
+      {/* Restart Onboarding Confirmation Dialog */}
+      <Dialog 
+        open={showRestartDialog} 
+        onClose={() => setShowRestartDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Warning color="warning" />
+          Restart Onboarding
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to restart the onboarding process? This will:
+          </DialogContentText>
+          <Box component="ul" sx={{ mt: 2, mb: 2, pl: 2 }}>
+            <li>Clear all your current profile information</li>
+            <li>Delete your recorded voice memos</li>
+            <li>Reset your networking goals and challenges</li>
+            <li>Remove any imported contacts from onboarding</li>
+            <li>Start the onboarding process from the beginning</li>
+          </Box>
+          <DialogContentText color="error">
+            <strong>This action cannot be undone.</strong>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setShowRestartDialog(false)}
+            disabled={isRestarting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleRestartOnboarding}
+            color="warning"
+            variant="contained"
+            disabled={isRestarting}
+          >
+            {isRestarting ? 'Restarting...' : 'Yes, Restart'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 } 

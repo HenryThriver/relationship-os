@@ -11,6 +11,8 @@ import ChallengesScreen from '@/components/features/onboarding/ChallengesScreen'
 import RecognitionScreen from '@/components/features/onboarding/RecognitionScreen';
 import BridgeScreen from '@/components/features/onboarding/BridgeScreen';
 import GoalsScreen from '@/components/features/onboarding/GoalsScreen';
+import ContactImportScreen from '@/components/features/onboarding/ContactImportScreen';
+import ContactConfirmationScreen from '@/components/features/onboarding/ContactConfirmationScreen';
 import LinkedInScreen from '@/components/features/onboarding/LinkedInScreen';
 import ProcessingScreen from '@/components/features/onboarding/ProcessingScreen';
 import ProfileScreen from '@/components/features/onboarding/ProfileScreen';
@@ -83,6 +85,10 @@ export default function OnboardingPage() {
         return <BridgeScreen />;
       case 'goals':
         return <GoalsScreen />;
+      case 'contacts':
+        return <ContactImportScreen />;
+      case 'contact_confirmation':
+        return <ContactConfirmationScreen />;
       case 'linkedin':
         return <LinkedInScreen />;
       case 'processing':
