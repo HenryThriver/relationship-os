@@ -26,7 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<VoiceAnal
       );
     }
 
-    const body: VoiceAnalysisRequest = await request.json();
+    await request.json();
     
     // Get user's LinkedIn profile data and recent posts
     const { data: profile, error: profileError } = await supabase
@@ -60,11 +60,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<VoiceAnal
     // This should be integrated with the existing parse-artifact function
     // or create a specialized voice analysis function
     
-    const voiceAnalysisPrompt = createVoiceAnalysisPrompt(
-      profile.linkedin_data as any,
-      posts || []
-    );
-
     // For now, return placeholder data
     // TODO: Replace with actual AI analysis
     const mockAnalysis = {

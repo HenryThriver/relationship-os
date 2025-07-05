@@ -119,7 +119,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const scrapeResult = await rescrapeResponse.json();
+    await rescrapeResponse.json();
 
     // The existing infrastructure will:
     // 1. Scrape LinkedIn profile data

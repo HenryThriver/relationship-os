@@ -49,10 +49,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to upload audio file' }, { status: 500 });
     }
 
-    // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('voice-memos')
-      .getPublicUrl(filename);
+    // Public URL would be available if needed for playback
+    // const { data: { publicUrl } } = supabase.storage
+    //   .from('voice-memos')
+    //   .getPublicUrl(filename);
 
     // Get or create user's self-contact
     let { data: selfContact, error: selfContactError } = await supabase
