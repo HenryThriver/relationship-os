@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+interface DebugArtifact {
+  id: string;
+  type: string | null;
+  contact_id: string | null;
+  ai_parsing_status: string | null;
+  created_at: string;
+  metadata: {
+    message_id?: string;
+    subject?: string;
+    [key: string]: unknown;
+  } | null;
+}
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const supabase = await createClient();
@@ -14,7 +27,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .from('artifacts')
       .select('id, type, contact_id, ai_parsing_status, created_at, metadata')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(20)
+      .returns<DebugArtifact[]>();
 
     if (allArtifactsError) {
       console.error('Error fetching all artifacts:', allArtifactsError);
@@ -22,19 +36,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // Focus on the specific contact
-    const contactArtifacts = allArtifacts?.filter(artifact => artifact.contact_id === contactId) || [];
+    const contactArtifacts = allArtifacts?.filter((artifact: DebugArtifact) => artifact.contact_id === contactId) || [];
     
     // Look specifically for email-like artifacts
-    const emailLikeArtifacts = allArtifacts?.filter(artifact => {
-      const metadata = artifact.metadata as any;
+    const emailLikeArtifacts = allArtifacts?.filter((artifact: DebugArtifact) => {
+      const metadata = artifact.metadata;
       return artifact.type?.includes('email') || 
              metadata?.message_id ||
              metadata?.subject;
     }) || [];
 
     // Format the response for better debugging
-    const formatArtifact = (artifact: any) => {
-      const metadata = artifact.metadata as any;
+    const formatArtifact = (artifact: DebugArtifact) => {
+      const metadata = artifact.metadata;
       return {
         id: artifact.id,
         type: artifact.type,
@@ -59,13 +73,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
       contact_artifacts: contactArtifacts.map(formatArtifact),
       email_like_artifacts: emailLikeArtifacts.map(formatArtifact),
-      all_artifact_types: [...new Set(allArtifacts?.map(a => a.type) || [])],
+      all_artifact_types: [...new Set(allArtifacts?.map((a: DebugArtifact) => a.type) || [])],
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Debug email status error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch debug info' },
+      { error: 'Failed to fetch debug info', details: errorMessage },
       { status: 500 }
     );
   }
