@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/supabase/auth';
 
-interface VoiceAnalysisRequest {
-  linkedin_url?: string;
-  user_id?: string;
-}
+// interface VoiceAnalysisRequest {
+//   linkedin_url?: string;
+//   user_id?: string;
+// }
 
 interface VoiceAnalysisResponse {
   howYouComeAcross: string;
@@ -43,18 +43,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<VoiceAnal
       );
     }
 
-    // Get recent LinkedIn posts
-    const { data: posts, error: postsError } = await supabase
-      .from('artifacts')
-      .select('content, created_at')
-      .eq('contact_id', profile.id)
-      .eq('type', 'linkedin_post')
-      .order('created_at', { ascending: false })
-      .limit(10);
+    // Get recent LinkedIn posts (commented out until voice analysis is implemented)
+    // const { data: posts, error: postsError } = await supabase
+    //   .from('artifacts')
+    //   .select('content, created_at')
+    //   .eq('contact_id', profile.id)
+    //   .eq('type', 'linkedin_post')
+    //   .order('created_at', { ascending: false })
+    //   .limit(10);
 
-    if (postsError) {
-      console.error('Error fetching posts:', postsError);
-    }
+    // if (postsError) {
+    //   console.error('Error fetching posts:', postsError);
+    // }
 
     // TODO: Call unified edge function for voice analysis
     // This should be integrated with the existing parse-artifact function
@@ -98,29 +98,29 @@ export async function POST(request: NextRequest): Promise<NextResponse<VoiceAnal
   }
 }
 
-function createVoiceAnalysisPrompt(linkedinData: any, posts: any[]): string {
-  return `
-    Analyze the following LinkedIn profile and recent posts to determine:
-    1. How this person comes across to others (their personal brand/presence)
-    2. Their writing style and voice in professional communications
+// function createVoiceAnalysisPrompt(linkedinData: any, posts: any[]): string {
+//   return `
+//     Analyze the following LinkedIn profile and recent posts to determine:
+//     1. How this person comes across to others (their personal brand/presence)
+//     2. Their writing style and voice in professional communications
 
-    LinkedIn Profile Data:
-    ${JSON.stringify(linkedinData, null, 2)}
+//     LinkedIn Profile Data:
+//     ${JSON.stringify(linkedinData, null, 2)}
 
-    Recent LinkedIn Posts:
-    ${posts.map(post => post.content).join('\n\n---\n\n')}
+//     Recent LinkedIn Posts:
+//     ${posts.map(post => post.content).join('\n\n---\n\n')}
 
-    Please provide:
-    1. "How You Come Across": A 2-3 sentence description of their professional presence and personal brand
-    2. "Writing Style": A 2-3 sentence description of their communication style, tone, and approach
+//     Please provide:
+//     1. "How You Come Across": A 2-3 sentence description of their professional presence and personal brand
+//     2. "Writing Style": A 2-3 sentence description of their communication style, tone, and approach
 
-    Focus on:
-    - Professional tone and personality
-    - Communication patterns
-    - How they engage with their audience
-    - Their unique voice and perspective
-    - What makes them memorable or distinctive
+//     Focus on:
+//     - Professional tone and personality
+//     - Communication patterns
+//     - How they engage with their audience
+//     - Their unique voice and perspective
+//     - What makes them memorable or distinctive
 
-    Be specific and actionable - this will be used to help them create consistent content in the future.
-  `;
-} 
+//     Be specific and actionable - this will be used to help them create consistent content in the future.
+//   `;
+// } 

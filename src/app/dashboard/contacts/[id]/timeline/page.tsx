@@ -34,13 +34,11 @@ export default function ContactTimelinePage() {
   const { contact, isLoading, error } = useContactProfile(contactId);
   const {
     updateLoopStatus,
-    refetchLoops
   } = useLoops(contactId);
   
   // Gmail integration for automatic email sync
   const {
     isConnected: gmailConnected,
-    syncContactEmails,
     isSyncing: emailSyncing,
   } = useGmailIntegration();
 
@@ -157,11 +155,11 @@ export default function ContactTimelinePage() {
     }
   };
 
-  const handleLoopEdit = async (loopId: string, updates: Partial<LoopArtifactContent>) => {
+  const handleLoopEdit = async (_loopId: string, _updates: Partial<LoopArtifactContent>) => {
     console.warn('updateLoopDetails function is not available or its name needs verification in useLoops.');
   };
 
-  const handleLoopDelete = async (loopId: string) => {
+  const handleLoopDelete = async (_loopId: string) => {
     console.warn('deleteLoop function is not available or its name needs verification in useLoops.');
   };
 
@@ -169,7 +167,7 @@ export default function ContactTimelinePage() {
     console.log('Share loop triggered in timeline page:', loopId);
   };
 
-  const handleLoopComplete = async (loopId: string, outcomeData: LoopCompletionOutcome) => {
+  const handleLoopComplete = async (_loopId: string, _outcomeData: LoopCompletionOutcome) => {
     console.warn('completeLoop function is not available or its name needs verification in useLoops.');
   };
 

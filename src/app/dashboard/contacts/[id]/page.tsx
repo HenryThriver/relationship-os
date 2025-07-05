@@ -208,7 +208,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }, [searchParams, voiceMemos, router, isVoiceMemoDetailModalOpen]);
 
   // Calculate suggestion priority for UI components
-  const { pendingCount, highConfidenceCount } = useUpdateSuggestions({ contactId });
+  const { highConfidenceCount } = useUpdateSuggestions({ contactId });
 
   const {
     deleteArtifact,
