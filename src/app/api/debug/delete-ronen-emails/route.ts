@@ -20,7 +20,7 @@ export async function POST(): Promise<NextResponse> {
       );
     }
 
-    const emailsToDelete = deletedEmails?.filter((email: { metadata: { from?: { email?: string } } }) => 
+    const emailsToDelete = deletedEmails?.filter((email: { id: string; metadata: { from?: { email?: string } } }) => 
       email.metadata?.from?.email === 'ronen@agentstation.ai'
     ).map((email: { id: string }) => email.id) || [];
 
@@ -30,10 +30,11 @@ export async function POST(): Promise<NextResponse> {
       deletedIds: emailsToDelete
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Unexpected error occurred', details: error.message },
+      { error: 'Unexpected error occurred', details: errorMessage },
       { status: 500 }
     );
   }
