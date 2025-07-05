@@ -5,6 +5,87 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2025-07-05
+
+### Added
+- **Voice Memo Relationship Intelligence**: Enhanced voice memo processing for relationship context
+  - Added `relationship_summary` field to AI processing results for profile enhancement memos
+  - Implemented relationship context extraction from voice memos about contacts
+  - Added `VoiceMemoInsight` component for displaying relationship summaries in onboarding flow
+  - Enhanced voice memo detection logic in `parse-artifact` edge function
+
+### Changed
+- **Onboarding File Organization**: Complete restructuring of onboarding components for better maintainability
+  - **MAJOR**: Renamed all onboarding screen files with hierarchical numbering system:
+    - `0_Welcome.tsx` (welcome screen)
+    - `1_Challenges_1.0_Share.tsx`, `1_Challenges_1.1_Acknowledge.tsx`, `1_Challenges_1.2_Bridge.tsx` (challenges flow)
+    - `2_Goals_2.0_Share.tsx` (goals screen)
+    - `3_Contacts_3.0_Import.tsx`, `3_Contacts_3.1_Confirm.tsx`, `3_Contacts_3.2_Discover.tsx` (contacts flow)
+    - `4_Profile_4.0_Import.tsx`, `4_Profile_4.1_Processing.tsx`, `4_Profile_4.2_Review.tsx`, `4_Profile_4.3_Complete.tsx` (profile flow)
+  - Organized welcome screen components into `0_Welcome_Components/` directory
+  - Updated all import statements across onboarding system
+  - Improved file sorting and navigation in development environment
+
+- **Onboarding UI Enhancements**: Refined user experience across multiple screens
+  - **ContactConfirmationScreen**: 
+    - Redesigned contact card with larger avatar (80px) and improved visual hierarchy
+    - Added voice memo relationship insights display with processing status indicators
+    - Fixed hydration errors from nested HTML elements
+    - Enhanced typography and spacing for better readability
+  - **ContextDiscoveryScreen**: 
+    - Simplified contact email management interface
+    - Implemented progressive visual flow with dynamic styling
+    - Enhanced service connection cards with attention-drawing effects
+    - Improved horizontal layout for single contact display
+
+- **Database Schema Accuracy**: Corrected schema documentation to match production database
+  - **MAJOR**: Completely rewrote `database/schema.sql` to reflect actual current production structure
+  - Fixed column name discrepancies (`ai_processing_completed_at` vs `ai_parsing_completed_at`)
+  - Added missing tables: `user_integrations`, `calendar_sync_logs`, `gmail_sync_state`, `linkedin_sync_tracking`, `goals`, `goal_contacts`, `user_profile_onboarding`, `challenge_feature_mappings`, `artifact_processing_config`
+  - Corrected AI processing status values: `pending`, `processing`, `completed`, `failed`, `skipped`
+
+### Fixed
+- **Voice Memo Processing**: Corrected profile enhancement memo detection logic
+  - Fixed incorrect `contact.is_self_contact = true` requirement for profile enhancement memos
+  - Profile enhancement memos are about relationships with OTHER contacts, not self
+  - Updated detection to use `memo_type === 'profile_enhancement'` regardless of `is_self_contact` flag
+  - Enhanced AI processing to generate relationship summaries for profile enhancement memos
+
+- **Build System**: Resolved import path issues after file reorganization
+  - Fixed broken import in `1_Challenges_1.0_Share.tsx` referencing old welcome directory structure
+  - Updated all onboarding screen imports to use new file naming convention
+  - Verified successful TypeScript compilation after file restructuring
+
+- **Edge Function Documentation**: Clarified automatic trigger behavior
+  - **CRITICAL**: Updated documentation to emphasize that edge functions are triggered automatically by database triggers
+  - Removed confusing manual edge function call examples
+  - Added proper patterns for triggering AI processing by setting `ai_parsing_status = 'pending'`
+  - Enhanced understanding of database-driven processing workflow
+
+### Technical Implementation
+- **Voice Memo AI Processing**: Enhanced relationship intelligence extraction
+  - Updated `parseOnboardingVoiceMemo` function to generate relationship summaries
+  - Modified AI prompts to focus on relationship context and networking value
+  - Switched to Claude models for consistent AI processing across all artifact types
+  - Added relationship summary storage in artifact metadata
+
+- **File Organization**: Systematic onboarding component restructuring
+  - Maintained all existing functionality while improving file organization
+  - Preserved complex welcome screen animation system and component dependencies
+  - Updated 12 import statements across onboarding system
+  - Ensured backward compatibility with existing onboarding flow
+
+- **Database Schema Synchronization**: Aligned documentation with production reality
+  - Comprehensive audit of actual database structure vs documented schema
+  - Fixed 50+ column name and type discrepancies
+  - Added missing table definitions for recently added features
+  - Corrected enum values and constraint definitions
+
+### Database Schema
+- Added `relationship_summary` field support in AI processing results
+- Corrected schema documentation to match production database structure
+- Enhanced voice memo metadata structure for relationship intelligence
+
 ## [0.10.0] - 2025-06-07
 
 ### Added

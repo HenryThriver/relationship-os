@@ -23,6 +23,7 @@ export interface UserProfile extends Contact {
   
   // Networking Challenges
   networking_challenges: string[];
+  challenge_feature_mappings?: Array<{challenge: string, featureKey: string}>;
   onboarding_voice_memo_ids: string[];
 }
 
@@ -72,6 +73,7 @@ export type OnboardingScreen =
   | 'goals'
   | 'contacts'
   | 'contact_confirmation'
+  | 'context_discovery'
   | 'linkedin'
   | 'processing'
   | 'profile'

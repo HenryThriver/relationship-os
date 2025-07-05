@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
-    if (!memoType || !['challenge', 'recognition', 'goal'].includes(memoType)) {
+    if (!memoType || !['challenge', 'profile_enhancement', 'goal'].includes(memoType)) {
       return NextResponse.json({ error: 'Invalid memo type' }, { status: 400 });
     }
 

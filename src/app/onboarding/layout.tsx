@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Box, Container, LinearProgress, Typography, IconButton } from '@mui/material';
+import { Box, Container, Typography, IconButton } from '@mui/material';
 import { ArrowBack, Close } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
+import { StageProgress } from '@/components/features/onboarding/StageProgress';
 
 interface OnboardingLayoutProps {
   children: React.ReactNode;
@@ -13,11 +14,10 @@ interface OnboardingLayoutProps {
 export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
   const router = useRouter();
   const { 
-    progressPercentage, 
     currentScreen, 
     previousScreen, 
     isNavigating,
-    config 
+    state
   } = useOnboardingState();
 
   const handleBack = async () => {
@@ -31,8 +31,8 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Header with Progress */}
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
+      {/* Header/Status Bar Section - Fixed Height */}
       <Box sx={{ 
         position: 'sticky', 
         top: 0, 
@@ -40,52 +40,53 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
-        py: 2
+        py: 1.5,
+        height: 94, // Fixed header height
+        flexShrink: 0 // Prevent shrinking
       }}>
-        <Container maxWidth="md">
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            {/* Back Button */}
-            <IconButton 
-              onClick={handleBack}
-              disabled={currentScreen <= 1 || isNavigating}
-              size="small"
-            >
-              <ArrowBack />
-            </IconButton>
+        {/* Back and Close buttons outside container */}
+        <Box sx={{ 
+          position: 'absolute', 
+          top: 16, 
+          left: 16, 
+          zIndex: 1001 
+        }}>
+          <IconButton 
+            onClick={handleBack}
+            disabled={currentScreen <= 1 || isNavigating}
+            size="small"
+          >
+            <ArrowBack />
+          </IconButton>
+        </Box>
+        
+        <Box sx={{ 
+          position: 'absolute', 
+          top: 16, 
+          right: 16, 
+          zIndex: 1001 
+        }}>
+          <IconButton onClick={handleClose} size="small">
+            <Close />
+          </IconButton>
+        </Box>
 
-            {/* Progress Info */}
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Step {currentScreen} of {config.total_screens}
-              </Typography>
-            </Box>
-
-            {/* Close Button */}
-            <IconButton onClick={handleClose} size="small">
-              <Close />
-            </IconButton>
-          </Box>
-
-          {/* Progress Bar */}
-          <LinearProgress 
-            variant="determinate" 
-            value={progressPercentage} 
-            sx={{ 
-              height: 6, 
-              borderRadius: 3,
-              bgcolor: 'grey.200',
-              '& .MuiLinearProgress-bar': {
-                borderRadius: 3,
-              }
-            }}
-          />
-        </Container>
+        {/* Stage Progress - centered */}
+        <StageProgress 
+          currentScreen={currentScreen}
+          completedScreens={state?.completed_screens || []}
+        />
       </Box>
 
-      {/* Main Content */}
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      {/* Main Content Area - Consistent spacing below header */}
+      <Box sx={{ 
+        flex: 1, // Take remaining space
+        pt: 5, // 40px consistent padding below header
+        position: 'relative',
+        minHeight: 0 // Allow flex shrinking
+      }}>
         {children}
-      </Container>
+      </Box>
     </Box>
   );
 } 

@@ -21,27 +21,86 @@ interface SyncResult {
   error?: string;
 }
 
+// Predefined sync modes with their configurations
+const SYNC_MODES = {
+  nightly: {
+    lookbackDays: 7,
+    lookforwardDays: 30,
+    description: 'Regular maintenance sync'
+  },
+  onboarding: {
+    lookbackDays: 365, // 12 months back
+    lookforwardDays: 90, // 3 months forward
+    description: 'Comprehensive onboarding sync'
+  },
+  manual: {
+    lookbackDays: 30,
+    lookforwardDays: 60,
+    description: 'Manual user-triggered sync'
+  },
+  historical: {
+    lookbackDays: 730, // 2 years back
+    lookforwardDays: 30,
+    description: 'Deep historical analysis'
+  }
+};
+
 serve(async (req) => {
   try {
-    console.log('🌙 Starting nightly sync...');
+    console.log('📅 Starting calendar sync...');
     
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     
-    // Get all users with calendar integrations
-    const { data: users, error: usersError } = await supabase
+    // Parse request body to get sync parameters
+    let requestBody: any = {};
+    try {
+      if (req.method === 'POST') {
+        requestBody = await req.json();
+      }
+    } catch (error) {
+      console.log('No request body or invalid JSON, using nightly defaults');
+    }
+
+    // Determine sync mode and configuration
+    const mode = requestBody.mode || 'nightly';
+    const modeConfig = SYNC_MODES[mode as keyof typeof SYNC_MODES] || SYNC_MODES.nightly;
+    
+    // Allow overrides of the mode defaults
+    const lookbackDays = requestBody.lookbackDays || modeConfig.lookbackDays;
+    const lookforwardDays = requestBody.lookforwardDays || modeConfig.lookforwardDays;
+    const specificUserId = requestBody.user_id; // Optional: sync specific user only
+    
+    console.log(`📅 Sync mode: ${mode} (${modeConfig.description})`);
+    console.log(`📅 Configuration: ${lookbackDays} days back, ${lookforwardDays} days forward`);
+    if (specificUserId) {
+      console.log(`🎯 Targeting specific user: ${specificUserId}`);
+    }
+    
+    // Get all users with calendar integrations (or specific user if provided)
+    let query = supabase
       .from('user_integrations')
       .select(`
         user_id,
-        calendar_data,
-        gmail_data
+        integration_type,
+        access_token,
+        refresh_token,
+        token_expires_at,
+        scopes,
+        metadata
       `)
-      .not('calendar_data', 'is', null);
+      .eq('integration_type', 'google_calendar');
+
+    if (specificUserId) {
+      query = query.eq('user_id', specificUserId);
+    }
+
+    const { data: users, error: usersError } = await query;
 
     if (usersError) {
       throw new Error(`Failed to fetch users: ${usersError.message}`);
     }
 
-    console.log(`📅 Found ${users.length} users with integrations`);
+    console.log(`📅 Found ${users.length} users with calendar integrations`);
     
     const results: SyncResult[] = [];
     
@@ -51,26 +110,20 @@ serve(async (req) => {
       const result: SyncResult = { userId: user.user_id };
       
       try {
-        // Calendar sync (existing logic)
-        if (user.calendar_data) {
-          console.log(`📅 Syncing calendar for user ${user.user_id}`);
-          result.calendarResult = await syncUserCalendarDataWithRange(
-            user.user_id,
-            supabase,
-            {
-              lookbackDays: 7,    // Look back 7 days
-              lookforwardDays: 30, // Look forward 30 days
-            }
-          );
-          console.log(`📅 Calendar sync completed: ${result.calendarResult.eventsProcessed} events processed, ${result.calendarResult.artifactsCreated} artifacts created`);
-        }
+        // Calendar sync with mode-based configuration
+        console.log(`📅 Syncing calendar for user ${user.user_id} (${mode} mode: ${lookbackDays} days back, ${lookforwardDays} days forward)`);
+        result.calendarResult = await syncUserCalendarDataWithRange(
+          user.user_id,
+          supabase,
+          {
+            lookbackDays,
+            lookforwardDays,
+          }
+        );
+        console.log(`📅 Calendar sync completed: ${result.calendarResult.eventsProcessed} events processed, ${result.calendarResult.artifactsCreated} artifacts created`);
 
-        // Email sync (new logic)
-        if (user.gmail_data) {
-          console.log(`📧 Syncing emails for user ${user.user_id}`);
-          result.emailResult = await syncUserEmailsForNightlyJob(user.user_id, supabase);
-          console.log(`📧 Email sync completed: ${result.emailResult.contactsProcessed} contacts processed, ${result.emailResult.emailsProcessed} emails processed`);
-        }
+        // Email sync is handled separately via gmail-sync function
+        // Only keep this logic if we want to include it in the nightly run
         
       } catch (error) {
         console.error(`❌ Error syncing for user ${user.user_id}:`, error);
@@ -84,26 +137,50 @@ serve(async (req) => {
     const successfulEmailSyncs = results.filter(r => r.emailResult && !r.error).length;
     const totalErrors = results.filter(r => r.error).length;
 
-    console.log(`\n✅ Nightly sync completed:`);
+    console.log(`\n✅ Calendar sync completed (${mode} mode):`);
     console.log(`📅 Calendar: ${successfulCalendarSyncs}/${users.length} users synced successfully`);
-    console.log(`📧 Email: ${successfulEmailSyncs}/${users.length} users synced successfully`);
+    if (mode === 'nightly') {
+      console.log(`📧 Email: ${successfulEmailSyncs}/${users.length} users synced successfully`);
+    }
     console.log(`❌ Errors: ${totalErrors}`);
 
     return new Response(JSON.stringify({
       success: true,
-      results,
+      message: `Calendar sync completed (${mode} mode): ${successfulCalendarSyncs} successful, ${totalErrors} errors, ${users.length - successfulCalendarSyncs - totalErrors} skipped`,
       summary: {
-        usersProcessed: users.length,
-        calendarSyncsSuccessful: successfulCalendarSyncs,
-        emailSyncsSuccessful: successfulEmailSyncs,
-        errors: totalErrors
+        totalUsers: users.length,
+        successCount: successfulCalendarSyncs,
+        errorCount: totalErrors,
+        skippedCount: users.length - successfulCalendarSyncs - totalErrors,
+        processingTimeMs: 0
+      },
+      details: results.map(r => ({
+        userId: r.userId,
+        status: r.error ? 'error' : 'success',
+        eventsProcessed: r.calendarResult?.eventsProcessed || 0,
+        artifactsCreated: r.calendarResult?.artifactsCreated || 0,
+        message: r.error || `Synced ${r.calendarResult?.eventsProcessed || 0} events, created ${r.calendarResult?.artifactsCreated || 0} artifacts`
+      })),
+      errors: results.filter(r => r.error).map(r => ({
+        userId: r.userId,
+        error: r.error
+      })),
+      timestamp: new Date().toISOString(),
+      config: {
+        mode,
+        description: modeConfig.description,
+        lookbackDays,
+        lookforwardDays,
+        batchSize: 10,
+        delayBetweenUsers: 1000,
+        delayBetweenBatches: 2000
       }
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('❌ Nightly sync failed:', error);
+    console.error('❌ Calendar sync failed:', error);
     
     return new Response(JSON.stringify({
       success: false,
@@ -116,7 +193,7 @@ serve(async (req) => {
 });
 
 /**
- * Sync emails for all contacts for a user (nightly job)
+ * Sync emails for all contacts for a user (nightly job only)
  */
 async function syncUserEmailsForNightlyJob(
   userId: string, 

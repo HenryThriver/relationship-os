@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@google-cloud/local-auth": "^3.0.1",

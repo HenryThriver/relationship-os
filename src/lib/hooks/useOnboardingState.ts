@@ -10,7 +10,7 @@ import type {
 
 // Onboarding flow configuration
 const ONBOARDING_CONFIG: OnboardingFlowConfig = {
-  total_screens: 11,
+  total_screens: 12,
   screen_order: [
     'welcome',              // 1
     'challenges',           // 2
@@ -18,13 +18,14 @@ const ONBOARDING_CONFIG: OnboardingFlowConfig = {
     'bridge',               // 4
     'goals',                // 5
     'contacts',             // 6 - Contact Import Screen
-    'contact_confirmation', // 7 - NEW: Contact Confirmation Screen
-    'linkedin',             // 8
-    'processing',           // 9
-    'profile',              // 10
-    'complete'              // 11
+    'contact_confirmation', // 7 - Contact Confirmation Screen
+    'context_discovery',    // 8 - NEW: Context Discovery Screen
+    'linkedin',             // 9
+    'processing',           // 10
+    'profile',              // 11
+    'complete'              // 12
   ],
-  required_screens: ['welcome', 'goals', 'contacts', 'contact_confirmation', 'complete'],
+  required_screens: ['welcome', 'goals', 'contacts', 'contact_confirmation', 'context_discovery', 'complete'],
   optional_screens: ['challenges', 'recognition', 'bridge', 'linkedin', 'processing', 'profile']
 };
 

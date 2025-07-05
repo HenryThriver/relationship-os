@@ -31,14 +31,15 @@ export class GmailService {
   /**
    * Get OAuth authorization URL for Gmail access
    */
-  getAuthUrl(redirectUri: string): string {
+  getAuthUrl(redirectUri: string, source: string = 'dashboard'): string {
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
       redirect_uri: redirectUri,
       scope: REQUIRED_SCOPES.join(' '),
       response_type: 'code',
       access_type: 'offline',
-      prompt: 'consent'
+      prompt: 'consent',
+      state: source // Pass source as state parameter
     });
 
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -90,6 +91,8 @@ export class GmailService {
         gmail_access_token: data.access_token,
         gmail_refresh_token: data.refresh_token,
         gmail_token_expiry: expiryDate,
+      }, {
+        onConflict: 'user_id'
       })
       .select()
       .single();
@@ -135,6 +138,8 @@ export class GmailService {
         gmail_access_token: data.access_token,
         gmail_refresh_token: data.refresh_token,
         gmail_token_expiry: expiryDate,
+      }, {
+        onConflict: 'user_id'
       })
       .select()
       .single();

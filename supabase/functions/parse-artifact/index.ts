@@ -7,12 +7,229 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
 import { serve, ServerRequest } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.31.0'
+import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0'
+import OpenAI from 'https://esm.sh/openai@4.68.0'
 
 console.log("Hello from Functions!")
+
+// =============================================================================
+// AI MODEL CONFIGURATION
+// =============================================================================
+type AIProvider = 'openai' | 'claude' | 'google';
+type ModelType = 'fast' | 'comprehensive';
+
+interface ModelConfig {
+  name: string;
+  temperature: number;
+  max_tokens?: number;
+}
+
+const AI_MODELS = {
+  openai: {
+    fast: {
+      name: 'o4-mini',
+      temperature: 0.2,
+    },
+    comprehensive: {
+      name: 'gpt-4.1',
+      temperature: 0.2,
+    },
+    reasoning: {
+      name: 'o3',
+      temperature: 0.2,
+    }
+  },
+  claude: {
+    fast: {
+      name: 'claude-sonnet-4-20250514',
+      temperature: 0.2,
+      max_tokens: 20000
+    },
+    comprehensive: {
+      name: 'claude-opus-4-20250514',
+      temperature: 0.2,
+      max_tokens: 20000
+    }
+  },
+  google: {
+    fast: {
+      name: 'gemini-2.5-flash',
+      temperature: 0.2,
+      max_tokens: 4000
+    },
+    comprehensive: {
+      name: 'gemini-2.5-pro',
+      temperature: 0.2,
+      max_tokens: 4000
+    }
+  }
+};
+
+// Default configurations for different task types
+const TASK_MODELS = {
+  // Quick analysis, simple extractions - now using Claude for consistency
+  quick_analysis: { provider: 'claude' as AIProvider, model: 'fast' as ModelType },
+  
+  // Complex LinkedIn profile analysis, comprehensive extractions
+  comprehensive_profile: { provider: 'claude' as AIProvider, model: 'fast' as ModelType },
+  
+  // Voice memo analysis - now using Claude for better analysis
+  voice_analysis: { provider: 'claude' as AIProvider, model: 'comprehensive' as ModelType },
+  
+  // Meeting analysis - now using Claude for consistency
+  meeting_analysis: { provider: 'claude' as AIProvider, model: 'fast' as ModelType },
+  
+  // Email analysis - now using Claude for consistency  
+  email_analysis: { provider: 'claude' as AIProvider, model: 'fast' as ModelType },
+  
+  // Onboarding analysis - now using Claude for better analysis
+  onboarding_analysis: { provider: 'claude' as AIProvider, model: 'comprehensive' as ModelType },
+};
+
+// =============================================================================
+// UNIFIED AI CALLING FUNCTION
+// =============================================================================
+async function callAI(
+  prompt: string, 
+  provider: AIProvider, 
+  modelType: ModelType
+): Promise<string | null> {
+  const modelConfig = AI_MODELS[provider][modelType];
+  
+  console.log(`Calling ${provider} ${modelConfig.name} for AI analysis`);
+  
+  try {
+    if (provider === 'openai') {
+      const apiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!apiKey) {
+        console.error('OPENAI_API_KEY is not set in environment variables.');
+        throw new Error('OpenAI API key is missing.');
+      }
+
+      const openai = new OpenAI({
+        apiKey: apiKey,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: modelConfig.name,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: modelConfig.temperature,
+      });
+      
+      if (!response.choices || response.choices.length === 0 || !response.choices[0].message || !response.choices[0].message.content) {
+        console.error('Invalid response structure from OpenAI:', response);
+        return null;
+      }
+      
+      return response.choices[0].message.content;
+
+    } else if (provider === 'claude') {
+      const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+      if (!apiKey) {
+        console.error('ANTHROPIC_API_KEY is not set in environment variables.');
+        throw new Error('Anthropic API key is missing.');
+      }
+      
+      // Debug logging (temporary)
+      console.log('Claude API key retrieved:', apiKey ? `${apiKey.substring(0, 7)}...` : 'null');
+      console.log('API key length:', apiKey ? apiKey.length : 0);
+
+      const anthropic = new Anthropic({
+        apiKey: apiKey,
+      });
+
+      const message = await anthropic.messages.create({
+        model: modelConfig.name,
+        max_tokens: (modelConfig as any).max_tokens || 8000,
+        temperature: modelConfig.temperature,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      
+      if (!message.content || message.content.length === 0 || !message.content[0].text) {
+        console.error('Invalid response structure from Claude:', message);
+        return null;
+      }
+      
+      return message.content[0].text;
+
+    } else if (provider === 'google') {
+      const apiKey = Deno.env.get('GOOGLE_AI_API_KEY');
+      if (!apiKey) {
+        console.error('GOOGLE_AI_API_KEY is not set in environment variables.');
+        throw new Error('Google AI API key is missing.');
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: modelConfig.name });
+
+      const result = await model.generateContent({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: modelConfig.temperature,
+          candidateCount: 1,
+        }
+      });
+
+      const response = await result.response;
+      const text = response.text();
+      
+      if (!text) {
+        console.error('No text response from Google AI:', response);
+        return null;
+      }
+      
+      return text;
+
+    } else {
+      throw new Error(`Unsupported AI provider: ${provider}`);
+    }
+
+  } catch (error) {
+    console.error(`Error calling ${provider} ${modelConfig.name}:`, error);
+    return null;
+  }
+}
+
+// Convenience function for task-based model selection
+async function callAIForTask(prompt: string, taskType: keyof typeof TASK_MODELS): Promise<string | null> {
+  const config = TASK_MODELS[taskType];
+  return callAI(prompt, config.provider, config.model);
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Helper function to deduplicate arrays
+function deduplicateArray(arr: any[]): any[] {
+  if (!Array.isArray(arr)) return arr;
+  
+  // For arrays of strings, use Set for simple deduplication
+  if (arr.length > 0 && typeof arr[0] === 'string') {
+    return [...new Set(arr)];
+  }
+  
+  // For arrays of objects, use JSON.stringify for comparison (not perfect but handles most cases)
+  const seen = new Set();
+  return arr.filter(item => {
+    const key = typeof item === 'object' ? JSON.stringify(item) : item;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 serve(async (req: Request) => {
@@ -160,10 +377,15 @@ serve(async (req: Request) => {
     if (fetchedArtifactRecord.type === 'voice_memo') {
       contentToAnalyze = fetchedArtifactRecord.transcription;
       
-      // Check if this is a self-contact (user's own profile) and if it's an onboarding voice memo
-      isOnboardingMemo = contact.is_self_contact && 
-                        (fetchedArtifactRecord.metadata?.is_onboarding === 'true' || 
-                         fetchedArtifactRecord.metadata?.source === 'onboarding_voice_recorder');
+      // Check if this is an onboarding voice memo
+      // For profile_enhancement memos, we use the specialized parser regardless of is_self_contact
+      // For other onboarding memos, we require is_self_contact to be true
+      const isProfileEnhancement = fetchedArtifactRecord.metadata?.memo_type === 'profile_enhancement';
+      const isOtherOnboardingMemo = contact.is_self_contact && 
+                                   (fetchedArtifactRecord.metadata?.is_onboarding === 'true' || 
+                                    fetchedArtifactRecord.metadata?.source === 'onboarding_voice_recorder');
+      
+      isOnboardingMemo = isProfileEnhancement || isOtherOnboardingMemo;
     } else if (fetchedArtifactRecord.type === 'meeting') {
       contentToAnalyze = fetchedArtifactRecord.content;
     } else if (fetchedArtifactRecord.type === 'email') {
@@ -287,16 +509,22 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
     } else if (isSelfLinkedInProfile) {
       aiParseResult = await parseSelfLinkedInProfile(contentToAnalyze, contact, fetchedArtifactRecord.metadata);
     } else {
-      aiParseResult = await parseWithOpenAI(contentToAnalyze, contact, fetchedArtifactRecord);
+      aiParseResult = await parseWithAI(contentToAnalyze, contact, fetchedArtifactRecord);
     }
 
     if (aiParseResult === null) {
-      console.error(`AI parsing failed for artifact ${fetchedArtifactRecord.id}. parseWithOpenAI returned null.`);
+      console.error(`AI parsing failed for artifact ${fetchedArtifactRecord.id}. Parsing function returned null.`);
       await supabase.from('artifacts').update({ 
           ai_parsing_status: 'failed', 
           ai_processing_completed_at: new Date().toISOString() 
       }).eq('id', fetchedArtifactRecord.id);
-      throw new Error('AI parsing failed, parseWithOpenAI returned null.'); 
+      
+      // Provide user-friendly error message for onboarding context
+      if (isOnboardingMemo) {
+        throw new Error('We had trouble processing your voice memo. Please try recording again - your message is important to us.');
+      } else {
+        throw new Error('AI processing failed. Please try again.');
+      }
     }
 
     const contactUpdateSuggestions = aiParseResult.contact_updates || [];
@@ -326,11 +554,13 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
             if (action === 'add' && Array.isArray(suggested_value)) {
               // For array fields, merge with existing values and any previous updates
               const currentValue = contactUpdates[field_path] || contact[field_path] || [];
-              contactUpdates[field_path] = [...currentValue, ...suggested_value];
+              const combinedArray = [...currentValue, ...suggested_value];
+              contactUpdates[field_path] = deduplicateArray(combinedArray);
             } else if (action === 'add' && Array.isArray(contact[field_path])) {
               // For adding single values to arrays
               const currentValue = contactUpdates[field_path] || contact[field_path] || [];
-              contactUpdates[field_path] = [...currentValue, suggested_value];
+              const combinedArray = [...currentValue, suggested_value];
+              contactUpdates[field_path] = deduplicateArray(combinedArray);
             } else {
               // For simple updates/replacements
               contactUpdates[field_path] = suggested_value;
@@ -345,10 +575,12 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
             
             if (action === 'add' && Array.isArray(suggested_value)) {
               const currentValue = contactUpdates[parentField]?.[childField] || contact[parentField]?.[childField] || [];
-              contactUpdates[parentField][childField] = [...currentValue, ...suggested_value];
+              const combinedArray = [...currentValue, ...suggested_value];
+              contactUpdates[parentField][childField] = deduplicateArray(combinedArray);
             } else if (action === 'add' && Array.isArray(contactUpdates[parentField]?.[childField] || contact[parentField]?.[childField])) {
               const currentValue = contactUpdates[parentField]?.[childField] || contact[parentField]?.[childField] || [];
-              contactUpdates[parentField][childField] = [...currentValue, suggested_value];
+              const combinedArray = [...currentValue, suggested_value];
+              contactUpdates[parentField][childField] = deduplicateArray(combinedArray);
             } else {
               contactUpdates[parentField][childField] = suggested_value;
             }
@@ -356,6 +588,20 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
           
           directUpdatesApplied++;
           console.log(`Applied update: ${field_path} = ${JSON.stringify(suggested_value)}`);
+        }
+      }
+      
+      // Handle challenge feature mappings for onboarding memos
+      const challengeFeatureMappings = aiParseResult.challenge_feature_mappings || [];
+      if (challengeFeatureMappings.length > 0 && isOnboardingMemo) {
+        // Only store high-confidence mappings
+        const validMappings = challengeFeatureMappings.filter(mapping => mapping.confidence >= 0.7);
+        if (validMappings.length > 0) {
+          contactUpdates.challenge_feature_mappings = validMappings.map(mapping => ({
+            challenge: mapping.challenge,
+            featureKey: mapping.featureKey
+          }));
+          console.log(`Added ${validMappings.length} challenge-feature mappings to contact updates`);
         }
       }
       
@@ -488,6 +734,7 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
 
         // Update meeting metadata with insights
         if (actionItems.length > 0 || keyTopics.length > 0 || summary) {
+          
           const currentMetadata = fetchedArtifactRecord.metadata || {};
           const updatedMetadata = {
             ...currentMetadata,
@@ -508,6 +755,29 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
         }
       } catch (error) {
         console.error('Error updating meeting metadata:', error);
+        // Don't fail the whole process if metadata update fails
+      }
+    }
+    
+    // For profile enhancement voice memos, store the relationship summary in metadata
+    if (fetchedArtifactRecord.type === 'voice_memo' && 
+        fetchedArtifactRecord.metadata?.memo_type === 'profile_enhancement' && 
+        aiParseResult.relationship_summary) {
+      try {
+        const currentMetadata = fetchedArtifactRecord.metadata || {};
+        const updatedMetadata = {
+          ...currentMetadata,
+          relationship_summary: aiParseResult.relationship_summary
+        };
+
+        await supabase
+          .from('artifacts')
+          .update({ metadata: updatedMetadata })
+          .eq('id', fetchedArtifactRecord.id);
+
+        console.log(`Updated voice memo metadata with relationship summary for artifact ${fetchedArtifactRecord.id}`);
+      } catch (error) {
+        console.error('Error updating voice memo metadata with relationship summary:', error);
         // Don't fail the whole process if metadata update fails
       }
     }
@@ -535,6 +805,7 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
 
   } catch (error) {
     console.error('General parsing error in Edge Function:', error);
+    
     // Attempt to update artifact status to 'failed' if artifactIdFromRequest is available
     if (artifactIdFromRequest) {
       try {
@@ -548,7 +819,25 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
         console.error(`Failed to update artifact ${artifactIdFromRequest} to failed status after error:`, updateError);
       }
     }
-    return new Response(JSON.stringify({ error: error.message || 'An unexpected error occurred' }), { 
+    
+    // Provide user-friendly error messages
+    let userFriendlyMessage = error.message;
+    
+    // If the error message doesn't seem user-friendly, provide a generic one
+    if (!userFriendlyMessage || 
+        userFriendlyMessage.includes('fetch') || 
+        userFriendlyMessage.includes('JSON') ||
+        userFriendlyMessage.includes('<!DOCTYPE') ||
+        userFriendlyMessage.includes('undefined') ||
+        userFriendlyMessage.includes('null') ||
+        userFriendlyMessage.toLowerCase().includes('unexpected token')) {
+      userFriendlyMessage = 'We encountered an issue processing your recording. Please try again in a few moments.';
+    }
+    
+    return new Response(JSON.stringify({ 
+      error: userFriendlyMessage,
+      timestamp: new Date().toISOString()
+    }), { 
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -574,37 +863,102 @@ interface SuggestedLoop {
   reasoning: string;
 }
 
+interface ChallengeFeatureMapping {
+  challenge: string;
+  featureKey: string;
+  confidence: number;
+  reasoning: string;
+}
+
 interface AiParseResult {
   contact_updates: AiSuggestion[];
   suggested_loops: SuggestedLoop[];
+  challenge_feature_mappings?: ChallengeFeatureMapping[];
+  relationship_summary?: string;
 }
 
-async function parseWithOpenAI(transcription: string, contact: any, fetchedArtifactRecord: any): Promise<AiParseResult | null> {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openAIApiKey) {
-    console.error('OPENAI_API_KEY is not set in environment variables.');
-    throw new Error('OpenAI API key is missing.');
+// Master features configuration for LLM-driven feature mapping
+const CULTIVATE_FEATURES = [
+  {
+    key: 'contact_intelligence',
+    title: 'AI-Powered Contact Intelligence',
+    description: 'Automatically capture and organize every detail about your contacts - names, interests, family details, preferences, and conversation history - so you never forget again.',
+    category: 'intelligence',
+    relevantFor: ['memory', 'details', 'names', 'faces', 'information', 'forgetting', 'remembering']
+  },
+  {
+    key: 'follow_up_automation',
+    title: 'Smart Follow-up Automation',
+    description: 'Get personalized follow-up suggestions, with draft messages written in your voice based on your conversation and mutual interests.',
+    category: 'automation',
+    relevantFor: ['follow-up', 'next steps', 'staying in touch', 'after meeting', 'introductions']
+  },
+  {
+    key: 'relationship_maintenance',
+    title: 'Relationship Maintenance System',
+    description: 'Automated reminders and suggested touchpoints to maintain consistent communication with your network based on relationship importance and timing.',
+    category: 'automation',
+    relevantFor: ['consistent', 'outreach', 'system', 'routine', 'maintaining', 'staying connected']
+  },
+  {
+    key: 'generosity_first_networking',
+    title: 'Generosity-First Networking',
+    description: 'Get suggestions for ways to help others first - introductions you can make, resources you can share, and opportunities you can offer before asking for anything.',
+    category: 'strategy',
+    relevantFor: ['guilty', 'reaching out', 'need something', 'selfish', 'asking for help', 'giving value']
+  },
+  {
+    key: 'conversation_intelligence',
+    title: 'Conversation Intelligence',
+    description: 'Pre-meeting research and conversation starters based on shared interests, recent activities, and mutual connections to make networking feel natural.',
+    category: 'communication',
+    relevantFor: ['awkward', 'uncomfortable', 'drained', 'conversation', 'events', 'talking', 'small talk']
+  },
+  {
+    key: 'personal_brand_discovery',
+    title: 'Personal Brand Discovery',
+    description: 'Identify and articulate your unique value proposition, expertise areas, and the specific ways you can help others in your network.',
+    category: 'strategy',
+    relevantFor: ['confident', 'offer', 'value', 'what to say', 'unique', 'expertise', 'positioning']
+  },
+  {
+    key: 'strategic_networking_roadmap',
+    title: 'Strategic Networking Roadmap',
+    description: 'Get a personalized action plan with prioritized next steps, key connections to make, and clear milestones toward your networking goals.',
+    category: 'strategy',
+    relevantFor: ['overwhelmed', 'where to start', 'don\'t know', 'strategy', 'plan', 'goals', 'direction']
+  },
+  {
+    key: 'relationship_analytics',
+    title: 'Relationship Analytics & Insights',
+    description: 'Track the health and growth of your professional relationships with insights on engagement patterns, communication frequency, and relationship strength.',
+    category: 'intelligence',
+    relevantFor: ['track', 'measure', 'analytics', 'insights', 'progress', 'effectiveness']
+  },
+  {
+    key: 'smart_introductions',
+    title: 'Smart Introduction Engine',
+    description: 'Automatically identify and facilitate valuable introductions within your network, creating win-win connections that benefit everyone involved.',
+    category: 'automation',
+    relevantFor: ['introductions', 'connecting people', 'networking', 'mutual benefit', 'relationships']
+  },
+  {
+    key: 'context_preservation',
+    title: 'Context Preservation System',
+    description: 'Never lose track of important relationship context - automatically capture meeting notes, shared documents, and conversation history across all touchpoints.',
+    category: 'intelligence',
+    relevantFor: ['context', 'history', 'notes', 'meetings', 'documents', 'tracking', 'organization']
   }
+];
 
-  const LOOP_DETECTION_PROMPT_SNIPPET = `
-In addition to contact updates, analyze this content for potential relationship loops (ongoing multi-step interactions).
+// Helper function to create feature mapping context for LLM
+function createFeatureMappingContext(): string {
+  return CULTIVATE_FEATURES.map(feature => 
+    `${feature.key}: ${feature.title} - ${feature.description}`
+  ).join('\n');
+}
 
-Look for mentions of:
-- Offers to help, introduce, refer, share resources
-- Requests for help, introductions, referrals, advice
-- Follow-ups needed on previous offers/requests
-- Commitments made that need tracking
-
-For each potential loop identified, provide:
-- type: introduction|referral|resource_share|advice_offer|advice_request|collaboration_proposal (match LoopType values)
-- title: Brief descriptive title
-- description: What specifically needs to happen
-- current_status: idea|queued|offered|received|accepted|in_progress|delivered|following_up (match LoopStatus values)
-- reciprocity_direction: giving|receiving
-- confidence: 0.0-1.0
-- reasoning: Detailed explanation for the suggestion.
-`;
-
+async function parseWithAI(transcription: string, contact: any, fetchedArtifactRecord: any): Promise<AiParseResult | null> {
   // Determine content type and create appropriate prompt
   const isVoiceMemo = fetchedArtifactRecord.type === 'voice_memo';
   const isMeeting = fetchedArtifactRecord.type === 'meeting';
@@ -626,6 +980,25 @@ For each potential loop identified, provide:
     contentTypeDescription = 'Content';
     extractionContext = 'Extract ALL meaningful updates from this content for the contact\'s profile.';
   }
+
+  const LOOP_DETECTION_PROMPT_SNIPPET = `
+In addition to contact updates, analyze this content for potential relationship loops (ongoing multi-step interactions).
+
+Look for mentions of:
+- Offers to help, introduce, refer, share resources
+- Requests for help, introductions, referrals, advice
+- Follow-ups needed on previous offers/requests
+- Commitments made that need tracking
+
+For each potential loop identified, provide:
+- type: introduction|referral|resource_share|advice_offer|advice_request|collaboration_proposal (match LoopType values)
+- title: Brief descriptive title
+- description: What specifically needs to happen
+- current_status: idea|queued|offered|received|accepted|in_progress|delivered|following_up (match LoopStatus values)
+- reciprocity_direction: giving|receiving
+- confidence: 0.0-1.0
+- reasoning: Detailed explanation for the suggestion.
+`;
 
   // Keep the existing contact update prompt part largely the same
   // but ensure the overall response format is the new one.
@@ -727,6 +1100,8 @@ IMPORTANT RULES:
 - Never create new field paths not listed above
 
 RESPONSE FORMAT (JSON Object):
+CRITICAL: Return ONLY the JSON object below. Do NOT wrap it in markdown code blocks or any other formatting. Do NOT include triple backticks or json markers.
+
 Provide your response as a single JSON object with two top-level keys: "contact_updates" and "suggested_loops".
 - "contact_updates": An array of objects. Each object MUST have "field_path", "action" ("add", "update", or "remove"), "suggested_value", "confidence" (0.0-1.0), and "reasoning".
 - "suggested_loops": An array of objects as described in the loop detection section. If no loops, return an empty array.
@@ -771,41 +1146,40 @@ Do not include fields in "contact_updates" or "suggested_loops" if confidence is
 `;
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo-preview', // Or your preferred model
-        messages: [{ role: 'user', content: promptContent }],
-        response_format: { type: "json_object" }, // Ensure JSON mode
-        temperature: 0.2, // Lower temperature for more deterministic output
-      }),
-    });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      console.error(`OpenAI API error: ${res.status} ${res.statusText}`, errorBody);
-      throw new Error(`OpenAI API request failed: ${res.status} ${res.statusText}. Body: ${errorBody}`);
-    }
-
-    const data = await res.json();
-    
-    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error('Invalid response structure from OpenAI:', data);
-      return null; // Or throw new Error('Invalid response structure from OpenAI');
+    // Determine the appropriate task type based on artifact type
+    let taskType: keyof typeof TASK_MODELS;
+    if (isMeeting) {
+      taskType = 'meeting_analysis';
+    } else if (isEmail) {
+      taskType = 'email_analysis';
+    } else if (isVoiceMemo) {
+      taskType = 'voice_analysis';
+    } else {
+      taskType = 'quick_analysis'; // Default for linkedin_post and other types
     }
     
-    const suggestionsJson = data.choices[0].message.content;
-    // console.log("OpenAI Raw Response:", suggestionsJson); // For debugging
+    const aiResponse = await callAIForTask(promptContent, taskType);
+    
+    if (!aiResponse) {
+      console.error('No response from AI service');
+      return null;
+    }
+
+    console.log(`AI Response for ${taskType}:`, aiResponse);
 
     try {
-      const parsedResult = JSON.parse(suggestionsJson) as AiParseResult;
+      // Strip markdown code blocks if present
+      let cleanedResponse = aiResponse.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsedResult = JSON.parse(cleanedResponse) as AiParseResult;
       // Validate structure further if needed
       if (typeof parsedResult.contact_updates === 'undefined' || typeof parsedResult.suggested_loops === 'undefined') {
-          console.error('OpenAI response missing contact_updates or suggested_loops key:', parsedResult);
+          console.error('AI response missing contact_updates or suggested_loops key:', parsedResult);
           // Attempt to salvage if one part is present
           return {
             contact_updates: parsedResult.contact_updates || [],
@@ -814,26 +1188,57 @@ Do not include fields in "contact_updates" or "suggested_loops" if confidence is
       }
       return parsedResult;
     } catch (e) {
-      console.error('Error parsing OpenAI JSON response:', e, suggestionsJson);
+      console.error('Error parsing AI JSON response:', e, aiResponse);
       return null; // Or throw e to indicate parsing failure
     }
 
   } catch (error) {
-    console.error('Error in parseWithOpenAI:', error);
+    console.error('Error in parseWithAI:', error);
     // Do not throw here, let the caller handle the null response and update artifact status
     return null; 
   }
 }
 
 async function parseSelfLinkedInProfile(profileContent: string, contact: any, metadata: any): Promise<AiParseResult | null> {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openAIApiKey) {
-    console.error('OPENAI_API_KEY is not set in environment variables.');
-    throw new Error('OpenAI API key is missing.');
+  // Get ALL user's LinkedIn posts for comprehensive analysis
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+  
+  const { data: allPosts, error: postsError } = await supabase
+    .from('artifacts')
+    .select('content, metadata, created_at')
+    .eq('contact_id', contact.id)
+    .eq('type', 'linkedin_post')
+    .order('created_at', { ascending: false });
+
+  if (postsError) {
+    console.error('Error fetching LinkedIn posts:', postsError);
   }
 
+  // Format comprehensive posts data for analysis
+  const postsAnalysisContent = allPosts?.map(post => {
+    const meta = post.metadata || {};
+    const postContent = meta.content || post.content || '';
+    const engagement = meta.engagement || {};
+    const hashtags = meta.hashtags || [];
+    const mentions = meta.mentions || [];
+    const postType = meta.post_type || 'post';
+    
+    return `
+POST ${post.created_at} (${postType}):
+Content: ${postContent}
+Hashtags: ${hashtags.join(', ')}
+Mentions: ${mentions.join(', ')}
+Engagement: ${engagement.likes || 0} likes, ${engagement.comments || 0} comments, ${engagement.shares || 0} shares
+Total Engagement: ${engagement.totalEngagement || 0}
+---`;
+  }).join('\n\n') || 'No LinkedIn posts available for analysis.';
+
   const promptContent = `
-USER PROFILE EXTRACTION - LINKEDIN SELF-ANALYSIS
+COMPREHENSIVE PROFESSIONAL PROFILE ANALYSIS
+Analyzing LinkedIn Profile + All LinkedIn Posts for Complete Professional Intelligence
 
 User Name: ${contact.name || 'User'}
 Current User Profile (JSON): 
@@ -843,101 +1248,194 @@ ${JSON.stringify({
   ways_to_help_others: contact.ways_to_help_others || [],
   introduction_opportunities: contact.introduction_opportunities || [],
   knowledge_to_share: contact.knowledge_to_share || [],
+  networking_challenges: contact.networking_challenges || [],
   primary_goal: contact.primary_goal || null,
-  goal_description: contact.goal_description || null
+  goal_description: contact.goal_description || null,
+  challenge_feature_mappings: contact.challenge_feature_mappings || []
 }, null, 2)}
 
-LinkedIn Profile Data: 
+=== LINKEDIN PROFILE DATA ===
 ${profileContent}
 
-EXTRACTION INSTRUCTIONS:
-You are analyzing the USER'S OWN LinkedIn profile to extract insights about their professional strengths, expertise, and how they can provide value to others in their network. This is for building a comprehensive user profile that will drive personalized networking recommendations.
+=== ALL LINKEDIN POSTS DATA ===
+${postsAnalysisContent}
 
-VALID FIELD PATHS FOR USER PROFILE UPDATES:
-PROFESSIONAL STRENGTHS & EXPERTISE:
-- "professional_context.expertise_areas" (array of strings - their areas of expertise, action: 'add')
-- "professional_context.professional_interests" (array of strings - their professional interests, action: 'add')
-- "professional_context.industry_insights" (array of strings - insights they can share, action: 'add')
-- "professional_context.communication_style" (string - their communication style based on profile tone)
-- "professional_context.current_role.responsibilities" (array of strings, action: 'add')
-- "professional_context.career_goals" (array of strings - inferred career aspirations, action: 'add')
+COMPREHENSIVE ANALYSIS INSTRUCTIONS:
+You are analyzing BOTH the LinkedIn profile AND all LinkedIn posts to create a complete professional profile. Both sources are equally important - the profile provides structured professional background, while the posts reveal authentic voice, interests, values, and current thinking.
 
-WAYS TO HELP OTHERS:
-- "ways_to_help_others" (array of strings - specific ways they can help others, action: 'add')
-- "introduction_opportunities" (array of strings - types of introductions they can facilitate, action: 'add')
-- "knowledge_to_share" (array of strings - specific knowledge/expertise they can share, action: 'add')
+TONE & LANGUAGE GUIDELINES:
+- Use PROFESSIONAL, GROUNDED language - avoid hyperbolic terms
+- AVOID: "visionary", "profound", "pioneering", "revolutionary", "groundbreaking", "exceptional"
+- PREFER: "experienced", "skilled", "focused", "knowledgeable", "accomplished", "effective"
+- Base insights on OBSERVABLE FACTS from both profile and posts
+- Write professionally but authentically
 
-PERSONAL CONTEXT:
-- "personal_context.interests" (array of strings - professional/personal interests, action: 'add')
-- "personal_context.values" (array of strings - values evident from their profile, action: 'add')
-- "personal_context.motivations" (array of strings - what drives them professionally, action: 'add')
+COMPREHENSIVE ANALYSIS FOCUS:
 
-BASIC INFO UPDATES:
-- "company" (string - current company)
-- "title" (string - current job title)
-- "location.city" (string)
-- "location.state" (string)
-- "location.country" (string)
+1. PROFESSIONAL BRIEF & PERSONAL BRAND (Profile + Posts)
+   - Professional narrative from experience AND current thinking in posts
+   - Value proposition from background AND demonstrated expertise in posts
+   - Communication style from formal profile AND authentic voice in posts
+   - Professional focus areas from structured data AND post themes
+
+2. EXPERTISE & THOUGHT LEADERSHIP (Profile + Posts)
+   - Core competencies from experience AND knowledge demonstrated in posts
+   - Specialization areas from background AND topics discussed in posts
+   - Industry insights from structured data AND opinions shared in posts
+   - Thought leadership topics from both formal credentials AND post engagement
+
+3. PERSONAL INTERESTS & VALUES (Profile + Posts)
+   - Personal interests from About section AND interests revealed in posts
+   - Hobbies and activities from profile AND lifestyle content in posts
+   - Values from formal statements AND authentic expressions in posts
+   - Personal passions from both structured data AND engaged post topics
+
+4. NETWORKING & RELATIONSHIP BUILDING (Profile + Posts)
+   - Ways to help others from experience AND value offered in posts
+   - Introduction opportunities from background AND connections revealed in posts
+   - Knowledge to share from credentials AND expertise demonstrated in posts
+   - Communication preferences from formal style AND authentic voice in posts
+
+5. CURRENT PROFESSIONAL CONTEXT (Profile + Posts)
+   - Career positioning from structured data AND recent updates in posts
+   - Strategic interests from background AND current focus in posts
+   - Professional development from credentials AND learning shared in posts
+   - Industry positioning from formal role AND thought leadership in posts
+
+6. AUTHENTIC VOICE & COMMUNICATION (Posts Primary)
+   - Writing style and tone from post content
+   - Key messaging themes from recurring post topics
+   - Professional personality from authentic post voice
+   - Content preferences from post types and engagement patterns
+
+7. PERSONAL & PROFESSIONAL INTERESTS (CRITICAL - COMPREHENSIVE EXTRACTION)
+   - **MANDATORY**: Extract ALL personal interests mentioned ANYWHERE in the profile data
+   - **ABOUT SECTION**: Scan thoroughly for personal mentions like "exploring nature", "learning guitar", "writing about human thriving", family references, travel, hobbies
+   - **EXPERIENCE DESCRIPTIONS**: Look for personal interests mentioned in job descriptions or company descriptions
+   - **LINKEDIN POSTS**: Identify personal interests revealed through posts (family, travel, hobbies, sports, music, reading, volunteering, etc.)
+   - **HASHTAGS & CONTENT**: Analyze post hashtags and content for personal interest indicators
+   - **VALUES & PHILOSOPHY**: Extract values and life philosophies from any source
+   - **LIFESTYLE INDICATORS**: Look for lifestyle content, personal challenges, family mentions, outdoor activities, creative pursuits
+   - **CRITICAL**: Do NOT focus only on professional content - actively seek personal elements
+
+COMPREHENSIVE FIELD MAPPING:
+
+PROFESSIONAL BRIEF & BRAND:
+- "professional_context.professional_brief" (string - comprehensive 2-3 paragraph narrative from profile + posts)
+- "professional_context.unique_value_proposition" (string - from experience + demonstrated value in posts)
+- "professional_context.personal_brand_pillars" (array - 3-5 core elements from both sources)
+- "professional_context.zone_of_genius" (string - primary expertise area from both sources)
+
+EXPERTISE & KNOWLEDGE:
+- "professional_context.expertise_areas" (array - from experience + demonstrated expertise in posts)
+- "professional_context.thought_leadership_topics" (array - from background + post topics)
+- "professional_context.industry_insights" (array - from both formal and post insights)
+- "professional_context.core_competencies" (array - from credentials + demonstrated skills)
+
+COMMUNICATION & VOICE:
+- "professional_context.communication_style" (string - from formal profile + authentic post voice)
+- "professional_context.writing_voice" (string - primarily from post analysis)
+- "professional_context.key_messaging_themes" (array - recurring themes from posts)
+- "professional_context.content_preferences" (array - types of content they create/engage with)
+
+NETWORKING CAPABILITIES:
+- "ways_to_help_others" (array - from experience + value offered in posts)
+- "introduction_opportunities" (array - from background + connections in posts)
+- "knowledge_to_share" (array - from credentials + expertise shared in posts)
+
+PERSONAL INTERESTS & VALUES:
+- "personal_context.interests" (array - ALL personal interests from ANY source)
+- "personal_context.hobbies" (array - hobbies from profile + posts)
+- "personal_context.values" (array - values from formal statements + authentic expressions)
+- "personal_context.motivations" (array - personal motivations from both sources)
+- "personal_context.family" (string - family references from any source)
+- "personal_context.travel_interests" (array - travel interests from either source)
+- "personal_context.volunteer_activities" (array - volunteer work from either source)
+- "personal_context.personal_philosophy" (string - values/philosophy from both sources)
+
+PROFESSIONAL POSITIONING:
+- "professional_context.career_trajectory" (string - from structured experience + current direction in posts)
+- "professional_context.strategic_interests" (array - from background + current focus in posts)
+- "professional_context.growth_areas" (array - from formal development + learning in posts)
+- "professional_context.industry_positioning" (string - from role + thought leadership in posts)
+
+BASIC PROFILE UPDATES:
+- "company" (string - from profile data)
+- "title" (string - from profile data)
+- "profile_picture" (string - from LinkedIn profile picture URL)
+- "location" (string - from profile data)
+
+CRITICAL ANALYSIS REQUIREMENTS:
+1. TREAT BOTH SOURCES EQUALLY - Don't just use posts for "voice analysis"
+2. **EXTRACT ALL PERSONAL INTERESTS** - This is MANDATORY. Look for:
+   - Hobbies: "learning guitar", music, sports, creative pursuits
+   - Family: "exploring nature with my family", family time, family activities
+   - Outdoor activities: nature, hiking, exploring, outdoor sports
+   - Personal passions: "writing about human thriving", personal development
+   - Travel interests, volunteer work, personal philosophy, values
+   - ANY non-professional content mentioned ANYWHERE in the data
+3. IDENTIFY VALUES AND MOTIVATIONS from both formal statements and authentic posts
+4. MAP PROFESSIONAL EXPERTISE from both credentials and demonstrated knowledge
+5. CAPTURE AUTHENTIC VOICE from comprehensive post analysis
+6. ENSURE COMPREHENSIVE PERSONAL CONTEXT extraction - DO NOT leave personal_context empty
+7. Only include updates with confidence >= 0.7
+8. Be specific and actionable - ground insights in observable facts
+9. Focus on practical relationship-building value including personal connection points
+10. Return empty suggested_loops array (self-analysis)
+11. **PERSONAL INTERESTS ARE CRITICAL** - If you find NO personal interests, re-read the About section more carefully
 
 RESPONSE FORMAT (JSON Object):
+CRITICAL: Return ONLY the JSON object below. Do NOT wrap it in markdown code blocks or any other formatting. Do NOT include triple backticks or json markers.
+
 {
   "contact_updates": [
     {
-      "field_path": "ways_to_help_others",
-      "action": "add",
-      "suggested_value": "Mentoring early-career professionals in tech",
+      "field_path": "professional_context.professional_brief",
+      "action": "update",
+      "suggested_value": "Comprehensive professional narrative here...",
       "confidence": 0.9,
-      "reasoning": "Profile shows senior role and mentions mentoring in experience section."
+      "reasoning": "Based on comprehensive analysis of LinkedIn profile and posts."
+    },
+    {
+      "field_path": "personal_context.interests",
+      "action": "add",
+      "suggested_value": "Marathon running",
+      "confidence": 0.8,
+      "reasoning": "Mentioned training for marathons in About section and multiple posts about running."
     }
   ],
   "suggested_loops": []
 }
 
-Focus on extracting actionable insights about how the user can provide value to others in their network.
-Only include updates with confidence >= 0.7.
-Return empty suggested_loops array as this is self-analysis, not relationship loops with others.
-Extract specific, actionable ways they can help based on their experience, skills, and achievements.
+Generate a comprehensive profile that captures both their professional credentials AND their authentic voice, interests, and values as revealed through their complete LinkedIn presence.
 `;
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'user', content: promptContent }],
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-      }),
-    });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      console.error(`OpenAI API error for self LinkedIn analysis: ${res.status} ${res.statusText}`, errorBody);
-      throw new Error(`OpenAI API request failed: ${res.status} ${res.statusText}. Body: ${errorBody}`);
-    }
-
-    const data = await res.json();
+    const aiResponse = await callAIForTask(promptContent, 'comprehensive_profile');
     
-    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error('Invalid response structure from OpenAI for self LinkedIn analysis:', data);
+    if (!aiResponse) {
+      console.error('No response from AI service for self LinkedIn analysis');
       return null;
     }
     
-    const suggestionsJson = data.choices[0].message.content;
-    console.log("Self LinkedIn analysis AI response:", suggestionsJson);
+    console.log(`Self LinkedIn comprehensive profile analysis:`, aiResponse);
 
     try {
-      const parsedResult = JSON.parse(suggestionsJson) as AiParseResult;
+      // Strip markdown code blocks if present
+      let cleanedResponse = aiResponse.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsedResult = JSON.parse(cleanedResponse) as AiParseResult;
       return {
         contact_updates: parsedResult.contact_updates || [],
         suggested_loops: parsedResult.suggested_loops || [], // Should be empty for self-analysis
       };
     } catch (e) {
-      console.error('Error parsing OpenAI JSON response for self LinkedIn analysis:', e, suggestionsJson);
+      console.error('Error parsing AI JSON response for self LinkedIn analysis:', e, aiResponse);
       return null;
     }
 
@@ -948,12 +1446,6 @@ Extract specific, actionable ways they can help based on their experience, skill
 }
 
 async function parseOnboardingVoiceMemo(transcription: string, contact: any, metadata: any): Promise<AiParseResult | null> {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openAIApiKey) {
-    console.error('OPENAI_API_KEY is not set in environment variables.');
-    throw new Error('OpenAI API key is missing.');
-  }
-
   // Determine the type of onboarding memo to customize the prompt
   const memoType = metadata?.memo_type || 'general';
   
@@ -979,6 +1471,9 @@ Voice Memo Transcription (User describing their networking challenges):
 
 EXTRACTION INSTRUCTIONS:
 You are analyzing a voice memo where the USER is describing their own networking challenges, goals, and areas where they want to improve their relationship-building skills. Extract insights about the USER THEMSELVES (not about other people).
+
+CULTIVATE HQ FEATURES AVAILABLE:
+${createFeatureMappingContext()}
 
 VALID FIELD PATHS FOR USER PROFILE UPDATES:
 USER GOALS & CHALLENGES:
@@ -1014,6 +1509,8 @@ GENERAL FIELDS:
 - "location.country" (string)
 
 RESPONSE FORMAT (JSON Object):
+CRITICAL: Return ONLY the JSON object below. Do NOT wrap it in markdown code blocks or any other formatting. Do NOT include triple backticks or json markers.
+
 {
   "contact_updates": [
     {
@@ -1024,8 +1521,18 @@ RESPONSE FORMAT (JSON Object):
       "reasoning": "User explicitly mentioned struggling with follow-up after meeting new people."
     }
   ],
-  "suggested_loops": []
+  "suggested_loops": [],
+  "challenge_feature_mappings": [
+    {
+      "challenge": "Difficulty following up after networking events",
+      "featureKey": "follow_up_automation",
+      "confidence": 0.95,
+      "reasoning": "This challenge directly aligns with Smart Follow-up Automation which provides personalized follow-up suggestions within 24 hours."
+    }
+  ]
 }
+
+IMPORTANT: For each networking challenge identified, you MUST also create a corresponding challenge_feature_mappings entry that maps the challenge to the most relevant Cultivate HQ feature from the list above. Choose the feature that most directly addresses or solves that specific challenge.
 
 Focus on extracting the user's own challenges, goals, strengths, and areas for improvement. Do not extract information about other people mentioned in the transcript.
 Only include updates with confidence >= 0.6.
@@ -1075,6 +1582,8 @@ PERSONAL MOTIVATION:
 - "personal_context.values" (array of strings - values that align with their goal, action: 'add')
 
 RESPONSE FORMAT (JSON Object):
+CRITICAL: Return ONLY the JSON object below. Do NOT wrap it in markdown code blocks or any other formatting. Do NOT include triple backticks or json markers.
+
 {
   "contact_updates": [
     {
@@ -1099,6 +1608,69 @@ Focus on extracting specific, actionable goal information that will drive person
 Be thorough with goal_description - capture their vision of what success looks and feels like.
 Only include updates with confidence >= 0.7 for goals (higher bar than challenges).
 Return empty suggested_loops array as this is about self-reflection and goal setting.
+`;
+  } else if (memoType === 'profile_enhancement') {
+    // Extract LinkedIn URL from metadata if available
+    const linkedinUrl = metadata?.linkedin_url || 'unknown contact';
+    
+    promptContent = `
+CONTACT RELATIONSHIP ANALYSIS - PROFILE ENHANCEMENT
+
+User Name: ${contact.name || 'User'}
+LinkedIn URL Being Added: ${linkedinUrl}
+Current User Profile (JSON): 
+${JSON.stringify({
+  professional_context: contact.professional_context || {},
+  personal_context: contact.personal_context || {},
+  primary_goal: contact.primary_goal || null,
+  goal_description: contact.goal_description || null
+}, null, 2)}
+
+Voice Memo Transcription (User describing their relationship with this contact and relevance to their goal): 
+"${transcription}"
+
+EXTRACTION INSTRUCTIONS:
+You are analyzing a voice memo where the USER is describing their relationship with a specific contact they're adding to their goal. They're explaining how they know this person (if at all) and why they think this contact is relevant to achieving their goal.
+
+This is NOT about updating the user's profile - this is about extracting insights about the RELATIONSHIP between the user and this contact that will be used to enhance relationship intelligence.
+
+ANALYSIS FOCUS:
+1. How does the user know this contact? (professional relationship, personal connection, mutual connections, etc.)
+2. What makes this contact relevant to the user's goal?
+3. What value could this contact provide? (advice, connections, opportunities, etc.)
+4. What value could the user provide to this contact?
+5. Current relationship status and interaction history
+
+RELATIONSHIP SUMMARY:
+Create a concise 2-3 sentence summary of the key relationship context that captures:
+- How they know each other
+- The contact's professional background/expertise
+- Why this contact is relevant to the user's goal
+- Any notable characteristics or connection strengths
+
+RESPONSE FORMAT (JSON Object):
+CRITICAL: Return ONLY the JSON object below. Do NOT wrap it in markdown code blocks or any other formatting. Do NOT include triple backticks or json markers.
+
+{
+  "contact_updates": [],
+  "suggested_loops": [
+    {
+      "type": "advice_request",
+      "title": "Seek career advice from [Contact Name]",
+      "description": "Reach out to [Contact Name] for insights on breaking into the health tech space, given their experience at [Company] and expertise in [Area].",
+      "current_status": "idea",
+      "reciprocity_direction": "receiving",
+      "confidence": 0.8,
+      "reasoning": "User mentioned this contact has relevant experience and could provide valuable guidance for their career transition."
+    }
+  ],
+  "relationship_summary": "Met through GSB MSX program. Israeli VC investing in AI/data startups and developer tools. Also works as CRO/sales operator and is technical (interested in voice agents). Active on LinkedIn, well-connected in multiple spaces. Could be supportive for goal achievement given network and expertise overlap."
+}
+
+Focus on generating actionable relationship loops based on the relationship context provided.
+The contact_updates array should be empty since this memo is about relationship context, not user profile updates.
+Generate 1-3 suggested loops based on the relationship dynamics and relevance to the user's goal.
+Only include loops with confidence >= 0.7.
 `;
   } else {
     // General onboarding memo prompt (for other types like profile setup, etc.)
@@ -1130,50 +1702,52 @@ Return empty suggested_loops array for onboarding memos.
   }
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openAIApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
-        messages: [{ role: 'user', content: promptContent }],
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-      }),
-    });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      console.error(`OpenAI API error for onboarding memo: ${res.status} ${res.statusText}`, errorBody);
-      throw new Error(`OpenAI API request failed: ${res.status} ${res.statusText}. Body: ${errorBody}`);
+    console.log('Making AI API request for onboarding memo using centralized config...');
+    
+    // Use centralized AI configuration instead of direct OpenAI calls
+    const aiResponse = await callAIForTask(promptContent, 'onboarding_analysis');
+    
+    if (!aiResponse) {
+      console.error('No response from AI service');
+      throw new Error('AI processing returned an unexpected response format. Please try again.');
     }
 
-    const data = await res.json();
-    
-    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error('Invalid response structure from OpenAI for onboarding memo:', data);
-      return null;
-    }
-    
-    const suggestionsJson = data.choices[0].message.content;
-    console.log("Onboarding memo AI response:", suggestionsJson);
+    console.log(`AI response received successfully for onboarding memo`);
+    console.log("Onboarding memo AI response content:", aiResponse);
 
     try {
-      const parsedResult = JSON.parse(suggestionsJson) as AiParseResult;
+      // Strip markdown code blocks if present
+      let cleanedResponse = aiResponse.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsedResult = JSON.parse(cleanedResponse) as AiParseResult;
+      console.log('Successfully parsed AI response:', parsedResult);
       return {
         contact_updates: parsedResult.contact_updates || [],
         suggested_loops: parsedResult.suggested_loops || [], // Should be empty for onboarding
+        challenge_feature_mappings: parsedResult.challenge_feature_mappings || [],
+        relationship_summary: parsedResult.relationship_summary || null,
       };
     } catch (e) {
-      console.error('Error parsing OpenAI JSON response for onboarding memo:', e, suggestionsJson);
-      return null;
+      console.error('Error parsing AI JSON response for onboarding memo:', e);
+      console.error('Raw response content:', aiResponse);
+      throw new Error('AI processing returned an invalid format. Please try recording your message again.');
     }
 
   } catch (error) {
     console.error('Error in parseOnboardingVoiceMemo:', error);
-    return null; 
+      
+    // If it's already a user-friendly error, re-throw it
+    if (error.message.includes('AI processing') || error.message.includes('try again')) {
+      throw error;
+    }
+      
+    // Otherwise, provide a generic user-friendly message
+    throw new Error('Unable to process your voice memo at this time. Please try again in a few moments.');
   }
 }
 

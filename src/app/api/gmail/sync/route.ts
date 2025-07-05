@@ -212,7 +212,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq('user_id', user.id)
       .single();
 
-    const isConnected = !!(tokens?.gmail_access_token);
+    let isConnected = !!(tokens?.gmail_access_token);
     let profile = null;
 
     if (isConnected) {
@@ -220,6 +220,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         profile = await gmailService.getProfileServer(user.id);
       } catch (error) {
         console.error('Error getting Gmail profile:', error);
+        
+        // If token refresh fails, mark as disconnected
+        if (error instanceof Error && error.message.includes('Failed to refresh Gmail token')) {
+          isConnected = false;
+          
+          // Clear invalid tokens from database
+          await supabase
+            .from('user_tokens')
+            .update({
+              gmail_access_token: null,
+              gmail_refresh_token: null,
+              gmail_token_expiry: null,
+            })
+            .eq('user_id', user.id);
+        }
       }
     }
 

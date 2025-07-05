@@ -61,6 +61,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     } catch (syncError) {
       console.error('Calendar sync error:', syncError);
+      
+      // Check if error is due to invalid tokens
+      if (syncError instanceof Error && 
+          (syncError.message.includes('invalid_grant') || 
+           syncError.message.includes('invalid_token'))) {
+        
+        // Clear invalid integration from database
+        await supabase
+          .from('user_integrations')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('integration_type', 'google_calendar');
+        
+        return NextResponse.json(
+          { 
+            error: 'Calendar connection expired. Please reconnect your Google Calendar.',
+            requiresReconnection: true
+          },
+          { status: 401 }
+        );
+      }
+      
       return NextResponse.json(
         { 
           error: 'Calendar sync failed',
@@ -112,13 +134,48 @@ export async function GET() {
     // Get integration status
     const { data: integration } = await supabase
       .from('user_integrations')
-      .select('id, created_at, updated_at, metadata')
+      .select('id, created_at, updated_at, metadata, access_token, refresh_token, token_expires_at')
       .eq('user_id', user.id)
       .eq('integration_type', 'google_calendar')
       .single();
 
+    // Test if integration is actually working if tokens exist
+    let isConnected = !!integration?.access_token;
+    
+    if (isConnected) {
+      try {
+        // Test the connection by trying to make a simple API call
+        const { GoogleCalendarService } = await import('@/lib/services/googleCalendarService');
+        const calendarService = new GoogleCalendarService(supabase);
+        
+        // This will throw an error if tokens are invalid
+        await calendarService.fetchMeetings(integration, {
+          startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+          endDate: new Date(),
+          maxResults: 1
+        });
+      } catch (error) {
+        console.error('Calendar connection test failed:', error);
+        
+        // If connection test fails due to invalid tokens, clear the integration
+        if (error instanceof Error && 
+            (error.message.includes('invalid_grant') || 
+             error.message.includes('invalid_token'))) {
+          
+          isConnected = false;
+          
+          // Clear invalid integration from database
+          await supabase
+            .from('user_integrations')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('integration_type', 'google_calendar');
+        }
+      }
+    }
+
     return NextResponse.json({
-      integration: integration ? {
+      integration: integration && isConnected ? {
         connected: true,
         connectedAt: integration.created_at,
         lastUpdated: integration.updated_at,

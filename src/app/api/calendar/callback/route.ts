@@ -3,36 +3,44 @@ import { google } from 'googleapis';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const supabase = await createClient();
+  const { searchParams } = new URL(request.url);
+  
+  const code = searchParams.get('code');
+  const state = searchParams.get('state'); // This should contain user ID and source
+  const error = searchParams.get('error');
+
+  // Parse state to get user ID and source
+  const [userId, source = 'dashboard'] = state ? state.split('|') : [];
+  const isFromOnboarding = source === 'onboarding';
+
   try {
-    const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
-    
-    const code = searchParams.get('code');
-    const state = searchParams.get('state'); // This should be the user ID
-    const error = searchParams.get('error');
 
     // Handle OAuth errors
     if (error) {
       console.error('OAuth error:', error);
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=oauth_error&message=${encodeURIComponent(error)}`
-      );
+      const redirectUrl = isFromOnboarding 
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?error=${encodeURIComponent(`OAuth error: ${error}`)}`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=oauth_error&message=${encodeURIComponent(error)}`;
+      return NextResponse.redirect(redirectUrl);
     }
 
-    if (!code || !state) {
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=missing_params`
-      );
+    if (!code || !state || !userId) {
+      const redirectUrl = isFromOnboarding
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?error=Missing authentication parameters`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=missing_params`;
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Verify the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (userError || !user || user.id !== state) {
+    if (userError || !user || user.id !== userId) {
       console.error('User verification failed:', userError);
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=unauthorized`
-      );
+      const redirectUrl = isFromOnboarding
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?error=User verification failed`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=unauthorized`;
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Create OAuth2 client
@@ -74,27 +82,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       if (insertError) {
         console.error('Error storing integration:', insertError);
-        return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=storage_error`
-        );
+        const redirectUrl = isFromOnboarding
+          ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?error=Failed to save calendar connection`
+          : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=storage_error`;
+        return NextResponse.redirect(redirectUrl);
       }
 
-      // Success - redirect to settings with success message
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?success=calendar_connected`
-      );
+      // Success - redirect based on source
+      const successUrl = isFromOnboarding
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?success=Google Calendar connected successfully`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?success=calendar_connected`;
+      return NextResponse.redirect(successUrl);
 
     } catch (tokenError) {
       console.error('Error exchanging code for tokens:', tokenError);
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=token_exchange_failed`
-      );
+      const redirectUrl = isFromOnboarding
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?error=Failed to connect Google Calendar`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=token_exchange_failed`;
+      return NextResponse.redirect(redirectUrl);
     }
 
   } catch (error) {
     console.error('Unexpected error in calendar callback:', error);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=unexpected_error`
-    );
+    const redirectUrl = isFromOnboarding
+      ? `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding?error=An unexpected error occurred`
+      : `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/settings?error=unexpected_error`;
+    return NextResponse.redirect(redirectUrl);
   }
 } 

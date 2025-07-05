@@ -1,34 +1,61 @@
 'use client';
 
-import React from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, CircularProgress, Typography, Alert, Snackbar } from '@mui/material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // Import onboarding screen components
-import WelcomeScreen from '@/components/features/onboarding/WelcomeScreen';
-import ChallengesScreen from '@/components/features/onboarding/ChallengesScreen';
-import RecognitionScreen from '@/components/features/onboarding/RecognitionScreen';
-import BridgeScreen from '@/components/features/onboarding/BridgeScreen';
-import GoalsScreen from '@/components/features/onboarding/GoalsScreen';
-import ContactImportScreen from '@/components/features/onboarding/ContactImportScreen';
-import ContactConfirmationScreen from '@/components/features/onboarding/ContactConfirmationScreen';
-import LinkedInScreen from '@/components/features/onboarding/LinkedInScreen';
-import ProcessingScreen from '@/components/features/onboarding/ProcessingScreen';
-import ProfileScreen from '@/components/features/onboarding/ProfileScreen';
-import CompleteScreen from '@/components/features/onboarding/CompleteScreen';
+import { EnhancedWelcomeScreen } from '@/components/features/onboarding/0_Welcome';
+import ChallengesScreen from '@/components/features/onboarding/1_Challenges_1.0_Share';
+import ChallengeRecognitionScreen from '@/components/features/onboarding/1_Challenges_1.1_Acknowledge';
+import BridgeScreen from '@/components/features/onboarding/1_Challenges_1.2_Bridge';
+import GoalsScreen from '@/components/features/onboarding/2_Goals_2.0_Share';
+import ContactImportScreen from '@/components/features/onboarding/3_Contacts_3.0_Import';
+import ContactConfirmationScreen from '@/components/features/onboarding/3_Contacts_3.1_Confirm';
+import ContextDiscoveryScreen from '@/components/features/onboarding/3_Contacts_3.2_Discover';
+import LinkedInScreen from '@/components/features/onboarding/4_Profile_4.0_Import';
+import ProcessingScreen from '@/components/features/onboarding/4_Profile_4.1_Processing';
+import ProfileScreen from '@/components/features/onboarding/4_Profile_4.2_Review';
+import CompleteScreen from '@/components/features/onboarding/4_Profile_4.3_Complete';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { 
     state, 
     isLoading, 
     currentScreenName, 
-    isComplete 
+    isComplete,
+    nextScreen,
+    previousScreen
   } = useOnboardingState();
 
+  // Handle OAuth success/error messages
+  const [showAlert, setShowAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Handle URL parameters for OAuth feedback
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    
+    if (success) {
+      setShowAlert({ type: 'success', message: success });
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('success');
+      window.history.replaceState({}, '', url.toString());
+    } else if (error) {
+      setShowAlert({ type: 'error', message: error });
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams]);
+
   // Redirect if onboarding is complete
-  React.useEffect(() => {
+  useEffect(() => {
     if (isComplete) {
       router.push('/dashboard');
     }
@@ -76,11 +103,11 @@ export default function OnboardingPage() {
   const renderCurrentScreen = () => {
     switch (currentScreenName) {
       case 'welcome':
-        return <WelcomeScreen />;
+        return <EnhancedWelcomeScreen />;
       case 'challenges':
         return <ChallengesScreen />;
       case 'recognition':
-        return <RecognitionScreen />;
+        return <ChallengeRecognitionScreen />;
       case 'bridge':
         return <BridgeScreen />;
       case 'goals':
@@ -89,6 +116,8 @@ export default function OnboardingPage() {
         return <ContactImportScreen />;
       case 'contact_confirmation':
         return <ContactConfirmationScreen />;
+      case 'context_discovery':
+        return <ContextDiscoveryScreen />;
       case 'linkedin':
         return <LinkedInScreen />;
       case 'processing':
@@ -112,8 +141,24 @@ export default function OnboardingPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {renderCurrentScreen()}
+      
+      {/* Success/Error Snackbar */}
+      <Snackbar
+        open={!!showAlert}
+        autoHideDuration={6000}
+        onClose={() => setShowAlert(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setShowAlert(null)}
+          severity={showAlert?.type}
+          sx={{ width: '100%' }}
+        >
+          {showAlert?.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 } 

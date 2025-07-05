@@ -128,6 +128,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // 4. AI will detect self-contact and use user-focused prompts
     // 5. Update user's profile with extracted insights
 
+    // FIX: Also sync LinkedIn posts during onboarding (just like regular contacts)
+    try {
+      const postsResponse = await fetch(`${req.nextUrl.origin}/api/linkedin/sync-posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': req.headers.get('Authorization') || '',
+          'Cookie': req.headers.get('Cookie') || '',
+        },
+        body: JSON.stringify({
+          contactId: selfContact.id,
+        }),
+      });
+
+      if (!postsResponse.ok) {
+        console.warn('LinkedIn posts sync failed during onboarding:', await postsResponse.text());
+        // Don't fail the whole process if posts sync fails
+      }
+    } catch (postsError) {
+      console.warn('LinkedIn posts sync error during onboarding:', postsError);
+      // Don't fail the whole process if posts sync fails
+    }
+
     // Wait a moment for processing to start
     await new Promise(resolve => setTimeout(resolve, 1000));
 

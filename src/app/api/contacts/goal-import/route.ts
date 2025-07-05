@@ -8,6 +8,7 @@ import type { RapidLinkedInProfile, LinkedInImportApiResponse } from '@/types/ra
 interface GoalContactRequest {
   linkedin_urls: string[];
   goal_id?: string;
+  voice_memo_id?: string;
 }
 
 interface EnrichedContact {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
 
     // Parse request body
     const body: GoalContactRequest = await request.json();
-    const { linkedin_urls, goal_id } = body;
+    const { linkedin_urls, goal_id, voice_memo_id } = body;
 
     if (!linkedin_urls || !Array.isArray(linkedin_urls) || linkedin_urls.length === 0) {
       return NextResponse.json(
@@ -240,19 +241,57 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
           }
         }
 
-        // Fetch recent posts count (last 3 months)
+        // Fetch recent posts and create artifacts (last 3 months)
         try {
           const threeMonthsAgo = new Date();
           threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
           
           const recentPosts = await postsService.fetchUserPosts(
             linkedinUrl,
-            50, // Limit to 50 posts for counting
+            50, // Limit to 50 posts for comprehensive analysis
             threeMonthsAgo.toISOString()
           );
           recentPostsCount = recentPosts.length;
           
-          console.log(`Found ${recentPostsCount} recent posts for ${contactName}`);
+          console.log(`Found ${recentPostsCount} recent posts for ${contactName}, creating artifacts...`);
+
+          // Create individual artifacts for each LinkedIn post
+          for (const post of recentPosts) {
+            try {
+              // Transform post to artifact content structure
+              const postArtifactContent = postsService.transformPostToArtifact(post, contactId, contactName);
+              
+              // Create artifact in database
+              const { data: postArtifact, error: postArtifactError } = await supabase
+                .from('artifacts')
+                .insert({
+                  user_id: user.id,
+                  contact_id: contactId,
+                  type: 'linkedin_post',
+                  content: `LinkedIn ${postArtifactContent.post_type} by ${postArtifactContent.author}`,
+                  metadata: {
+                    ...postArtifactContent,
+                    source: 'goal_contact_import',
+                    processing_status: 'pending',
+                    imported_at: new Date().toISOString()
+                  },
+                  timestamp: postArtifactContent.posted_at
+                })
+                .select('id')
+                .single();
+
+              if (postArtifactError) {
+                console.error(`Error creating LinkedIn post artifact for ${contactName}:`, postArtifactError);
+              } else {
+                console.log(`Created LinkedIn post artifact ${postArtifact.id} for ${contactName}`);
+              }
+            } catch (postError) {
+              console.error(`Error processing post for ${contactName}:`, postError);
+              continue; // Skip this post but continue with others
+            }
+          }
+          
+          console.log(`Successfully created ${recentPosts.length} LinkedIn post artifacts for ${contactName}`);
         } catch (postsError) {
           console.warn(`Could not fetch posts for ${linkedinUrl}:`, postsError);
           recentPostsCount = 0;
@@ -274,6 +313,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
 
           if (goalContactError) {
             console.error('Error associating contact with goal:', goalContactError);
+          }
+        }
+
+        // Associate voice memo with the contact if provided (for both new and existing contacts)
+        if (voice_memo_id) {
+          const { error: voiceMemoUpdateError } = await supabase
+            .from('artifacts')
+            .update({
+              contact_id: contactId
+            })
+            .eq('id', voice_memo_id)
+            .eq('user_id', user.id);
+
+          if (voiceMemoUpdateError) {
+            console.error('Error associating voice memo with contact:', voiceMemoUpdateError);
+          } else {
+            console.log(`Successfully associated voice memo ${voice_memo_id} with contact ${contactId}`);
           }
         }
 

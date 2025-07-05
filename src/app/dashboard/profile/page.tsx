@@ -1,11 +1,272 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Container, Typography, Card, CardContent, Chip, LinearProgress, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert } from '@mui/material';
-import { Person, Psychology, Handshake, Flag, Refresh, Warning } from '@mui/icons-material';
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Card, 
+  CardContent, 
+  Chip, 
+  LinearProgress, 
+  Button, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogContentText, 
+  DialogActions, 
+  Alert,
+  Avatar,
+  Paper
+} from '@mui/material';
+import { 
+  Person, 
+  Psychology, 
+  Handshake, 
+  Flag, 
+  Refresh, 
+  Warning,
+  WorkOutline,
+  EmojiObjects,
+  RecordVoiceOver,
+  TrendingUp,
+  School,
+  LinkedIn,
+  Star,
+  Visibility
+} from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase/client';
+import type { OnboardingState } from '@/types/userProfile';
+
+interface ProfessionalContextData {
+  professional_brief?: string;
+  unique_value_proposition?: string;
+  zone_of_genius?: string;
+  writing_voice?: string;
+  how_they_come_across?: string;
+  expertise_areas?: string[];
+  thought_leadership_topics?: string[];
+  core_competencies?: string[];
+  personal_brand_pillars?: string[];
+  key_messaging_themes?: string[];
+  strategic_interests?: string[];
+  ideal_connections?: string[];
+  reciprocity_opportunities?: string[];
+  career_trajectory?: string;
+  growth_areas?: string[];
+  communication_style?: string;
+}
+
+interface PersonalContextData {
+  professional_values?: string[];
+  motivations?: string[];
+  interests?: string[];
+  passions?: string[];
+}
+
+// Goal Contact Card Component
+interface GoalContactCardProps {
+  contact: NonNullable<OnboardingState['imported_goal_contacts']>[0];
+}
+
+const GoalContactCard: React.FC<GoalContactCardProps> = ({ contact }) => {
+  const router = useRouter();
+  
+  // Query for voice memo insights about this contact
+  const { data: voiceMemoInsight } = useQuery({
+    queryKey: ['voiceMemoInsight', contact.id],
+    queryFn: async () => {
+      console.log('🔍 === VOICE MEMO QUERY DEBUG ===');
+      console.log('Contact Name:', contact.name);
+      console.log('Contact ID:', contact.id);
+      console.log('Contact LinkedIn URL:', contact.linkedin_url);
+      
+      // Find by contact_id and profile_enhancement memo type
+      const { data, error } = await supabase
+        .from('artifacts')
+        .select('id, content, metadata, transcription, contact_id, created_at')
+        .eq('type', 'voice_memo')
+        .eq('contact_id', contact.id)
+        .contains('metadata', { memo_type: 'profile_enhancement' })
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      console.log('🎯 Query executed with filters:');
+      console.log('- type = voice_memo');
+      console.log('- contact_id =', contact.id);
+      console.log('- metadata contains { memo_type: "profile_enhancement" }');
+
+      if (error) {
+        console.error('❌ Query error:', error);
+      }
+
+      console.log('📊 Query result:');
+      console.log('- Data:', data);
+      console.log('- Data length:', data?.length || 0);
+      console.log('- Error:', error);
+
+      if (data && data.length > 0) {
+        const memo = data[0];
+        console.log('✅ Found voice memo:');
+        console.log('- Memo ID:', memo.id);
+        console.log('- Contact ID:', memo.contact_id);
+        console.log('- Metadata:', memo.metadata);
+        console.log('- Has transcription:', !!memo.transcription);
+        console.log('- Transcription length:', memo.transcription?.length || 0);
+        console.log('- Has content:', !!memo.content);
+        console.log('- Content length:', memo.content?.length || 0);
+        console.log('- Created:', memo.created_at);
+      } else {
+        console.log('❌ No voice memo found');
+        
+        // Let's also try a broader search to see what voice memos exist
+        console.log('🔍 Trying broader search for any voice memos...');
+        const { data: allMemos, error: allError } = await supabase
+          .from('artifacts')
+          .select('id, contact_id, metadata, created_at')
+          .eq('type', 'voice_memo')
+          .order('created_at', { ascending: false });
+          
+        console.log('📋 All voice memos in system:', allMemos);
+        if (allMemos) {
+          const recentMemo = allMemos.find(m => m.contact_id === contact.id);
+          console.log('🔍 Any memo for this contact ID:', recentMemo);
+        }
+      }
+      
+      console.log('🔚 === END VOICE MEMO QUERY DEBUG ===');
+      
+      if (error || !data || data.length === 0) return null;
+      return data[0];
+    },
+    enabled: !!contact.id
+  });
+
+  // Extract insight from voice memo content or transcription
+  const voiceInsight = voiceMemoInsight?.transcription || 
+                      (typeof voiceMemoInsight?.content === 'string' ? voiceMemoInsight.content : null);
+
+  console.log('💬 === VOICE INSIGHT PROCESSING ===');
+  console.log('Contact:', contact.name);
+  console.log('voiceMemoInsight exists:', !!voiceMemoInsight);
+  console.log('voiceMemoInsight:', voiceMemoInsight);
+  console.log('Has transcription:', !!voiceMemoInsight?.transcription);
+  console.log('Transcription value:', voiceMemoInsight?.transcription);
+  console.log('Has content:', !!voiceMemoInsight?.content);
+  console.log('Content value:', voiceMemoInsight?.content);
+  console.log('Final voiceInsight:', voiceInsight);
+  console.log('voiceInsight length:', voiceInsight?.length || 0);
+  console.log('Will show insight:', !!voiceInsight);
+  console.log('💬 === END VOICE INSIGHT PROCESSING ===');
+
+  return (
+    <Paper 
+      elevation={1} 
+      sx={{ 
+        p: 2, 
+        border: '1px solid', 
+        borderColor: 'grey.200',
+        borderRadius: 2,
+        '&:hover': {
+          borderColor: 'primary.main',
+          cursor: 'pointer'
+        }
+      }}
+      onClick={() => router.push(`/dashboard/contacts/${contact.id}`)}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        {contact.profile_picture && (
+          <Avatar 
+            src={contact.profile_picture} 
+            alt={contact.name}
+            sx={{ width: 48, height: 48 }}
+          />
+        )}
+        <Box sx={{ flex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+            <Typography variant="h6" component="h3">
+              {contact.name}
+            </Typography>
+            <Chip 
+              label="Associated with Goal" 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+            />
+          </Box>
+          
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {contact.title}{contact.company && ` at ${contact.company}`}
+          </Typography>
+          
+          {/* Voice Memo Insight */}
+          {voiceInsight && (
+            <Box 
+              sx={{ 
+                mt: 1, 
+                p: 1, 
+                backgroundColor: 'grey.50', 
+                borderRadius: 1,
+                fontStyle: 'italic',
+                fontSize: '0.875rem',
+                lineHeight: 1.43
+              }}
+            >
+              💡 {voiceInsight}
+            </Box>
+          )}
+          
+          {/* Temporary Debug Info */}
+          {voiceMemoInsight && (
+            <Box 
+              sx={{ 
+                mt: 1, 
+                p: 1, 
+                backgroundColor: 'info.light', 
+                borderRadius: 1,
+                color: 'info.contrastText',
+                display: 'block',
+                fontSize: '0.75rem'
+              }}
+            >
+              🐛 DEBUG: Voice memo found - Type: {(voiceMemoInsight.metadata as unknown as { memo_type?: string })?.memo_type || 'unknown'}, 
+              Has transcription: {!!voiceMemoInsight.transcription ? 'Yes' : 'No'}, 
+              Content length: {voiceMemoInsight.content?.length || 0}
+            </Box>
+          )}
+          
+          {!voiceMemoInsight && (
+            <Box 
+              sx={{ 
+                mt: 1, 
+                p: 1, 
+                backgroundColor: 'warning.light', 
+                borderRadius: 1,
+                color: 'warning.contrastText',
+                display: 'block',
+                fontSize: '0.75rem'
+              }}
+            >
+              🐛 DEBUG: No voice memo found for this contact
+            </Box>
+          )}
+          
+          {/* LinkedIn Activity */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+            <LinkedIn fontSize="small" color="primary" />
+            <Typography variant="body2" color="text.secondary">
+              {contact.recent_posts_count} posts in last 3 months • Profile imported
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    </Paper>
+  );
+};
 
 export default function UserProfilePage() {
   const router = useRouter();
@@ -13,6 +274,14 @@ export default function UserProfilePage() {
   const { state: onboardingState, isComplete: onboardingComplete, restartOnboarding, isRestarting } = useOnboardingState();
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [restartError, setRestartError] = useState<string | null>(null);
+
+  // Extract professional and personal context data
+  const professionalContext = (profile?.professional_context as ProfessionalContextData) || {};
+  const personalContext = (profile?.personal_context as PersonalContextData) || {};
+
+  // Extract LinkedIn data for profile image
+  const linkedInData = profile?.linkedin_data as unknown as { profilePicture?: string; profile_picture?: string };
+  const profileImage = linkedInData?.profilePicture || linkedInData?.profile_picture;
 
   const handleRestartOnboarding = async () => {
     try {
@@ -62,15 +331,37 @@ export default function UserProfilePage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header */}
+      {/* Header with Profile Image */}
       <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2 }}>
+          {profileImage && (
+            <Avatar 
+              src={profileImage} 
+              alt={profile.name || 'Profile'} 
+              sx={{ width: 80, height: 80, border: '3px solid', borderColor: 'primary.main' }}
+            />
+          )}
+          <Box sx={{ flex: 1 }}>
         <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Person />
-          My Profile
+              {profile.name || 'My Profile'}
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Manage your professional profile and networking goals
+              {profile.title && profile.company 
+                ? `${profile.title} at ${profile.company}`
+                : 'Professional networking profile and insights'
+              }
+            </Typography>
+            {profile.linkedin_url && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                <LinkedIn fontSize="small" color="primary" />
+                <Typography variant="body2" color="primary">
+                  LinkedIn Profile Connected
         </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
       </Box>
 
       {/* Profile Completion */}
@@ -106,6 +397,223 @@ export default function UserProfilePage() {
         </Card>
       )}
 
+      {/* Professional Brief */}
+      {professionalContext.professional_brief && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Star color="primary" />
+              Professional Brief
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 3, lineHeight: 1.7 }}>
+              {professionalContext.professional_brief}
+            </Typography>
+            
+            {/* Key Insights */}
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              {professionalContext.unique_value_proposition && (
+                <Box sx={{ flex: 1, minWidth: '300px' }}>
+                  <Paper sx={{ p: 2, bgcolor: 'primary.50', borderLeft: 4, borderLeftColor: 'primary.main' }}>
+                    <Typography variant="subtitle2" color="primary" gutterBottom>
+                      Unique Value Proposition
+                    </Typography>
+                    <Typography variant="body2">
+                      {professionalContext.unique_value_proposition}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
+              
+              {professionalContext.zone_of_genius && (
+                <Box sx={{ flex: 1, minWidth: '300px' }}>
+                  <Paper sx={{ p: 2, bgcolor: 'success.50', borderLeft: 4, borderLeftColor: 'success.main' }}>
+                    <Typography variant="subtitle2" color="success.main" gutterBottom>
+                      Zone of Genius
+                    </Typography>
+                    <Typography variant="body2">
+                      {professionalContext.zone_of_genius}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+             {/* Personal Brand & Communication */}
+       <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
+         {/* Personal Brand Pillars */}
+         {professionalContext.personal_brand_pillars && professionalContext.personal_brand_pillars.length > 0 && (
+           <Box sx={{ flex: 1, minWidth: '300px' }}>
+             <Card>
+               <CardContent>
+                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                   <Visibility color="primary" />
+                   Personal Brand Pillars
+                 </Typography>
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                   {professionalContext.personal_brand_pillars.map((pillar, index) => (
+                     <Chip key={index} label={pillar} color="primary" variant="outlined" />
+                   ))}
+                 </Box>
+               </CardContent>
+             </Card>
+           </Box>
+         )}
+
+         {/* Communication Style */}
+         {(professionalContext.writing_voice || professionalContext.how_they_come_across || professionalContext.communication_style) && (
+           <Box sx={{ flex: 1, minWidth: '300px' }}>
+             <Card>
+               <CardContent>
+                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                   <RecordVoiceOver color="primary" />
+                   Communication Style
+                 </Typography>
+                 {professionalContext.writing_voice && (
+                   <Box sx={{ mb: 2 }}>
+                     <Typography variant="body2" color="text.secondary">Writing Voice:</Typography>
+                     <Typography variant="body2">{professionalContext.writing_voice}</Typography>
+                   </Box>
+                 )}
+                 {professionalContext.how_they_come_across && (
+                   <Box sx={{ mb: 2 }}>
+                     <Typography variant="body2" color="text.secondary">How You Come Across:</Typography>
+                     <Typography variant="body2">{professionalContext.how_they_come_across}</Typography>
+                   </Box>
+                 )}
+                 {professionalContext.communication_style && (
+                   <Box>
+                     <Typography variant="body2" color="text.secondary">Communication Style:</Typography>
+                     <Typography variant="body2">{professionalContext.communication_style}</Typography>
+                   </Box>
+                 )}
+               </CardContent>
+             </Card>
+           </Box>
+         )}
+       </Box>
+
+             {/* Expertise & Thought Leadership */}
+       <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
+         {/* Expertise Areas */}
+         {professionalContext.expertise_areas && professionalContext.expertise_areas.length > 0 && (
+           <Box sx={{ flex: 1, minWidth: '300px' }}>
+             <Card>
+               <CardContent>
+                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                   <WorkOutline color="primary" />
+                   Expertise Areas
+                 </Typography>
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                   {professionalContext.expertise_areas.map((area, index) => (
+                     <Chip key={index} label={area} size="small" color="primary" />
+                   ))}
+                 </Box>
+               </CardContent>
+             </Card>
+           </Box>
+         )}
+
+         {/* Thought Leadership Topics */}
+         {professionalContext.thought_leadership_topics && professionalContext.thought_leadership_topics.length > 0 && (
+           <Box sx={{ flex: 1, minWidth: '300px' }}>
+             <Card>
+               <CardContent>
+                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                   <EmojiObjects color="primary" />
+                   Thought Leadership Topics
+                 </Typography>
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                   {professionalContext.thought_leadership_topics.map((topic, index) => (
+                     <Chip key={index} label={topic} size="small" color="secondary" />
+                   ))}
+                 </Box>
+               </CardContent>
+             </Card>
+           </Box>
+         )}
+       </Box>
+
+      {/* Strategic Positioning */}
+      {(professionalContext.career_trajectory || professionalContext.strategic_interests || professionalContext.ideal_connections || professionalContext.growth_areas) && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TrendingUp color="primary" />
+              Strategic Positioning
+            </Typography>
+            
+            {professionalContext.career_trajectory && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Career Trajectory:
+                </Typography>
+                <Typography variant="body1">
+                  {professionalContext.career_trajectory}
+                </Typography>
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              {professionalContext.strategic_interests && professionalContext.strategic_interests.length > 0 && (
+                <Box sx={{ flex: 1, minWidth: '300px' }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Strategic Interests:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {professionalContext.strategic_interests.map((interest, index) => (
+                      <Chip key={index} label={interest} size="small" variant="outlined" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {professionalContext.ideal_connections && professionalContext.ideal_connections.length > 0 && (
+                <Box sx={{ flex: 1, minWidth: '300px' }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Ideal Connections:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {professionalContext.ideal_connections.map((connection, index) => (
+                      <Chip key={index} label={connection} size="small" variant="outlined" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {professionalContext.growth_areas && professionalContext.growth_areas.length > 0 && (
+                <Box sx={{ flex: 1, minWidth: '300px' }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Growth Areas:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {professionalContext.growth_areas.map((area, index) => (
+                      <Chip key={index} label={area} size="small" color="info" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {professionalContext.reciprocity_opportunities && professionalContext.reciprocity_opportunities.length > 0 && (
+                <Box sx={{ flex: 1, minWidth: '300px' }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Reciprocity Opportunities:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {professionalContext.reciprocity_opportunities.map((opportunity, index) => (
+                      <Chip key={index} label={opportunity} size="small" color="success" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Original sections with enhanced styling */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* Basic Information */}
         <Card>
@@ -114,20 +622,20 @@ export default function UserProfilePage() {
               <Person fontSize="small" />
               Basic Information
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
                 <Typography variant="body2" color="text.secondary">Name</Typography>
                 <Typography variant="body1">{profile.name || 'Not set'}</Typography>
               </Box>
-              <Box>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
                 <Typography variant="body2" color="text.secondary">Email</Typography>
                 <Typography variant="body1">{profile.email || 'Not set'}</Typography>
               </Box>
-              <Box>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
                 <Typography variant="body2" color="text.secondary">Company</Typography>
                 <Typography variant="body1">{profile.company || 'Not set'}</Typography>
               </Box>
-              <Box>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
                 <Typography variant="body2" color="text.secondary">Title</Typography>
                 <Typography variant="body1">{profile.title || 'Not set'}</Typography>
               </Box>
@@ -201,6 +709,88 @@ export default function UserProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Personal Values & Motivations */}
+        {(personalContext.professional_values || personalContext.motivations || personalContext.interests || personalContext.passions) && (
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <School fontSize="small" />
+                Personal Context
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                {personalContext.professional_values && personalContext.professional_values.length > 0 && (
+                  <Box sx={{ flex: 1, minWidth: '300px' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Professional Values:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {personalContext.professional_values.map((value, index) => (
+                        <Chip key={index} label={value} size="small" color="secondary" />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                
+                {personalContext.motivations && personalContext.motivations.length > 0 && (
+                  <Box sx={{ flex: 1, minWidth: '300px' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Motivations:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {personalContext.motivations.map((motivation, index) => (
+                        <Chip key={index} label={motivation} size="small" color="info" />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                
+                {personalContext.interests && personalContext.interests.length > 0 && (
+                  <Box sx={{ flex: 1, minWidth: '300px' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Interests:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {personalContext.interests.map((interest, index) => (
+                        <Chip key={index} label={interest} size="small" variant="outlined" />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                
+                {personalContext.passions && personalContext.passions.length > 0 && (
+                  <Box sx={{ flex: 1, minWidth: '300px' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Passions:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {personalContext.passions.map((passion, index) => (
+                        <Chip key={index} label={passion} size="small" color="success" />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Goal-Related Contacts */}
+        {onboardingState?.imported_goal_contacts && onboardingState.imported_goal_contacts.length > 0 && (
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Person fontSize="small" />
+                Goal-Related Contacts ({onboardingState.imported_goal_contacts.length})
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {onboardingState.imported_goal_contacts.map((contact, index) => (
+                  <GoalContactCard key={index} contact={contact} />
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Onboarding Status */}
         <Card>
           <CardContent>
@@ -225,7 +815,7 @@ export default function UserProfilePage() {
             )}
             
             <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {!onboardingComplete && (
+            {!onboardingComplete && (
                 <Button 
                   variant="contained" 
                   color="primary"
@@ -243,8 +833,8 @@ export default function UserProfilePage() {
                 disabled={isRestarting}
               >
                 {isRestarting ? 'Restarting...' : 'Restart Onboarding'}
-              </Button>
-            </Box>
+                </Button>
+              </Box>
           </CardContent>
         </Card>
       </Box>

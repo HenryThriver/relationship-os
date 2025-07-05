@@ -212,7 +212,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   };
 
   const pollTranscriptionStatus = async (artifactId: string) => {
-    const maxAttempts = 60; // Extended to 2 minutes max (60 attempts * 2s interval)
+    const maxAttempts = 90; // Extended to 3 minutes max (90 attempts * 2s interval) for AI processing
     let attempts = 0;
     
     const pollInterval = setInterval(async () => {
@@ -221,17 +221,24 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       try {
         const { data: artifact, error: fetchError } = await supabase
           .from('artifacts')
-          .select('transcription_status, transcription')
+          .select('transcription_status, transcription, ai_parsing_status')
           .eq('id', artifactId)
           .single();
         
         if (fetchError) throw fetchError;
         if (!artifact) throw new Error('Artifact not found during polling.');
 
-
-        setUploadStatus(`Analyzing... (${Math.round((attempts / maxAttempts) * 100)}%)`);
+        // Update status based on current phase
+        if (artifact.transcription_status === 'pending') {
+          setUploadStatus(`Transcribing audio... (${Math.round((attempts / maxAttempts) * 30)}%)`);
+        } else if (artifact.transcription_status === 'completed' && artifact.ai_parsing_status === 'pending') {
+          setUploadStatus(`Processing with AI... (${Math.round(30 + (attempts / maxAttempts) * 70)}%)`);
+        } else if (artifact.ai_parsing_status === 'processing') {
+          setUploadStatus(`Analyzing your message... (${Math.round(60 + (attempts / maxAttempts) * 40)}%)`);
+        }
         
-        if (artifact.transcription_status === 'completed') {
+        // Check for completion - both transcription AND AI processing must be done
+        if (artifact.transcription_status === 'completed' && artifact.ai_parsing_status === 'completed') {
           clearInterval(pollInterval);
           setUploadStatus('');
           setIsUploading(false);
@@ -241,28 +248,38 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           // Invalidate queries
           await queryClient.invalidateQueries({ queryKey: ['voiceMemos', contactId] });
           await queryClient.invalidateQueries({ queryKey: ['contactUpdateSuggestions', contactId] });
-          // Also invalidate a general artifacts query if one exists for broader updates
           await queryClient.invalidateQueries({ queryKey: ['artifacts', contactId] });
-
+          await queryClient.invalidateQueries({ queryKey: ['contacts', contactId] });
 
           setTimeout(() => setSuccess(false), 5000);
-        } else if (artifact.transcription_status === 'failed') {
+        } 
+        // Check for transcription failure
+        else if (artifact.transcription_status === 'failed') {
           clearInterval(pollInterval);
-          setError('Transcription failed. Please try again.');
+          setError('We had trouble understanding your audio. Please try recording again with clear speech.');
           setUploadStatus('');
           setIsUploading(false);
-        } else if (attempts >= maxAttempts) {
+        } 
+        // Check for AI processing failure
+        else if (artifact.ai_parsing_status === 'failed') {
           clearInterval(pollInterval);
-          setError('Transcription is taking longer than expected. Please check back later.');
+          setError('We had trouble processing your message. Your recording was saved, but the analysis may be incomplete. Please try again if needed.');
+          setUploadStatus('');
+          setIsUploading(false);
+        } 
+        // Check for timeout
+        else if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          setError('Processing is taking longer than expected. Your recording was saved and will be processed shortly. Please check back in a few minutes.');
           setUploadStatus('');
           setIsUploading(false);
         }
-      } catch (err) { // Changed error variable name
-        console.error('Error polling transcription status:', err);
+      } catch (err) {
+        console.error('Error polling processing status:', err);
         // Only clear interval and show error if it's a persistent issue or max attempts reached
         if (attempts >= maxAttempts || (err instanceof Error && !err.message.includes('FetchError'))) {
           clearInterval(pollInterval);
-          setError('Unable to check transcription status. Please check back later.');
+          setError('Unable to check processing status. Your recording may still be processing - please check back later.');
           setUploadStatus('');
           setIsUploading(false);
         }
@@ -375,7 +392,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
         {success && (
           <Alert severity="success" sx={{mt: 2}}>
-            Voice memo recorded & transcription started! It will appear in your timeline.
+            ✨ Thank you for sharing! Your message has been processed and will help personalize your experience.
           </Alert>
         )}
         

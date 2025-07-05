@@ -386,34 +386,48 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 #### **Edge Function Testing & Invocation**
-**CRITICAL: Edge functions are invoked via HTTP requests, NOT CLI commands.**
+**🚨 CRITICAL: Edge functions are triggered AUTOMATICALLY by database triggers**
+**You do NOT need to call edge functions directly - they trigger when artifact status changes**
 
 ```bash
-# ❌ WRONG - No CLI invoke command exists
-supabase functions invoke parse-artifact
+# ✅ CORRECT - Trigger AI processing by changing database status
+CONNECTION_STRING=$(supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)
 
-# ✅ CORRECT - Use HTTP requests (curl, fetch, etc.)
+# To reprocess an artifact, simply reset its status to 'pending'
+psql "$CONNECTION_STRING" -c "
+UPDATE artifacts 
+SET ai_parsing_status = 'pending', 
+    ai_processing_started_at = NULL, 
+    ai_processing_completed_at = NULL 
+WHERE id = 'your-artifact-uuid-here';"
 
-# Test deployed function:
+# The database trigger will automatically call parse-artifact edge function
+# No manual edge function calls needed!
+
+# ❌ WRONG - Don't call edge functions directly unless debugging
+# curl -X POST 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact' ...
+
+# ✅ Management commands
+supabase functions deploy parse-artifact  # Deploy function updates
+supabase functions logs parse-artifact    # Monitor function logs
+supabase functions serve                  # Serve locally for testing
+
+# ✅ Check processing status
+psql "$CONNECTION_STRING" -c "
+SELECT id, ai_parsing_status, ai_processing_started_at, ai_processing_completed_at 
+FROM artifacts 
+WHERE ai_parsing_status IN ('pending', 'processing') 
+ORDER BY created_at DESC LIMIT 10;"
+
+# ✅ For debugging only - manual edge function call with proper auth
+# Get the correct service key from vault (only for debugging)
+VAULT_KEY=$(psql "$CONNECTION_STRING" -t -c "SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'INTERNAL_SERVICE_ROLE_KEY';" | xargs)
+
+# Manual call (debugging only):
 curl -X POST 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact' \
-  --header 'Authorization: Bearer YOUR_API_KEY' \
+  --header "Authorization: Bearer $VAULT_KEY" \
   --header 'Content-Type: application/json' \
   --data '{"artifactId": "your-uuid-here"}'
-
-# Test local function (with supabase functions serve running):
-curl -X POST 'http://localhost:54321/functions/v1/parse-artifact' \
-  --header 'Authorization: Bearer SUPABASE_ANON_KEY' \
-  --header 'Content-Type: application/json' \
-  --data '{"artifactId": "your-uuid-here"}'
-
-# Deploy function:
-supabase functions deploy parse-artifact
-
-# Monitor logs:
-supabase functions logs parse-artifact
-
-# Serve locally for testing:
-supabase functions serve
 ```
 
 #### **Edge Function Implementation Pattern**

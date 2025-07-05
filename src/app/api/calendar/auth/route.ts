@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const source = searchParams.get('source') || 'dashboard'; // 'onboarding' or 'dashboard'
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -30,12 +33,15 @@ export async function GET() {
       'https://www.googleapis.com/auth/userinfo.profile',
     ];
 
+    // Include both user ID and source in state (separated by |)
+    const stateData = `${user.id}|${source}`;
+
     // Generate the authorization URL
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline', // Important for getting refresh tokens
       scope: scopes,
       prompt: 'consent', // Force consent screen to ensure we get refresh token
-      state: user.id, // Pass user ID in state for security
+      state: stateData, // Pass user ID and source in state
     });
 
     return NextResponse.json({ authUrl });

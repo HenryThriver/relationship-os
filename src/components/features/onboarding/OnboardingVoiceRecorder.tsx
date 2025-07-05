@@ -138,9 +138,24 @@ export default function OnboardingVoiceRecorder({
         <Typography variant="h6" gutterBottom>
           {title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          {description}
-        </Typography>
+        <Box sx={{ mb: 3 }}>
+          {description
+            .replace(/\\n/g, '\n') // Convert literal \n to actual newlines
+            .split('\n')
+            .map((line, index) => (
+              <Typography 
+                key={index} 
+                variant="body2" 
+                color="text.secondary" 
+                sx={{ 
+                  mb: line === '' ? 1 : 0,
+                  lineHeight: 1.6
+                }}
+              >
+                {line || '\u00A0'}
+              </Typography>
+            ))}
+        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>

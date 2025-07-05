@@ -5,8 +5,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const redirectUri = searchParams.get('redirect_uri') || `${request.nextUrl.origin}/api/gmail/callback`;
+    const source = searchParams.get('source') || 'dashboard'; // 'onboarding' or 'dashboard'
 
-    const authUrl = gmailService.getAuthUrl(redirectUri);
+    const authUrl = gmailService.getAuthUrl(redirectUri, source);
 
     return NextResponse.json({ authUrl });
   } catch (error) {

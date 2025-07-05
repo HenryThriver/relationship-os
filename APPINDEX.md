@@ -1,87 +1,75 @@
 Created: 5/27/2025
-Last update: 6/7/2025
+Last update: 7/5/2025
 
 # index.md
 
-## Project Status: v0.10.0 LinkedIn Posts AI Integration & Centralized Architecture Released ✅
+## Project Status: v0.11.0 Voice Memo Intelligence & Onboarding Refinements Released ✅
 
-**Major Architectural Milestone Achieved - Centralized Artifact Processing System**
+**Major Voice Memo Intelligence & File Organization Milestone Achieved**
 
-The Relationship OS v0.10.0 represents a major architectural achievement, successfully implementing a unified, extensible artifact processing system while delivering comprehensive LinkedIn Posts AI integration. This release fundamentally transforms how the system handles relationship intelligence across all artifact types.
+The Relationship OS v0.11.0 represents a significant advancement in relationship intelligence processing and developer experience. This release enhances voice memo processing for relationship context extraction while implementing a comprehensive onboarding file organization system that dramatically improves code maintainability and navigation.
 
-### ✅ v0.10.0 Released Features
-- **🚀 LinkedIn Posts AI Integration**: Complete end-to-end LinkedIn posts sync and AI processing system
-  - Automated LinkedIn posts synchronization with batch handling and rate limiting
-  - Server-side date filtering for efficient API usage and duplicate prevention
-  - Robust duplicate handling with unique constraints and graceful error recovery
-  - LinkedIn profile reprocessing support through unified system
+### ✅ v0.11.0 Released Features
+- **🎤 Voice Memo Relationship Intelligence**: Enhanced voice memo processing for relationship context
+  - Added `relationship_summary` field to AI processing results for profile enhancement memos
+  - Implemented relationship context extraction from voice memos about contacts
+  - Added `VoiceMemoInsight` component for displaying relationship summaries in onboarding flow
+  - Enhanced voice memo detection logic in `parse-artifact` edge function
+  - Fixed profile enhancement memo detection (about OTHER contacts, not self)
 
-- **🏗️ Centralized Artifact Processing Architecture**: Revolutionary architecture modernization
-  - **MAJOR**: Replaced hardcoded artifact type checking with database-driven configuration
-  - Single unified trigger function replacing 4 separate type-specific triggers
-  - Configuration-driven processing rules in `artifact_processing_config` table
-  - Zero-code extensibility for new artifact types
-  - Generic reprocess endpoint supporting all current and future artifact types
+- **📁 Onboarding File Organization**: Complete restructuring of onboarding components for better maintainability
+  - **MAJOR**: Renamed all onboarding screen files with hierarchical numbering system
+  - Organized welcome screen components into `0_Welcome_Components/` directory
+  - Updated all import statements across onboarding system
+  - Improved file sorting and navigation in development environment
+  - Maintained all existing functionality while improving organization
 
-- **🎨 Standardized AI Processing UI**: Consistent user experience across all artifact types
-  - Shared `ArtifactSuggestions` component across all modals (LinkedIn posts, profiles, emails, voice memos, meetings, loops)
-  - Universal processing status indicators (pending → processing → completed)
-  - RE-ANALYZE buttons for manual reprocessing
-  - Expandable suggestions sections with confidence scores
-  - Apply/reject actions with reasoning display
+- **🎨 Onboarding UI Enhancements**: Refined user experience across multiple screens
+  - **ContactConfirmationScreen**: Redesigned contact card with larger avatar and voice memo insights
+  - **ContextDiscoveryScreen**: Simplified interface with progressive visual flow
+  - Fixed hydration errors from nested HTML elements
+  - Enhanced typography and spacing for better readability
 
-- **📚 Enhanced Documentation**: Comprehensive architectural documentation
-  - New `ARCHITECTURE.md` with detailed centralized processing documentation
-  - Updated `README.md` with centralized architecture overview
-  - Developer guide for adding new artifact types
-  - Configuration management patterns
+- **📊 Database Schema Accuracy**: Corrected schema documentation to match production database
+  - **MAJOR**: Completely rewrote `database/schema.sql` to reflect actual current production structure
+  - Fixed column name discrepancies and added missing tables
+  - Corrected AI processing status values and enum definitions
+  - Added missing tables for recent features
 
-### ✅ Migration & Code Quality Improvements
-- **Clean Migration History**: Consolidated 7 LinkedIn development migrations → 1 production-ready migration
-- **TypeScript Fixes**: Resolved LinkedIn service compilation errors
-- **Code Consolidation**: Eliminated duplicate code patterns and standardized processing logic
-- **Professional Documentation**: Production-ready migration structure
-
-### ✅ v0.9.0 Previous Features
-- **Email AI Processing System** with automatic processing triggers and edge function integration
-- **Database Security Hardening** with complete removal of hardcoded credentials
-- **Migration Consolidation** from 9 iterative migrations to 1 clean production migration
-
-### ✅ v0.8.0 Previous Features
-- **Automated Google Calendar Synchronization System**
-- **Nightly calendar sync** (3 AM UTC) for all users
-- **Email Management System** for multiple emails per contact
-- **Meeting Intelligence UI Suite** with AI processing
+### ✅ File Organization Benefits Achieved
+- **For Developers**: Clear hierarchical file naming, improved navigation, easier maintenance
+- **For File Systems**: Proper sorting with section and subsection numbering
+- **For Onboarding**: Logical flow visualization through file names
+- **For New Team Members**: Instant understanding of screen order and purpose
 
 ### 🧹 Development Environment Status
-- **Main Branch**: Updated with all v0.10.0 centralized architecture features
-- **Migration History**: Further consolidated (removed 7 LinkedIn iterations, added 1 clean migration)
-- **Architecture**: Centralized, extensible artifact processing system operational
-- **Code Quality**: TypeScript validated, LinkedIn service errors resolved
-- **Database**: Unified AI processing system with configuration-driven validation
-- **UI Components**: Standardized across all artifact types
+- **Main Branch**: Updated with all v0.11.0 voice memo intelligence and file organization features
+- **File Structure**: Hierarchically organized onboarding components with clear naming
+- **Voice Processing**: Enhanced relationship intelligence extraction operational
+- **Database Schema**: Accurate documentation matching production structure
+- **Build System**: All import paths updated and TypeScript compilation successful
 
-### 🚀 Architectural Benefits Achieved
-- **For Developers**: Single implementation for all artifact types, reduced code duplication, easier maintenance
-- **For Users**: Consistent experience across all artifact types, reliable processing, feature parity
-- **For Product**: Rapid prototyping of new intelligence sources, A/B testing capabilities, unlimited scalability
+### 🚀 Voice Memo Intelligence Benefits
+- **Enhanced Relationship Context**: AI-generated relationship summaries for better networking insights
+- **Improved User Experience**: Visual display of relationship intelligence in onboarding
+- **Corrected Processing Logic**: Proper detection of profile enhancement memos
+- **Consistent AI Models**: Claude integration across all artifact processing
 
 ### 📋 Next Development Priorities
-With the centralized architecture foundation complete, next development can focus on:
-1. **New Artifact Types**: Text messages, calendar events, social media (all automatically supported)
-2. **Enhanced Intelligence**: Advanced AI processing with configuration-driven features
-3. **User Experience**: Daily driver dashboard leveraging unified suggestion system
-4. **Scale**: Additional relationship intelligence sources with minimal development effort
+With the enhanced voice memo intelligence and organized file structure:
+1. **Advanced Relationship Intelligence**: Deeper context extraction from all artifact types
+2. **Enhanced Onboarding Experience**: Leverage improved file organization for rapid iteration
+3. **Voice Memo Features**: Expand relationship intelligence across all voice memo types
+4. **Database Optimization**: Leverage accurate schema documentation for performance improvements
 
 ### 📊 Technical Metrics
-- **Database Migrations**: 22 clean migrations (centralized architecture migration added)
-- **Edge Functions**: Enhanced `parse-artifact` with dynamic type support
-- **Centralized Systems**: 1 unified trigger, 1 shared UI component, 1 configuration table
-- **Supported Artifact Types**: 5 current types + unlimited future types via configuration
-- **API Routes**: Enhanced reprocess endpoint with generic type support
-- **Components**: Standardized AI processing UI across all 7+ artifact modals
+- **Onboarding Files**: 12 screens renamed with hierarchical numbering system
+- **Import Statements**: 12+ import paths updated across onboarding system
+- **Voice Processing**: Enhanced relationship summary generation for profile enhancement memos
+- **Database Tables**: 8+ missing tables added to schema documentation
+- **Schema Accuracy**: 50+ column name and type discrepancies corrected
 
-**Development environment is now architecturally advanced, centralized, and ready for unlimited relationship intelligence expansion!**
+**Development environment is now organized, voice-intelligent, and ready for advanced relationship intelligence expansion!**
 
 **Automated Google Calendar Synchronization System**
 
@@ -3587,21 +3575,25 @@ src/app/api/
 
 ### 🧩 **Component Architecture**
 
-#### **Onboarding Flow Components** ✨ NEW
+#### **Onboarding Flow Components** ✨ UPDATED (July 2025)
 ```
 src/components/features/onboarding/
-├── WelcomeScreen.tsx          # Introduction and feature overview
-├── ChallengesScreen.tsx       # Voice memo for networking challenges
-├── RecognitionScreen.tsx      # Acknowledgment screen
-├── BridgeScreen.tsx           # Transition to goal setting
-├── GoalsScreen.tsx            # Professional goal setting
-├── LinkedInScreen.tsx         # LinkedIn profile connection
-├── ProcessingScreen.tsx       # AI analysis feedback
-├── ProfileScreen.tsx          # Profile review and customization
-├── CompleteScreen.tsx         # Celebration and next steps
+├── 0_Welcome.tsx              # Introduction and feature overview
+├── 1_Challenges_1.0_Share.tsx # Voice memo for networking challenges
+├── 1_Challenges_1.1_Acknowledge.tsx # Challenge acknowledgment screen
+├── 1_Challenges_1.2_Bridge.tsx # Transition to goal setting
+├── 2_Goals_2.0_Share.tsx      # Professional goal setting
+├── 3_Contacts_3.0_Import.tsx  # Contact import screen
+├── 3_Contacts_3.1_Confirm.tsx # Contact confirmation screen
+├── 3_Contacts_3.2_Discover.tsx # Context discovery screen
+├── 4_Profile_4.0_Import.tsx   # LinkedIn profile connection
+├── 4_Profile_4.1_Processing.tsx # AI analysis feedback
+├── 4_Profile_4.2_Review.tsx   # Profile review and customization
+├── 4_Profile_4.3_Complete.tsx # Celebration and next steps
 ├── OnboardingVoiceRecorder.tsx # Specialized voice recorder for onboarding
-└── welcome/                   # ✨ Enhanced Welcome Screen Architecture (June 2025)
-    ├── EnhancedWelcomeScreen.tsx     # Main orchestration component
+├── OnboardingTour.tsx         # Guided tour component
+├── StageProgress.tsx          # Progress tracking component
+└── 0_Welcome_Components/      # ✨ Enhanced Welcome Screen Architecture (Reorganized July 2025)
     ├── TypewriterText.tsx            # Animated typewriter effect
     ├── NetworkFormationBackground.tsx # Animated network visualization
     ├── PreviewCardsContainer.tsx     # Card sequence management

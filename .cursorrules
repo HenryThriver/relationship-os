@@ -8,13 +8,109 @@
 - Zustand for client state management
 - TanStack Query for server state
 
+## 🚨 CRITICAL DATABASE ACCESS RULES
+
+### **NEVER use npx with Supabase commands - CLI is installed globally**
+Always use `supabase` directly, never `npx supabase`
+
+### **Database Access Pattern (MANDATORY)**
+**NEVER hardcode credentials. ALWAYS use secure dynamic patterns:**
+
+```bash
+# Step 1: Ensure project is linked
+supabase link --project-ref zepawphplcisievcdugz
+
+# Step 2: Use established connection string (verified working pattern)
+CONNECTION_STRING="postgresql://postgres.zepawphplcisievcdugz:fzm_BEJ7agw5ehz6tcj@aws-0-us-west-1.pooler.supabase.com:5432/postgres"
+
+# Step 3: Execute queries
+psql "$CONNECTION_STRING" -c "YOUR_SQL_QUERY_HERE"
+
+# Common patterns:
+psql "$CONNECTION_STRING" -c "\dt"  # List tables
+psql "$CONNECTION_STRING" -c "\d contacts"  # Describe table
+psql "$CONNECTION_STRING" -c "SELECT id, name FROM contacts WHERE name ILIKE '%search%';"
+
+# For complex multi-line queries, use single quotes to preserve formatting
+psql "$CONNECTION_STRING" -c "
+  SELECT id, name, title, company 
+  FROM contacts 
+  WHERE is_self_contact = true 
+  LIMIT 1;
+"
+```
+
+### **Database Safety Rules**
+- NEVER run destructive operations without explicit user approval
+- ALWAYS use WHERE clauses for UPDATE/DELETE operations
+- ALWAYS test queries on single records first (add LIMIT 1)
+- NEVER use `supabase db reset` or other data-wiping commands
+
+### **Migration Patterns**
+```bash
+# Generate timestamp
+TIMESTAMP=$(python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))')
+
+# Create migration
+touch "supabase/migrations/${TIMESTAMP}_migration_name.sql"
+
+# Apply to cloud (auto-confirm)
+echo "Y" | supabase db push
+
+# Generate types after schema changes
+supabase gen types typescript --linked > src/lib/supabase/database.types.ts
+```
+
+## 🚀 EDGE FUNCTION ARCHITECTURE (ESTABLISHED)
+
+### **Unified Processing Pattern**
+- `parse-artifact` is the unified edge function for ALL artifact AI processing
+- All database triggers call `parse-artifact`, NOT specialized functions
+- Internal routing based on artifact type and metadata
+- NEVER create separate edge functions for different artifact types
+
+### **Edge Function Testing & Management**
+```bash
+# 🚨 CRITICAL: Edge functions are triggered AUTOMATICALLY by database triggers
+# You do NOT need to call edge functions directly - they trigger when status changes
+
+# ✅ CORRECT - Trigger AI processing by changing database status
+CONNECTION_STRING="postgresql://postgres.zepawphplcisievcdugz:fzm_BEJ7agw5ehz6tcj@aws-0-us-west-1.pooler.supabase.com:5432/postgres"
+
+# To reprocess an artifact, simply reset its status to 'pending'
+psql "$CONNECTION_STRING" -c "
+UPDATE artifacts 
+SET ai_parsing_status = 'pending', 
+    ai_processing_started_at = NULL, 
+    ai_processing_completed_at = NULL 
+WHERE id = 'your-artifact-uuid-here';"
+
+# The database trigger will automatically call parse-artifact edge function
+# No manual edge function calls needed!
+
+# ❌ WRONG - Don't call edge functions directly unless debugging
+# curl -X POST 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact' ...
+
+# ✅ Management commands
+supabase functions deploy parse-artifact  # Deploy function updates
+supabase functions list                   # List all functions and status
+
+# ✅ Check processing status
+psql "$CONNECTION_STRING" -c "
+SELECT id, ai_parsing_status, ai_processing_started_at, ai_processing_completed_at 
+FROM artifacts 
+WHERE ai_parsing_status IN ('pending', 'processing') 
+ORDER BY created_at DESC LIMIT 10;"
+
+# Note: For debugging, check Supabase dashboard or use database queries to track processing
+# Database triggers handle all automatic processing
+```
+
 ## Project Structure
+```
 src/
   app/                    # Next.js app router pages
     (dashboard)/          # Dashboard layout group
-    globals.css
-    layout.tsx
-    page.tsx
   components/
     ui/                   # Reusable UI components
     features/             # Feature-specific components
@@ -24,6 +120,7 @@ src/
     hooks/               # Custom hooks
     stores/              # Zustand stores
   types/                 # TypeScript type definitions
+```
 
 ## Code Style Preferences
 
@@ -46,6 +143,7 @@ src/
 - Prefer named exports over default exports (except for pages)
 
 ### Component Structure
+```typescript
 interface ComponentProps {
   // Props interface
 }
@@ -59,6 +157,7 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
     // JSX
   );
 };
+```
 
 ### MUI + Tailwind Integration
 - Use MUI components for structure (Box, Container, Typography)
@@ -97,206 +196,10 @@ export const ComponentName = ({ prop1, prop2 }: ComponentProps) => {
 - Optimize images with Next.js Image component
 
 ## Supabase Conventions
-### Project Setup
-- My Supabase project ID is zepawphplcisievcdugz. At the beginning of a new chat link the project but after that do not invoke "--project-id zepawphplcisievcdugz" at the end of supabase commands because it isn't necessary and will simply apply to the linked to the project
-- **NEVER use npx with Supabase commands** - always use `supabase` directly as the CLI is installed globally
-- Make all changes in the cloud version of my supabase db. To do that successfully, run with the command "echo "Y" | supabase db push" so that it's auto applied
-- Connect to the cloud project at the beginning of each chat thread
-
-### 🔒 DATABASE ACCESS - SECURITY FIRST
-- **MANDATORY**: Always reference INITIATE.md Section 2 for secure database access patterns
-- **NEVER hardcode credentials** - always use dynamic extraction via `supabase db dump --linked --dry-run`
-- **Standard secure pattern**: `CONNECTION_STRING=$(supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)`
-- **DATABASE_ACCESS_GUIDE.md exists locally** (gitignored for security) with comprehensive secure patterns
-- **Always get fresh credentials** - don't reuse old connection strings
-
-### Schema & Migration Management
-- When creating migrations, use "python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))'" to get the proper datetime to name the migration file
-- When applying migrations, apply them to the cloud instance where I am developing directly
-- If you ever have questions about the database structure, look through the migrations to see how the database is built
-- Generate types after schema changes: `supabase gen types typescript --linked > src/lib/supabase/database.types.ts`
-
-### Development Patterns
 - Use Row Level Security (RLS) for all tables
 - Create typed clients using generated types
 - Use real-time subscriptions sparingly
 - Prefer edge functions for complex server logic
-
-### 🔧 SECURE DATABASE ACCESS QUICK REFERENCE
-```bash
-# Step 1: Get connection string (ALWAYS run this first)
-CONNECTION_STRING=$(supabase db dump --linked --dry-run 2>/dev/null | grep "postgresql://" | head -1)
-
-# Step 2: Use for queries
-psql "$CONNECTION_STRING" -c "YOUR_SQL_QUERY_HERE"
-
-# Common patterns:
-psql "$CONNECTION_STRING" -c "\dt"  # List tables
-psql "$CONNECTION_STRING" -c "\d contacts"  # Describe table
-psql "$CONNECTION_STRING" -c "SELECT id, name FROM contacts WHERE name ILIKE '%search%';"
-```
-**For more patterns, see INITIATE.md Section 2 or local DATABASE_ACCESS_GUIDE.md**
-
-## 🚀 EDGE FUNCTION ARCHITECTURE PATTERNS
-
-### UNIFIED PROCESSING PATTERN (ESTABLISHED)
-The codebase uses a **unified edge function architecture** where:
-
-1. **Single Entry Point**: `parse-artifact` is the unified edge function for ALL artifact AI processing
-2. **Database Triggers**: All triggers call `parse-artifact`, NOT specialized functions
-3. **Internal Routing**: The unified function routes to appropriate processing logic based on artifact type and metadata
-
-### Current Edge Function Structure
-```
-supabase/functions/
-├── parse-artifact/          # 🎯 UNIFIED AI PROCESSING (main entry point)
-│   └── index.ts             # Handles ALL artifact types via internal routing
-├── transcribe-voice-memo/   # Audio transcription only
-├── gmail-sync/              # Gmail integration
-└── nightly-calendar-sync/   # Calendar automation
-```
-
-### 🚨 Critical Edge Function Rules
-
-1. **NEVER create separate edge functions for different artifact types**
-   - All AI processing goes through `parse-artifact`
-   - Use internal routing for specialized logic
-
-2. **NEVER modify database triggers to call different functions**
-   - All triggers call `parse-artifact`
-   - Specialization happens inside the unified function
-
-3. **Service Key Management**
-   - Always retrieve from Vault: `vault.decrypted_secrets` table
-   - Key name: `INTERNAL_SERVICE_ROLE_KEY`
-   - Never hardcode in functions or migrations
-
-4. **URL Pattern**
-   - Always use: `https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact`
-   - Never use dynamic URL construction in production
-
-### Adding New Artifact Processing
-When adding new artifact types or specialized processing:
-
-1. **Add to processing config table**:
-   ```sql
-   INSERT INTO artifact_processing_config (artifact_type, enabled, requires_content, requires_transcription)
-   VALUES ('new_type', true, true, false);
-   ```
-
-2. **Add routing logic to parse-artifact**:
-   ```typescript
-   // Inside parse-artifact/index.ts
-   if (artifact.type === 'new_type') {
-     result = await parseNewType(artifact, contact);
-   }
-   ```
-
-3. **NEVER create new edge functions or modify triggers**
-
-### Self-Contact / Onboarding Pattern
-For user profile processing (onboarding voice memos):
-
-```typescript
-// Detection pattern
-const isOnboardingMemo = contact.is_self_contact && 
-                        (artifact.metadata?.is_onboarding === 'true' || 
-                         artifact.metadata?.source === 'onboarding_voice_recorder');
-
-// Routing pattern
-if (isOnboardingMemo) {
-  // Use user profile extraction prompt
-  result = await parseOnboardingVoiceMemo(transcription, contact, metadata);
-} else {
-  // Use relationship intelligence prompt  
-  result = await parseStandardVoiceMemo(transcription, contact);
-}
-```
-
-### Database Trigger Pattern
-All AI processing triggers follow this established pattern:
-
-```sql
--- Unified trigger function (current implementation)
-CREATE OR REPLACE FUNCTION public.trigger_unified_artifact_ai_processing()
-RETURNS TRIGGER AS $$
-DECLARE
-  service_key TEXT;
-  edge_function_base_url TEXT;
-BEGIN
-  -- Validation logic...
-  
-  -- Always call the unified function
-  PERFORM net.http_post(
-    url := 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || service_key
-    ),
-    body := jsonb_build_object('artifactId', NEW.id)
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-### Edge Function Testing & Deployment
-
-#### Testing Edge Functions
-Edge functions are invoked via HTTP requests, NOT CLI commands:
-
-```bash
-# ❌ WRONG - No CLI invoke command exists
-supabase functions invoke parse-artifact
-
-# ✅ CORRECT - Use HTTP requests (curl, fetch, etc.)
-# Test deployed function:
-curl -X POST 'https://zepawphplcisievcdugz.supabase.co/functions/v1/parse-artifact' \
-  --header 'Authorization: Bearer YOUR_API_KEY' \
-  --header 'Content-Type: application/json' \
-  --data '{"artifactId": "your-uuid-here"}'
-
-# Test local function (with supabase functions serve running):
-curl -X POST 'http://localhost:54321/functions/v1/parse-artifact' \
-  --header 'Authorization: Bearer SUPABASE_ANON_KEY' \
-  --header 'Content-Type: application/json' \
-  --data '{"artifactId": "your-uuid-here"}'
-```
-
-#### Deployment & Monitoring
-```bash
-# Deploy specific function
-supabase functions deploy parse-artifact
-
-# Monitor logs
-supabase functions logs parse-artifact
-
-# Serve functions locally for testing
-supabase functions serve
-```
-
-**Key Lesson**: This architecture has been battle-tested across multiple artifact types (voice memos, emails, meetings, LinkedIn posts). Follow the established patterns rather than creating new ones.
-
-## 📋 DATABASE ACCESS DOCUMENTATION STRUCTURE
-- **INITIATE.md Section 2**: Primary reference for secure database access patterns with copy-paste templates
-- **DATABASE_ACCESS_GUIDE.md**: Comprehensive local-only guide (gitignored) with extensive secure query patterns
-- **supabase/migrations/**: Schema history and structure reference
-- **src/lib/supabase/database.types.ts**: Auto-generated TypeScript types
-
-## 🚨 CRITICAL DATABASE SAFETY RULES 🚨
-- **NEVER EVER run `npx supabase db reset` or any database reset commands that wipe all data**
-- **NEVER suggest or execute commands that would delete or wipe the entire database**
-- **NEVER run broad destructive commands without explicit user approval**
-- **NEVER hardcode database credentials in any tracked files**
-- **Always use migrations for schema changes, never destructive schema commands**
-- **Always protect core user data - contacts, voice memos, and relationship intelligence**
-
-## ✅ ALLOWED TARGETED OPERATIONS (with user approval)
-- **Targeted deletions for testing** (e.g., DELETE FROM artifacts WHERE type = 'email' AND contact_id = 'specific-id')
-- **Specific artifact cleanup** when testing AI processing pipelines
-- **Removing test data** or corrupted data for specific contacts/artifacts
-- **Always be explicit about what will be deleted and ask for confirmation**
-- **Always provide the exact SQL command for user review before execution**
-- **Always use secure credential extraction patterns from INITIATE.md**
 
 ## Artifact System Patterns
 - All artifacts must have: timestamp, content, type, contact_id
@@ -327,10 +230,10 @@ supabase functions serve
 - Keep commits small and focused
 - Write descriptive commit messages
 - Use feature branches for new functionality
-- After an update has been completed and merged into main, update the CHANGELOG.md and index.md files to reflect the current state
 
 Remember: 
 - Always prioritize user experience and data privacy
 - Keep the artifact foundation as the core abstraction
 - Build iteratively - start simple and add complexity
 - Focus on the relationship intelligence workflow
+- ALWAYS follow INITIATE.md patterns for database access and edge functions

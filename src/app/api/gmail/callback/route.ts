@@ -13,13 +13,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Handle OAuth errors
     if (error) {
       console.error('Gmail OAuth error:', error);
-      const errorUrl = new URL('/dashboard/settings/gmail', request.nextUrl.origin);
+      
+      // Redirect based on source
+      const isFromOnboarding = state === 'onboarding';
+      const errorUrl = new URL(
+        isFromOnboarding ? '/onboarding' : '/dashboard/settings/gmail', 
+        request.nextUrl.origin
+      );
       errorUrl.searchParams.set('error', error);
       return NextResponse.redirect(errorUrl);
     }
 
     if (!code) {
-      const errorUrl = new URL('/dashboard/settings/gmail', request.nextUrl.origin);
+      // Redirect based on source
+      const isFromOnboarding = state === 'onboarding';
+      const errorUrl = new URL(
+        isFromOnboarding ? '/onboarding' : '/dashboard/settings/gmail', 
+        request.nextUrl.origin
+      );
       errorUrl.searchParams.set('error', 'No authorization code received');
       return NextResponse.redirect(errorUrl);
     }
@@ -67,8 +78,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Get user's Gmail profile to verify connection
       const profile = await gmailService.getProfileServer(user.id);
 
-      // Redirect to success page
-      const successUrl = new URL('/dashboard/settings/gmail', request.nextUrl.origin);
+      // Redirect based on source
+      const isFromOnboarding = state === 'onboarding';
+      const successUrl = new URL(
+        isFromOnboarding ? '/onboarding' : '/dashboard/settings/gmail', 
+        request.nextUrl.origin
+      );
       successUrl.searchParams.set('success', 'Gmail connected successfully');
       successUrl.searchParams.set('email', profile.emailAddress);
       
@@ -76,14 +91,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError);
-      const errorUrl = new URL('/dashboard/settings/gmail', request.nextUrl.origin);
+      
+      // Redirect based on source
+      const isFromOnboarding = state === 'onboarding';
+      const errorUrl = new URL(
+        isFromOnboarding ? '/onboarding' : '/dashboard/settings/gmail', 
+        request.nextUrl.origin
+      );
       errorUrl.searchParams.set('error', 'Failed to connect Gmail account');
       return NextResponse.redirect(errorUrl);
     }
 
   } catch (error) {
     console.error('Gmail callback error:', error);
-    const errorUrl = new URL('/dashboard/settings/gmail', request.nextUrl.origin);
+    
+    // Get state for redirect
+    const { searchParams } = new URL(request.url);
+    const state = searchParams.get('state');
+    const isFromOnboarding = state === 'onboarding';
+    
+    const errorUrl = new URL(
+      isFromOnboarding ? '/onboarding' : '/dashboard/settings/gmail', 
+      request.nextUrl.origin
+    );
     errorUrl.searchParams.set('error', 'An unexpected error occurred');
     return NextResponse.redirect(errorUrl);
   }

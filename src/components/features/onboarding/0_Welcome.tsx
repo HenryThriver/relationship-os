@@ -4,11 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Button, useTheme, useMediaQuery } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
-import { NetworkFormationBackground } from './NetworkFormationBackground';
-import { TypewriterText } from './TypewriterText';
-import { PreviewCardsContainer } from './PreviewCardsContainer';
-import { GoalCelebrationCard } from './cards/GoalCelebrationCard';
-import { animateIn, sleep } from './utils/animationSequence';
+import { NetworkFormationBackground } from './0_Welcome_Components/NetworkFormationBackground';
+import { TypewriterText } from './0_Welcome_Components/TypewriterText';
+import { PreviewCardsContainer } from './0_Welcome_Components/PreviewCardsContainer';
+import { GoalCelebrationCard } from './0_Welcome_Components/cards/GoalCelebrationCard';
+import { animateIn, sleep } from './0_Welcome_Components/utils/animationSequence';
 
 export const EnhancedWelcomeScreen: React.FC = () => {
   const router = useRouter();

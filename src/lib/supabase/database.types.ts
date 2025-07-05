@@ -359,6 +359,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          challenge_feature_mappings: Json | null
           company: string | null
           connection_cadence_days: number | null
           created_at: string
@@ -389,6 +390,7 @@ export type Database = {
           primary_goal: string | null
           professional_context: Json | null
           profile_completion_score: number | null
+          profile_picture: string | null
           relationship_score: number | null
           title: string | null
           updated_at: string
@@ -396,6 +398,7 @@ export type Database = {
           ways_to_help_others: string[] | null
         }
         Insert: {
+          challenge_feature_mappings?: Json | null
           company?: string | null
           connection_cadence_days?: number | null
           created_at?: string
@@ -426,6 +429,7 @@ export type Database = {
           primary_goal?: string | null
           professional_context?: Json | null
           profile_completion_score?: number | null
+          profile_picture?: string | null
           relationship_score?: number | null
           title?: string | null
           updated_at?: string
@@ -433,6 +437,7 @@ export type Database = {
           ways_to_help_others?: string[] | null
         }
         Update: {
+          challenge_feature_mappings?: Json | null
           company?: string | null
           connection_cadence_days?: number | null
           created_at?: string
@@ -463,6 +468,7 @@ export type Database = {
           primary_goal?: string | null
           professional_context?: Json | null
           profile_completion_score?: number | null
+          profile_picture?: string | null
           relationship_score?: number | null
           title?: string | null
           updated_at?: string
