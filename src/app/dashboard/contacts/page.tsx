@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useContacts } from '@/lib/hooks/useContacts'; // Assuming this is the correct path
 import { BulkEmailActions } from '@/components/features/emails/BulkEmailActions';
 import type { Contact } from '@/types'; // Assuming this is the correct path for the Contact type
+import { LinkedInProfileData } from '@/types/linkedin';
 
 export default function ContactsPage(): React.JSX.Element {
   console.log('[src/app/dashboard/contacts/page.tsx] Rendering');
@@ -126,7 +127,7 @@ export default function ContactsPage(): React.JSX.Element {
                   }}
                 >
                   <ListItemAvatar>
-                    <Avatar src={(contact.linkedin_data as any)?.profilePicture || undefined} >
+                    <Avatar src={(contact.linkedin_data as LinkedInProfileData)?.profilePicture || undefined} >
                       {contact.name ? contact.name.charAt(0).toUpperCase() : 'C'}
                     </Avatar>
                   </ListItemAvatar>

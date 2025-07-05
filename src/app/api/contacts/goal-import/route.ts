@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { LinkedInPostsService } from '@/lib/services/linkedinPostsService';
-import type { RapidLinkedInProfile } from '@/types/rapidapi';
+import type { RapidLinkedInProfile, LinkedInImportApiResponse } from '@/types/rapidapi';
+import { LinkedInProfileData } from '@/types/linkedin';
 
 interface GoalContactRequest {
   linkedin_urls: string[];
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
           contactTitle = existingContact.title;
           
           // Extract profile picture and headline from existing linkedin_data
-          const linkedinData = existingContact.linkedin_data as any;
+          const linkedinData = existingContact.linkedin_data as LinkedInProfileData;
           profilePicture = linkedinData?.profilePicture || linkedinData?.profile_picture;
           headline = linkedinData?.headline;
           
