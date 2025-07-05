@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Divider } from '@mui/material';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'; // Example icon
 
 // Corrected Props Interface
 export interface ConversationStartersProps {

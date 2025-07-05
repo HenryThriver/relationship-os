@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Chip, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, Paper, List, ListItem, ListItemText, CircularProgress, Alert } from '@mui/material';
 import { useNextConnection } from '@/lib/hooks/useNextConnection';
 import type { ConnectionAgendaItem } from '@/types'; // Assuming ConnectionAgendaItem is the type for items in ConnectionAgenda
 

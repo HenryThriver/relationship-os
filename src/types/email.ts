@@ -1,4 +1,3 @@
-import type { Database } from '@/lib/supabase/types_db';
 import type { BaseArtifact } from './artifact';
 
 // Gmail API Response Types

@@ -45,7 +45,6 @@ export const ContactHeader: React.FC<ContactHeaderProps> = ({
   profilePhotoUrl,
   relationshipScore,
   personalContext,
-  connectDate,
   connectCadence,
   contactId,
   suggestionPriority = 'medium',

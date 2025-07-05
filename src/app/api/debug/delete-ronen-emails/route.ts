@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export async function POST(): Promise<NextResponse> {
   try {
     const supabase = await createClient();
-    
     // Delete email artifacts for Ronen to test fresh email processing
     const { data: deletedEmails, error: deleteError } = await supabase
       .from('artifacts')
@@ -21,10 +20,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    const emailsToDelete = deletedEmails?.filter((email: { metadata: { from?: { email?: string } } }) => 
+      email.metadata?.from?.email === 'ronen@agentstation.ai'
+    ).map((email: { id: string }) => email.id) || [];
+
     return NextResponse.json({
       success: true,
       message: `Deleted ${deletedEmails?.length || 0} email artifacts for Ronen`,
-      deletedIds: deletedEmails?.map(email => email.id) || []
+      deletedIds: emailsToDelete
     });
 
   } catch (error: any) {

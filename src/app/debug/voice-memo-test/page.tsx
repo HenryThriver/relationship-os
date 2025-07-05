@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Typography, Button, Card, CardContent, Alert, Chip, Divider } from '@mui/material';
-import { Refresh, Psychology, SmartToy } from '@mui/icons-material';
+import { Refresh, SmartToy } from '@mui/icons-material';
 
 interface VoiceMemo {
   id: string;

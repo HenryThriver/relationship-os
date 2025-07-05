@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Contact } from '@/types';
-import { Card, CardContent, Typography, CardActions, Button, Box } from '@mui/material';
+import { Card, CardContent, Typography, CardActions, Button } from '@mui/material';
 import { useContacts } from '@/lib/hooks/useContacts';
 
 interface ContactCardProps {

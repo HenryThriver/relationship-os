@@ -22,13 +22,12 @@ import CompleteScreen from '@/components/features/onboarding/4_Profile_4.3_Compl
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { 
-    state, 
-    isLoading, 
-    currentScreenName, 
-    isComplete,
-    nextScreen,
-    previousScreen
+  const {
+    state: onboardingState,
+    updateState,
+    completeScreen,
+    // nextScreen,
+    // previousScreen,
   } = useOnboardingState();
 
   // Handle OAuth success/error messages
@@ -56,30 +55,12 @@ function OnboardingContent() {
 
   // Redirect if onboarding is complete
   useEffect(() => {
-    if (isComplete) {
+    if (completeScreen) {
       router.push('/dashboard');
     }
-  }, [isComplete, router]);
+  }, [completeScreen, router]);
 
-  if (isLoading) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        minHeight: '60vh',
-        gap: 2
-      }}>
-        <CircularProgress />
-        <Typography variant="body1" color="text.secondary">
-          Loading your onboarding progress...
-        </Typography>
-      </Box>
-    );
-  }
-
-  if (!state) {
+  if (onboardingState === null) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -101,7 +82,7 @@ function OnboardingContent() {
 
   // Render the appropriate screen based on current state
   const renderCurrentScreen = () => {
-    switch (currentScreenName) {
+    switch (onboardingState.currentScreenName) {
       case 'welcome':
         return <EnhancedWelcomeScreen />;
       case 'challenges':
@@ -133,7 +114,7 @@ function OnboardingContent() {
               Unknown Screen
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Screen "{currentScreenName}" not found. Please contact support.
+              Screen "{onboardingState.currentScreenName}" not found. Please contact support.
             </Typography>
           </Box>
         );

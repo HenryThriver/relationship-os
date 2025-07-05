@@ -1,9 +1,9 @@
 import type { ArtifactTimelineConfig } from '@/types/timeline';
 import type { ArtifactType } from '@/types/artifact'; // The main ArtifactType
 import {
-  FiFileText, FiMic, FiUsers, FiMail, FiLink, FiClipboard, FiTarget, FiRefreshCw, FiBell, FiBriefcase, FiCheckCircle, FiGift, FiHelpCircle, FiMessageSquare, FiThumbsUp, FiZap, FiVideo
+  FiFileText, FiMic, FiMail, FiLink, FiClipboard, FiTarget, FiVideo
 } from 'react-icons/fi';
-import { LoopArtifactContent, LoopStatus } from '@/types/artifact'; // Added LoopArtifactContent and LoopStatus
+import { LoopArtifactContent } from '@/types/artifact'; // Added LoopArtifactContent
 import { Loop as LoopIcon } from '@mui/icons-material'; // Added for new loop config
 
 // Helper to truncate text for previews

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Container, Typography, IconButton } from '@mui/material';
+import { Box, IconButton } from '@mui/material';
 import { ArrowBack, Close } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';

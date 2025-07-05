@@ -10,6 +10,36 @@ import type {
   ProfileCompletionMetrics
 } from '@/types/userProfile';
 import type { Contact } from '@/types/contact';
+import { Json } from '@/lib/supabase/types_db';
+
+// Database row type for contacts table that can be cast to UserProfile
+type DatabaseContact = Contact & {
+  challenge_feature_mappings: Json;
+};
+
+// Helper function to safely cast Json to typed array
+const castChallengeMappings = (jsonData: Json | null): UserProfile['challenge_feature_mappings'] => {
+  if (!jsonData) return undefined;
+  
+  try {
+    if (Array.isArray(jsonData)) {
+      return jsonData as UserProfile['challenge_feature_mappings'];
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Helper function to cast database contact to UserProfile
+const castToUserProfile = (contact: DatabaseContact): UserProfile => {
+  const userProfile = contact as unknown as UserProfile;
+  return {
+    ...userProfile,
+    challenge_feature_mappings: castChallengeMappings(contact.challenge_feature_mappings),
+    is_self_contact: true,
+  };
+};
 
 export const useUserProfile = () => {
   const { user } = useAuth();
@@ -56,7 +86,7 @@ export const useUserProfile = () => {
         .single();
 
       if (error) throw error;
-      return data as UserProfile;
+      return castToUserProfile(data);
     },
     onSuccess: (updatedProfile) => {
       queryClient.setQueryData(['userProfile', user?.id], updatedProfile);
@@ -84,7 +114,7 @@ export const useUserProfile = () => {
         .single();
 
       if (error) throw error;
-      return data as UserProfile;
+      return castToUserProfile(data);
     },
     onSuccess: (updatedProfile) => {
       queryClient.setQueryData(['userProfile', user?.id], updatedProfile);
@@ -121,7 +151,7 @@ export const useUserProfile = () => {
         });
 
         // Update professional context with LinkedIn insights
-        const currentProfessionalContext = (profile.professional_context as any) || {};
+        const currentProfessionalContext = (profile.professional_context as Record<string, unknown>) || {};
         const professionalContext = {
           ...currentProfessionalContext,
           expertise_areas: result.analysis.expertise_areas,

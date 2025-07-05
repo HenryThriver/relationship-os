@@ -1,6 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Button, Chip } from '@mui/material';
-// import { ArtifactType } from '@/app/dashboard/contacts/[id]/page'; // Removed problematic import
+import { Box, Typography, Paper, List, ListItem, ListItemText, Button } from '@mui/material';
 
 // This will evolve to LoopStatus and more detailed item structure
 export type ActionItemStatus = 'queued' | 'active' | 'pending' | 'closed' | 'brainstorm'; 
@@ -15,22 +14,8 @@ interface ActionItem {
 interface ActionQueuesProps {
   pogs: ActionItem[];
   asks: ActionItem[];
-  onUpdateStatus?: (itemId: string, newStatus: ActionItemStatus, type: 'pog' | 'ask') => void;
   onBrainstormPogs?: () => void;
 }
-
-const getStatusChipColor = (status: ActionItemStatus): (
-    'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
-  ) => {
-  switch (status) {
-    case 'queued': return 'info';
-    case 'active': return 'primary';
-    case 'pending': return 'warning';
-    case 'closed': return 'success';
-    case 'brainstorm': return 'secondary'; // Added for consistency with HTML example for POGs
-    default: return 'default';
-  }
-};
 
 const ActionList: React.FC<{ 
   title: string; 
@@ -38,9 +23,8 @@ const ActionList: React.FC<{
   items: ActionItem[]; 
   itemTextColor?: string;
   type: 'pog' | 'ask'; 
-  onUpdateStatus?: ActionQueuesProps['onUpdateStatus'];
   cardStyle?: object;
-}> = ({ title, titleColor, items, itemTextColor, type, onUpdateStatus, cardStyle }) => (
+}> = ({ title, titleColor, items, itemTextColor, type, cardStyle }) => (
   <Paper 
     elevation={0}
     sx={{
@@ -62,13 +46,10 @@ const ActionList: React.FC<{
           <ListItem 
             key={item.id} 
             disableGutters
-            // Removed justifyContent, alignItems, and Chip
             >
             <ListItemText 
               primary={item.content} 
-              // Removed textDecoration and color logic based on status, as status chip is gone
             />
-            {/* Chip removed from here */}
           </ListItem>
         ))}
       </List>
@@ -79,7 +60,6 @@ const ActionList: React.FC<{
 export const ActionQueues: React.FC<ActionQueuesProps> = ({
   pogs = [], // Provide default empty arrays
   asks = [],
-  onUpdateStatus,
   onBrainstormPogs,
 }) => {
   const pogCardStyle = {
@@ -120,7 +100,6 @@ export const ActionQueues: React.FC<ActionQueuesProps> = ({
               title="Proposed Generosity" 
               items={pogs} 
               type="pog" 
-              onUpdateStatus={onUpdateStatus} 
               cardStyle={pogCardStyle} 
               titleColor="#15803d" /* green-700 */
               itemTextColor="#166534" /* green-800 */
@@ -139,7 +118,6 @@ export const ActionQueues: React.FC<ActionQueuesProps> = ({
               title="Proposed Asks" 
               items={asks} 
               type="ask" 
-              onUpdateStatus={onUpdateStatus} 
               cardStyle={askCardStyle} 
               titleColor="#c2410c" /* orange-700 */
               itemTextColor="#9a3412" /* orange-800 */

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { processLinkedInProfile } from '@/lib/services/linkedinService';
 import { LinkedInPostsService } from '@/lib/services/linkedinPostsService';
-import type { RapidLinkedInProfile, LinkedInImportApiResponse } from '@/types/rapidapi';
+import type { RapidLinkedInProfile } from '@/types/rapidapi';
 
 interface GoalContactRequest {
   linkedin_urls: string[];
@@ -211,7 +210,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
           contactTitle = newContact.title;
 
           // Create LinkedIn profile artifact for AI processing
-          const { data: artifact, error: artifactError } = await supabase
+          const { error: artifactError } = await supabase
             .from('artifacts')
             .insert({
               user_id: user.id,
@@ -458,7 +457,7 @@ function extractNameFromLinkedInUrl(url: string): string {
       // Handle URL encoding
       try {
         username = decodeURIComponent(username);
-      } catch (decodeError) {
+      } catch {
         console.warn('Failed to decode username, using as-is:', username);
       }
       

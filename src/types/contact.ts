@@ -1,6 +1,5 @@
 import type { Database } from '@/lib/supabase/types_db';
-import type { BaseArtifact, LinkedInArtifactContent } from './artifact'; // Assuming LinkedInArtifactContent is defined here
-import type { Json } from '@/lib/supabase/types_db'; // Import Json type
+import type { BaseArtifact } from './artifact';
 
 // ----- Professional Context ----- 
 export interface ProfessionalAchievementItem {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(): Promise<NextResponse> {
   try {
     const supabase = await createClient();
     
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       .limit(10);
 
     // Also get contact info to see if these are self-contact memos
-    const { data: contacts, error: contactError } = await supabase
+    const { data: contacts } = await supabase
       .from('contacts')
       .select('id, is_self_contact, name')
       .eq('user_id', user.id);

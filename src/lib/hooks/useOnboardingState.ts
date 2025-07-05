@@ -7,6 +7,7 @@ import type {
   OnboardingScreen,
   OnboardingFlowConfig
 } from '@/types/userProfile';
+import { Json } from '@/lib/supabase/types_db';
 
 // Onboarding flow configuration
 const ONBOARDING_CONFIG: OnboardingFlowConfig = {
@@ -28,6 +29,62 @@ const ONBOARDING_CONFIG: OnboardingFlowConfig = {
   required_screens: ['welcome', 'goals', 'contacts', 'contact_confirmation', 'context_discovery', 'complete'],
   optional_screens: ['challenges', 'recognition', 'bridge', 'linkedin', 'processing', 'profile']
 };
+
+// Database row type matching Supabase schema
+type DatabaseOnboardingState = {
+  id: string;
+  user_id: string;
+  current_screen: number | null;
+  completed_screens: number[] | null;
+  started_at: string | null;
+  last_activity_at: string | null;
+  challenge_voice_memo_id: string | null;
+  goal_voice_memo_id: string | null;
+  profile_enhancement_voice_memo_id: string | null;
+  goal_contact_urls: string[] | null;
+  imported_goal_contacts: Json | null;
+  linkedin_contacts_added: number | null;
+  linkedin_connected: boolean | null;
+  gmail_connected: boolean | null;
+  calendar_connected: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+// Helper function to safely cast Json to typed array
+const castImportedGoalContacts = (jsonData: Json | null): OnboardingState['imported_goal_contacts'] => {
+  if (!jsonData) return null;
+  
+  try {
+    if (Array.isArray(jsonData)) {
+      return jsonData as OnboardingState['imported_goal_contacts'];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Helper function to cast database row to OnboardingState type
+const castToOnboardingState = (item: DatabaseOnboardingState): OnboardingState => ({
+  id: item.id,
+  user_id: item.user_id,
+  current_screen: item.current_screen,
+  completed_screens: item.completed_screens,
+  started_at: item.started_at,
+  last_activity_at: item.last_activity_at,
+  challenge_voice_memo_id: item.challenge_voice_memo_id,
+  goal_voice_memo_id: item.goal_voice_memo_id,
+  profile_enhancement_voice_memo_id: item.profile_enhancement_voice_memo_id,
+  goal_contact_urls: item.goal_contact_urls,
+  imported_goal_contacts: castImportedGoalContacts(item.imported_goal_contacts),
+  linkedin_contacts_added: item.linkedin_contacts_added,
+  linkedin_connected: item.linkedin_connected,
+  gmail_connected: item.gmail_connected,
+  calendar_connected: item.calendar_connected,
+  created_at: item.created_at,
+  updated_at: item.updated_at,
+});
 
 export const useOnboardingState = () => {
   const { user } = useAuth();
@@ -71,7 +128,7 @@ export const useOnboardingState = () => {
         throw error;
       }
 
-      return data;
+      return castToOnboardingState(data);
     },
     enabled: !!user,
   });
@@ -94,7 +151,7 @@ export const useOnboardingState = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      return castToOnboardingState(data);
     },
     onSuccess: (updatedState) => {
       queryClient.setQueryData(['onboardingState', user?.id], updatedState);
@@ -125,7 +182,7 @@ export const useOnboardingState = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      return castToOnboardingState(data);
     },
     onSuccess: (updatedState) => {
       queryClient.setQueryData(['onboardingState', user?.id], updatedState);
@@ -153,7 +210,7 @@ export const useOnboardingState = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      return castToOnboardingState(data);
     },
     onSuccess: (updatedState) => {
       queryClient.setQueryData(['onboardingState', user?.id], updatedState);
@@ -181,7 +238,7 @@ export const useOnboardingState = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      return castToOnboardingState(data);
     },
     onSuccess: (updatedState) => {
       queryClient.setQueryData(['onboardingState', user?.id], updatedState);
