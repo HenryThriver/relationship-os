@@ -53,9 +53,7 @@ const VoiceMemoInsight: React.FC<VoiceMemoInsightProps> = ({ contact }) => {
   const { data: voiceMemoInsight } = useQuery({
     queryKey: ['voiceMemoInsight', contact.id],
     queryFn: async () => {
-      console.log('🔍 === ONBOARDING VOICE MEMO QUERY ===');
-      console.log('Contact Name:', contact.name);
-      console.log('Contact ID:', contact.id);
+          // Query for voice memo insights
       
       // Find by contact_id and profile_enhancement memo type
       const { data, error } = await supabase
@@ -71,12 +69,9 @@ const VoiceMemoInsight: React.FC<VoiceMemoInsightProps> = ({ contact }) => {
         console.error('Error querying voice memo:', error);
       }
 
-      console.log('💬 Voice memo query result:', { data, error });
-      console.log('Has data:', !!data && data.length > 0);
+      // Return the voice memo if found
       if (data && data.length > 0) {
-        console.log('Transcription exists:', !!data[0].transcription);
-        console.log('AI processing completed:', !!data[0].ai_processing_completed_at);
-        console.log('Metadata:', data[0].metadata);
+        return data[0];
       }
       
       if (error || !data || data.length === 0) return null;
@@ -92,11 +87,7 @@ const VoiceMemoInsight: React.FC<VoiceMemoInsightProps> = ({ contact }) => {
   const fallbackInsight = voiceMemoInsight?.transcription || 
                           (typeof voiceMemoInsight?.content === 'string' ? voiceMemoInsight.content : null);
 
-  console.log('🎯 === VOICE INSIGHT DISPLAY LOGIC ===');
-  console.log('Has relationship summary:', !!relationshipSummary);
-  console.log('Relationship summary:', relationshipSummary);
-  console.log('Has fallback insight:', !!fallbackInsight);
-  console.log('AI processing completed:', !!voiceMemoInsight?.ai_processing_completed_at);
+      // Determine which insight to display
 
   // Show relationship summary if available, otherwise show processing status or fallback
   if (relationshipSummary) {

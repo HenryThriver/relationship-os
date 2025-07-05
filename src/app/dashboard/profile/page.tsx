@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Box, 
   Container, 
@@ -80,88 +80,42 @@ const GoalContactCard: React.FC<GoalContactCardProps> = ({ contact }) => {
   const { data: voiceMemoInsight } = useQuery({
     queryKey: ['voiceMemoInsight', contact.id],
     queryFn: async () => {
-      console.log('🔍 === VOICE MEMO QUERY DEBUG ===');
-      console.log('Contact Name:', contact.name);
-      console.log('Contact ID:', contact.id);
-      console.log('Contact LinkedIn URL:', contact.linkedin_url);
-      
-      // Find by contact_id and profile_enhancement memo type
+      // Query for voice memo insights
       const { data, error } = await supabase
         .from('artifacts')
-        .select('id, content, metadata, transcription, contact_id, created_at')
+        .select('id, content, metadata, transcription, contact_id, created_at, ai_processing_completed_at')
         .eq('type', 'voice_memo')
         .eq('contact_id', contact.id)
         .contains('metadata', { memo_type: 'profile_enhancement' })
         .order('created_at', { ascending: false })
         .limit(1);
 
-      console.log('🎯 Query executed with filters:');
-      console.log('- type = voice_memo');
-      console.log('- contact_id =', contact.id);
-      console.log('- metadata contains { memo_type: "profile_enhancement" }');
-
-      if (error) {
-        console.error('❌ Query error:', error);
-      }
-
-      console.log('📊 Query result:');
-      console.log('- Data:', data);
-      console.log('- Data length:', data?.length || 0);
-      console.log('- Error:', error);
-
-      if (data && data.length > 0) {
-        const memo = data[0];
-        console.log('✅ Found voice memo:');
-        console.log('- Memo ID:', memo.id);
-        console.log('- Contact ID:', memo.contact_id);
-        console.log('- Metadata:', memo.metadata);
-        console.log('- Has transcription:', !!memo.transcription);
-        console.log('- Transcription length:', memo.transcription?.length || 0);
-        console.log('- Has content:', !!memo.content);
-        console.log('- Content length:', memo.content?.length || 0);
-        console.log('- Created:', memo.created_at);
-      } else {
-        console.log('❌ No voice memo found');
-        
-        // Let's also try a broader search to see what voice memos exist
-        console.log('🔍 Trying broader search for any voice memos...');
-        const { data: allMemos, error: allError } = await supabase
-          .from('artifacts')
-          .select('id, contact_id, metadata, created_at')
-          .eq('type', 'voice_memo')
-          .order('created_at', { ascending: false });
-          
-        console.log('📋 All voice memos in system:', allMemos);
-        if (allMemos) {
-          const recentMemo = allMemos.find(m => m.contact_id === contact.id);
-          console.log('🔍 Any memo for this contact ID:', recentMemo);
-        }
-      }
-      
-      console.log('🔚 === END VOICE MEMO QUERY DEBUG ===');
-      
       if (error || !data || data.length === 0) return null;
       return data[0];
     },
     enabled: !!contact.id
   });
 
-  // Extract insight from voice memo content or transcription
-  const voiceInsight = voiceMemoInsight?.transcription || 
-                      (typeof voiceMemoInsight?.content === 'string' ? voiceMemoInsight.content : null);
-
-  console.log('💬 === VOICE INSIGHT PROCESSING ===');
-  console.log('Contact:', contact.name);
-  console.log('voiceMemoInsight exists:', !!voiceMemoInsight);
-  console.log('voiceMemoInsight:', voiceMemoInsight);
-  console.log('Has transcription:', !!voiceMemoInsight?.transcription);
-  console.log('Transcription value:', voiceMemoInsight?.transcription);
-  console.log('Has content:', !!voiceMemoInsight?.content);
-  console.log('Content value:', voiceMemoInsight?.content);
-  console.log('Final voiceInsight:', voiceInsight);
-  console.log('voiceInsight length:', voiceInsight?.length || 0);
-  console.log('Will show insight:', !!voiceInsight);
-  console.log('💬 === END VOICE INSIGHT PROCESSING ===');
+  // Process voice memo insight for display
+  const voiceInsight = useMemo(() => {
+    if (!voiceMemoInsight) return null;
+    
+    // Get relationship summary from metadata
+    const relationshipSummary = (voiceMemoInsight.metadata as any)?.relationship_summary;
+    
+    // Get fallback insight from transcription or content
+    const fallbackInsight = voiceMemoInsight.transcription || 
+                           (typeof voiceMemoInsight.content === 'string' ? voiceMemoInsight.content : null);
+    
+    // Return appropriate insight
+    if (relationshipSummary) {
+      return relationshipSummary;
+    } else if (voiceMemoInsight.ai_processing_completed_at) {
+      return fallbackInsight;
+    } else {
+      return null; // Still processing
+    }
+  }, [voiceMemoInsight]);
 
   return (
     <Paper 
@@ -217,41 +171,6 @@ const GoalContactCard: React.FC<GoalContactCardProps> = ({ contact }) => {
               }}
             >
               💡 {voiceInsight}
-            </Box>
-          )}
-          
-          {/* Temporary Debug Info */}
-          {voiceMemoInsight && (
-            <Box 
-              sx={{ 
-                mt: 1, 
-                p: 1, 
-                backgroundColor: 'info.light', 
-                borderRadius: 1,
-                color: 'info.contrastText',
-                display: 'block',
-                fontSize: '0.75rem'
-              }}
-            >
-              🐛 DEBUG: Voice memo found - Type: {(voiceMemoInsight.metadata as unknown as { memo_type?: string })?.memo_type || 'unknown'}, 
-              Has transcription: {!!voiceMemoInsight.transcription ? 'Yes' : 'No'}, 
-              Content length: {voiceMemoInsight.content?.length || 0}
-            </Box>
-          )}
-          
-          {!voiceMemoInsight && (
-            <Box 
-              sx={{ 
-                mt: 1, 
-                p: 1, 
-                backgroundColor: 'warning.light', 
-                borderRadius: 1,
-                color: 'warning.contrastText',
-                display: 'block',
-                fontSize: '0.75rem'
-              }}
-            >
-              🐛 DEBUG: No voice memo found for this contact
             </Box>
           )}
           
