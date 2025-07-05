@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Box, CircularProgress, Typography, Alert, Snackbar } from '@mui/material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -19,7 +19,7 @@ import ProcessingScreen from '@/components/features/onboarding/4_Profile_4.1_Pro
 import ProfileScreen from '@/components/features/onboarding/4_Profile_4.2_Review';
 import CompleteScreen from '@/components/features/onboarding/4_Profile_4.3_Complete';
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { 
@@ -160,5 +160,27 @@ export default function OnboardingPage() {
         </Alert>
       </Snackbar>
     </Box>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '60vh',
+        gap: 2
+      }}>
+        <CircularProgress />
+        <Typography variant="body1" color="text.secondary">
+          Loading onboarding...
+        </Typography>
+      </Box>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 } 
