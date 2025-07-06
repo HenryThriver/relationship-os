@@ -11,6 +11,7 @@ import { useContacts } from '@/lib/hooks/useContacts';
 import { useArtifacts } from '@/lib/hooks/useArtifacts';
 import type { TablesInsert } from '@/lib/supabase/types_db';
 import MuiLink from '@mui/material/Link';
+import type { Database } from '@/lib/supabase/types_db';
 
 export default function NewContactPage(): React.ReactElement {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function NewContactPage(): React.ReactElement {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [fetchedProfile, setFetchedProfile] = useState<RapidLinkedInProfile | null>(null);
   const [originalLinkedinUrl, setOriginalLinkedinUrl] = useState<string | null>(null);
-  const [rawApiResponseForArtifact, setRawApiResponseForArtifact] = useState<any | null>(null);
+  const [rawApiResponseForArtifact, setRawApiResponseForArtifact] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     let message = '';
@@ -56,7 +57,7 @@ export default function NewContactPage(): React.ReactElement {
 
     setFetchedProfile(apiResponse.data);
     setOriginalLinkedinUrl(apiResponse.inputLinkedinUrl);
-    setRawApiResponseForArtifact(apiResponse.rawResponse);
+    setRawApiResponseForArtifact(apiResponse.rawResponse as Record<string, unknown>);
     setSuccessMessage('Profile data fetched! Review the details below and confirm to save.');
     setLoading(false);
   };
@@ -99,7 +100,7 @@ export default function NewContactPage(): React.ReactElement {
           user_id: user.id,
           type: 'linkedin_profile',
           content: artifactContent,
-          metadata: rawApiResponseForArtifact,
+          metadata: rawApiResponseForArtifact as unknown as Database['public']['Tables']['artifacts']['Insert']['metadata'],
           timestamp: new Date().toISOString(),
         };
         await createArtifact(artifactData);
@@ -114,10 +115,11 @@ export default function NewContactPage(): React.ReactElement {
       } else {
         setError('Failed to create contact or contact ID missing after creation attempt.');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error creating contact or artifact:', e);
       if (!createContactError && !createArtifactError) {
-        setError(e.message || 'An error occurred during the save process.');
+        const errorMessage = e instanceof Error ? e.message : 'An error occurred during the save process.';
+        setError(errorMessage);
       }
     }
   };

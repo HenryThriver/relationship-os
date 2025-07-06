@@ -265,7 +265,7 @@ export default function OnboardingVoiceRecorder({
         <Box sx={{ mt: 4, p: 3, backgroundColor: '#fafafa', borderRadius: 3, border: '1px solid #f0f0f0' }}>
           <Typography variant="body2" color="text.secondary">
             💡 <strong>Tips:</strong> Speak clearly and take your time. 
-            You can always re-record if you're not happy with the result.
+            You can always re-record if you&apos;re not happy with the result.
           </Typography>
         </Box>
       </CardContent>

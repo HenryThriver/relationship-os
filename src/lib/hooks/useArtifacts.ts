@@ -7,6 +7,11 @@ import type { Database } from '@/lib/supabase/types_db';
 export type NewArtifact = Database['public']['Tables']['artifacts']['Insert'];
 export type Artifact = Database['public']['Tables']['artifacts']['Row'];
 
+// Custom error type for API errors with codes
+interface ApiError extends Error {
+  code?: string;
+}
+
 const ARTIFACTS_TABLE = 'artifacts';
 
 // Argument type for the delete mutation, including contact_id for optimistic updates
@@ -47,7 +52,7 @@ export const useArtifacts = () => {
       if (newArtifactData.contact_id) {
         queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, { contact_id: newArtifactData.contact_id }] });
       }
-      // Invalidate any general artifact lists if you have them
+      // Invalidate general artifact lists if you have them
       queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE, 'list'] }); // Example general list key
       queryClient.invalidateQueries({ queryKey: [ARTIFACTS_TABLE]}); // Broader invalidation
     },
@@ -65,8 +70,8 @@ export const useArtifacts = () => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: `Failed to delete artifact. Status: ${response.status}` }));
       // Include code from errorData if available, for specific handling like 409 ARTIFACT_IS_SOURCE
-      const err = new Error(errorData.message || `Failed to delete artifact. Status: ${response.status}`);
-      (err as any).code = errorData.code; // Attach the specific error code if present
+      const err = new Error(errorData.message || `Failed to delete artifact. Status: ${response.status}`) as ApiError;
+      err.code = errorData.code; // Attach the specific error code if present
       throw err;
     }
     // For 204 No Content, there is no body to parse
@@ -112,7 +117,7 @@ export const useArtifacts = () => {
         queryClient.setQueryData([ARTIFACTS_TABLE, { contact_id: context.contactId }], context.previousArtifactsForContact);
       }
       // If err has a specific code like ARTIFACT_IS_SOURCE, the UI can use it for specific messaging.
-      // Example: if ((err as any).code === 'ARTIFACT_IS_SOURCE') { /* show specific message */ }
+      // Example: if ((err as ApiError).code === 'ARTIFACT_IS_SOURCE') { /* show specific message */ }
     },
     onSettled: (data, error, { id: deletedArtifactId, contactId }) => {
       // Invalidate all queries related to artifacts to ensure data consistency

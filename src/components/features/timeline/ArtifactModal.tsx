@@ -53,7 +53,7 @@ interface ArtifactModalProps {
   onLoopEdit?: (loopId: string, updates: Partial<LoopArtifactContent>) => Promise<void>;
   onLoopDelete?: (loopId: string) => Promise<void>;
   onLoopShare?: (loopId: string) => Promise<void>;
-  onLoopComplete?: (loopId: string, outcome: any) => Promise<void>;
+  onLoopComplete?: (loopId: string, outcome: Record<string, unknown>) => Promise<void>;
 }
 
 const modalStyle = {
@@ -79,7 +79,7 @@ const contentStyle = {
   flexGrow: 1,
 };
 
-const renderContent = (content: any, level = 0): React.ReactNode => {
+const renderContent = (content: unknown, level = 0): React.ReactNode => {
   if (typeof content === 'string' || typeof content === 'number' || typeof content === 'boolean') {
     return <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{String(content)}</Typography>;
   }
@@ -148,8 +148,9 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
     try {
       const url = await onPlayAudio(voiceMemo.audio_file_path);
       setAudioUrl(url);
-    } catch (err: any) {
-      setAudioError(err.message || 'Failed to play audio');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to play audio';
+      setAudioError(errorMessage);
     }
   };
 
@@ -189,8 +190,7 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
       <LinkedInPostModal 
         open={open} 
         onClose={onClose} 
-        artifact={artifact as LinkedInPostArtifact} 
-        contactName={contactName}
+        artifact={artifact as unknown as LinkedInPostArtifact} 
         contactId={contactId}
       />
     );
@@ -201,7 +201,7 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
       <EnhancedLoopModal
         open={open}
         onClose={onClose}
-        artifact={artifact as LoopArtifact}
+        artifact={artifact as unknown as LoopArtifact}
         contactName={contactName || 'Contact'}
         contactId={contactId}
         onStatusUpdate={onLoopStatusUpdate || (async () => console.warn('onLoopStatusUpdate not provided'))}
@@ -220,12 +220,7 @@ export const ArtifactModal: React.FC<ArtifactModalProps> = ({
         onClose={onClose}
         email={artifact as EmailArtifact}
         // Thread will be built internally in EmailDetailModal if not provided
-        onReply={(email) => console.log('Reply to email:', email.id)}
-        onReplyAll={(email) => console.log('Reply all to email:', email.id)}
-        onForward={(email) => console.log('Forward email:', email.id)}
-        onDelete={onDelete ? (email) => onDelete(email.id) : undefined}
-        onArchive={(email) => console.log('Archive email:', email.id)}
-        onToggleStar={(email) => console.log('Toggle star for email:', email.id)}
+        onDelete={onDelete ? (email: EmailArtifact) => onDelete(email.id) : undefined}
       />
     );
   }

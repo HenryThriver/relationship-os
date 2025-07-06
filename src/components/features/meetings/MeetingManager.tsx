@@ -11,22 +11,17 @@ import type { MeetingArtifact } from '@/types/artifact';
 
 interface MeetingManagerProps {
   contactId?: string;
-  limit?: number;
-  includeUpcoming?: boolean;
   showAsCards?: boolean;
   onMeetingClick?: (meeting: MeetingArtifact) => void;
 }
 
 export const MeetingManager: React.FC<MeetingManagerProps> = ({
   contactId,
-  limit,
-  includeUpcoming = false,
   showAsCards = true,
   onMeetingClick,
 }) => {
   const {
     meetings,
-    loading,
     error,
     refetch
   } = useMeetings({ contactId });
@@ -128,7 +123,6 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               onOpenModal={handleMeetingClick}
               onAddContent={handleAddContent}
               onUpdateActionItem={handleUpdateActionItem}
-              onApplySuggestion={handleApplySuggestion}
             />
           ))}
         </Box>

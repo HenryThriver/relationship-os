@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper, LinearProgress, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Typography, Paper, List, ListItem, ListItemText } from '@mui/material';
 
 // Simplified props for now
 export interface ExchangeItem {

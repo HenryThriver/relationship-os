@@ -39,7 +39,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
 
   const formatMeetingDate = (meeting: MeetingArtifact): string => {
     const metadata = meeting.metadata as MeetingArtifactMetadata;
-    const meetingDate = metadata?.meeting_date ? new Date(metadata.meeting_date) : new Date(meeting.timestamp);
+    const meetingDate = metadata?.meeting_date ? new Date(metadata.meeting_date as string) : new Date(meeting.timestamp);
     
     const now = new Date();
     const isToday = meetingDate.toDateString() === now.toDateString();
@@ -56,7 +56,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
 
   const getMeetingStatus = (meeting: MeetingArtifact): { label: string; color: 'default' | 'primary' | 'success' } => {
     const metadata = meeting.metadata as MeetingArtifactMetadata;
-    const meetingDate = metadata?.meeting_date ? new Date(metadata.meeting_date) : new Date(meeting.timestamp);
+    const meetingDate = metadata?.meeting_date ? new Date(metadata.meeting_date as string) : new Date(meeting.timestamp);
     const now = new Date();
     
     if (meetingDate > now) {
@@ -99,7 +99,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
                   primary={
                     <Box display="flex" alignItems="center" gap={1} mb={0.5}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                        {metadata?.title || meeting.content || 'Meeting'}
+                        {metadata?.title || (typeof meeting.content === 'string' ? meeting.content : 'Meeting')}
                       </Typography>
                       <Chip
                         label={status.label}

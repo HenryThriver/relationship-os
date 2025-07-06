@@ -156,6 +156,9 @@ export interface EmailArtifactContent {
   // Sync metadata
   sync_source: 'gmail_api' | 'manual' | 'import';
   last_synced_at: string;
+  
+  // Index signature for additional properties
+  [key: string]: unknown;
 }
 
 // Email Artifact extends BaseArtifact
@@ -308,8 +311,11 @@ export interface EmailActionRequest {
 // export type UserTokensInsert = Database['public']['Tables']['user_tokens']['Insert'];
 // export type UserTokensUpdate = Database['public']['Tables']['user_tokens']['Update'];
 
-// Email artifact helpers
-export interface EmailArtifactMetadata extends EmailArtifactContent {}
+// Email artifact helpers  
+export interface EmailArtifactMetadata extends EmailArtifactContent {
+  // Additional properties allowed via EmailArtifactContent index signature
+  is_metadata: true; // Marker to distinguish metadata objects
+}
 
 // Re-export for backward compatibility
 export type { EmailArtifactContent as EmailMetadata }; 

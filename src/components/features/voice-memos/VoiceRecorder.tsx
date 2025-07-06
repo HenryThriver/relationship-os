@@ -15,12 +15,12 @@ import { Mic, Stop, CheckCircle } from '@mui/icons-material';
 // import { useSupabaseClient } from '@supabase/auth-helpers-react'; // No longer using this hook
 import { supabase } from '@/lib/supabase/client'; // Import the shared client directly
 import { useAuth } from '@/lib/contexts/AuthContext'; 
-import { Database } from '@/lib/supabase/types_db'; // Database types still useful
+import type { Json } from '@/lib/supabase/database.types';
 import { useQueryClient } from '@tanstack/react-query'; // Added import
 
 interface VoiceRecorderProps {
   contactId: string;
-  onRecordingComplete?: (artifact: any) => void; // Consider using a specific Artifact type
+  onRecordingComplete?: (artifact: Record<string, unknown>) => void; // Consider using a specific Artifact type
   onError?: (error: string) => void;
 }
 
@@ -120,7 +120,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       setError(errorMessage);
       onError?.(errorMessage);
     }
-  }, [onError, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onError, user]); // handleRecordingComplete creates circular dependency, disabled exhaustive-deps
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -185,7 +186,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             file_size: blob.size,
             mime_type: blob.type,
             recorded_at: new Date().toISOString()
-          } as any // Cast if metadata is strictly typed elsewhere and this is a general structure
+          } as unknown as Json // Cast to Json type for Supabase compatibility
         })
         .select()
         .single();
@@ -203,7 +204,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       console.error('Error uploading voice memo (raw):', err);
       console.error('Error uploading voice memo (stringified):', JSON.stringify(err, null, 2));
       const errorMessage = err instanceof Error && err.message ? err.message : 
-                         (typeof err === 'object' && err !== null && 'message' in err) ? (err as any).message :
+                         (typeof err === 'object' && err !== null && 'message' in err) ? (err as { message: string }).message :
                          'Upload failed. Please check console for details.';
       setError(errorMessage);
       onError?.(errorMessage);

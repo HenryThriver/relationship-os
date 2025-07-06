@@ -101,7 +101,7 @@ const GoalContactCard: React.FC<GoalContactCardProps> = ({ contact }) => {
     if (!voiceMemoInsight) return null;
     
     // Get relationship summary from metadata
-    const relationshipSummary = (voiceMemoInsight.metadata as any)?.relationship_summary;
+    const relationshipSummary = (voiceMemoInsight.metadata as Record<string, unknown>)?.relationship_summary as string;
     
     // Get fallback insight from transcription or content
     const fallbackInsight = voiceMemoInsight.transcription || 
@@ -300,7 +300,7 @@ export default function UserProfilePage() {
                 {profileCompletion.completion_percentage}%
               </Typography>
             </Box>
-            {profileCompletion.suggestions.length > 0 && (
+            {profileCompletion.suggestions && Array.isArray(profileCompletion.suggestions) && profileCompletion.suggestions.length > 0 && (
               <Box>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Suggestions to improve your profile:
@@ -363,7 +363,7 @@ export default function UserProfilePage() {
              {/* Personal Brand & Communication */}
        <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
          {/* Personal Brand Pillars */}
-         {professionalContext.personal_brand_pillars && professionalContext.personal_brand_pillars.length > 0 && (
+         {professionalContext.personal_brand_pillars && Array.isArray(professionalContext.personal_brand_pillars) && professionalContext.personal_brand_pillars.length > 0 && (
            <Box sx={{ flex: 1, minWidth: '300px' }}>
              <Card>
                <CardContent>
@@ -417,7 +417,7 @@ export default function UserProfilePage() {
              {/* Expertise & Thought Leadership */}
        <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
          {/* Expertise Areas */}
-         {professionalContext.expertise_areas && professionalContext.expertise_areas.length > 0 && (
+         {professionalContext.expertise_areas && Array.isArray(professionalContext.expertise_areas) && professionalContext.expertise_areas.length > 0 && (
            <Box sx={{ flex: 1, minWidth: '300px' }}>
              <Card>
                <CardContent>
@@ -436,7 +436,7 @@ export default function UserProfilePage() {
          )}
 
          {/* Thought Leadership Topics */}
-         {professionalContext.thought_leadership_topics && professionalContext.thought_leadership_topics.length > 0 && (
+         {professionalContext.thought_leadership_topics && Array.isArray(professionalContext.thought_leadership_topics) && professionalContext.thought_leadership_topics.length > 0 && (
            <Box sx={{ flex: 1, minWidth: '300px' }}>
              <Card>
                <CardContent>
@@ -476,7 +476,7 @@ export default function UserProfilePage() {
             )}
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-              {professionalContext.strategic_interests && professionalContext.strategic_interests.length > 0 && (
+              {professionalContext.strategic_interests && Array.isArray(professionalContext.strategic_interests) && professionalContext.strategic_interests.length > 0 && (
                 <Box sx={{ flex: 1, minWidth: '300px' }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Strategic Interests:
@@ -489,7 +489,7 @@ export default function UserProfilePage() {
                 </Box>
               )}
 
-              {professionalContext.ideal_connections && professionalContext.ideal_connections.length > 0 && (
+              {professionalContext.ideal_connections && Array.isArray(professionalContext.ideal_connections) && professionalContext.ideal_connections.length > 0 && (
                 <Box sx={{ flex: 1, minWidth: '300px' }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Ideal Connections:
@@ -502,7 +502,7 @@ export default function UserProfilePage() {
                 </Box>
               )}
 
-              {professionalContext.growth_areas && professionalContext.growth_areas.length > 0 && (
+              {professionalContext.growth_areas && Array.isArray(professionalContext.growth_areas) && professionalContext.growth_areas.length > 0 && (
                 <Box sx={{ flex: 1, minWidth: '300px' }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Growth Areas:
@@ -515,7 +515,7 @@ export default function UserProfilePage() {
                 </Box>
               )}
 
-              {professionalContext.reciprocity_opportunities && professionalContext.reciprocity_opportunities.length > 0 && (
+              {professionalContext.reciprocity_opportunities && Array.isArray(professionalContext.reciprocity_opportunities) && professionalContext.reciprocity_opportunities.length > 0 && (
                 <Box sx={{ flex: 1, minWidth: '300px' }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Reciprocity Opportunities:
@@ -593,7 +593,7 @@ export default function UserProfilePage() {
               <Psychology fontSize="small" />
               Networking Challenges
             </Typography>
-            {profile.networking_challenges && profile.networking_challenges.length > 0 ? (
+            {profile.networking_challenges && Array.isArray(profile.networking_challenges) && profile.networking_challenges.length > 0 ? (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {profile.networking_challenges.map((challenge, index) => (
                   <Chip key={index} label={challenge} size="small" />
@@ -614,7 +614,7 @@ export default function UserProfilePage() {
               <Handshake fontSize="small" />
               Ways to Help Others
             </Typography>
-            {profile.ways_to_help_others && profile.ways_to_help_others.length > 0 ? (
+            {profile.ways_to_help_others && Array.isArray(profile.ways_to_help_others) && profile.ways_to_help_others.length > 0 ? (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {profile.ways_to_help_others.map((way, index) => (
                   <Chip key={index} label={way} size="small" color="primary" />
@@ -637,7 +637,7 @@ export default function UserProfilePage() {
                 Personal Context
               </Typography>
               <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                {personalContext.professional_values && personalContext.professional_values.length > 0 && (
+                {personalContext.professional_values && Array.isArray(personalContext.professional_values) && personalContext.professional_values.length > 0 && (
                   <Box sx={{ flex: 1, minWidth: '300px' }}>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       Professional Values:
@@ -650,7 +650,7 @@ export default function UserProfilePage() {
                   </Box>
                 )}
                 
-                {personalContext.motivations && personalContext.motivations.length > 0 && (
+                {personalContext.motivations && Array.isArray(personalContext.motivations) && personalContext.motivations.length > 0 && (
                   <Box sx={{ flex: 1, minWidth: '300px' }}>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       Motivations:
@@ -663,7 +663,7 @@ export default function UserProfilePage() {
                   </Box>
                 )}
                 
-                {personalContext.interests && personalContext.interests.length > 0 && (
+                {personalContext.interests && Array.isArray(personalContext.interests) && personalContext.interests.length > 0 && (
                   <Box sx={{ flex: 1, minWidth: '300px' }}>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       Interests:
@@ -676,7 +676,7 @@ export default function UserProfilePage() {
                   </Box>
                 )}
                 
-                {personalContext.passions && personalContext.passions.length > 0 && (
+                {personalContext.passions && Array.isArray(personalContext.passions) && personalContext.passions.length > 0 && (
                   <Box sx={{ flex: 1, minWidth: '300px' }}>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       Passions:
@@ -694,7 +694,7 @@ export default function UserProfilePage() {
         )}
 
         {/* Goal-Related Contacts */}
-        {onboardingState?.imported_goal_contacts && onboardingState.imported_goal_contacts.length > 0 && (
+        {onboardingState?.imported_goal_contacts && Array.isArray(onboardingState.imported_goal_contacts) && onboardingState.imported_goal_contacts.length > 0 && (
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -25,7 +25,7 @@ export class LinkedInPostsService {
       const username = this.extractUsernameFromUrl(linkedinUrl);
       const allPosts: RapidLinkedInPost[] = [];
       let paginationToken: string | undefined;
-      const cutoffDate = startDate ? new Date(startDate) : null;
+      // const _cutoffDate = startDate ? new Date(startDate) : null;
       const batchSize = 50; // API returns ~50 posts per request
       let totalFetched = 0;
 

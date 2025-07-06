@@ -5,6 +5,37 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2025-07-05
+
+### Fixed
+- **Runtime Error Prevention**: Resolved critical array method errors in user profile page
+  - Fixed `TypeError: personalContext.interests.map is not a function` error by adding proper array type guards
+  - Added comprehensive `Array.isArray()` checks for all array fields in profile rendering
+  - Protected all `.map()` calls with array validation in personal context, professional context, and profile sections
+  - Enhanced type safety for dynamic content rendering from database JSON fields
+
+- **TypeScript Configuration**: Improved type definition resolution
+  - Added `"types": ["node"]` to `tsconfig.json` to resolve missing type definitions
+  - Fixed `dom-mediacapture-record` and `trusted-types` type resolution errors
+  - Enhanced Next.js 14 App Router compatibility with proper async params typing
+
+- **Next.js 14 Compatibility**: Updated component interfaces for App Router
+  - Fixed `ContactProfilePageProps` interface to use `Promise<Record<string, string>>` for params
+  - Ensured proper async parameter handling in dynamic routes
+  - Maintained backward compatibility while supporting Next.js 14 patterns
+
+### Technical Implementation
+- **Type Safety Enhancements**: Comprehensive array validation across profile rendering
+  - Added `Array.isArray()` checks for: `personal_brand_pillars`, `expertise_areas`, `thought_leadership_topics`, `strategic_interests`, `ideal_connections`, `growth_areas`, `reciprocity_opportunities`, `professional_values`, `motivations`, `interests`, `passions`, `networking_challenges`, `ways_to_help_others`, `imported_goal_contacts`, `profile_completion.suggestions`
+  - Protected 15+ array field accesses with proper type guards
+  - Prevented runtime errors from malformed JSON data or unexpected data types
+
+- **Build System**: Achieved 100% clean compilation
+  - TypeScript: 0 errors with strict mode enabled
+  - ESLint: 0 warnings or errors across entire codebase
+  - Next.js build: Successful optimization with all 36 pages generated
+  - Maintained all existing functionality while improving type safety
+
 ## [0.11.0] - 2025-07-05
 
 ### Added

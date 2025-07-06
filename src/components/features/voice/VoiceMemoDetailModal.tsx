@@ -87,8 +87,9 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
       } else {
         setAudioError('Could not load audio for playback.');
       }
-    } catch (e: any) {
-      setAudioError(e.message || 'Error playing audio.');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Error playing audio.';
+      setAudioError(errorMessage);
     } finally {
       // setIsPlaying(false); // Don't set to false immediately, audio element handles playback state
     }
@@ -101,7 +102,7 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
         await onDelete(voiceMemo.id);
         showToast('Voice memo deleted.', 'info');
         onClose(); // Close modal on successful delete
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error deleting voice memo:', error);
         showToast('Failed to delete voice memo.', 'error');
       }
@@ -132,10 +133,11 @@ export const VoiceMemoDetailModal: React.FC<VoiceMemoDetailModalProps> = ({
         onClose();
       }, 1000);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reprocessing AI:', error);
       // Set local audioError or use a prop if it's for a shared Alert component
-      setAudioError(error.message || 'Error reprocessing AI.'); 
+      const errorMessage = error instanceof Error ? error.message : 'Error reprocessing AI.';
+      setAudioError(errorMessage); 
       showToast("Reprocessing failed", "error", {
         icon: "⚠️", // String icon
         duration: 6000

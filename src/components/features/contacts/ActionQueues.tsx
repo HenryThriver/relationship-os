@@ -1,8 +1,21 @@
 import React from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Button } from '@mui/material';
+import { Box, Typography, Paper, List, ListItem, ListItemText, Button, Chip } from '@mui/material';
 
 // This will evolve to LoopStatus and more detailed item structure
-export type ActionItemStatus = 'queued' | 'active' | 'pending' | 'closed' | 'brainstorm'; 
+export type ActionItemStatus = 'queued' | 'active' | 'pending' | 'closed' | 'brainstorm';
+
+const getStatusChipColor = (status: ActionItemStatus): (
+    'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+  ) => {
+  switch (status) {
+    case 'queued': return 'info';
+    case 'active': return 'primary';
+    case 'pending': return 'warning';
+    case 'closed': return 'success';
+    case 'brainstorm': return 'secondary'; // Added for consistency with HTML example for POGs
+    default: return 'default';
+  }
+}; 
 
 interface ActionItem {
   id: string;
@@ -14,6 +27,7 @@ interface ActionItem {
 interface ActionQueuesProps {
   pogs: ActionItem[];
   asks: ActionItem[];
+  onUpdateStatus?: (itemId: string, newStatus: ActionItemStatus, type: 'pog' | 'ask') => void;
   onBrainstormPogs?: () => void;
 }
 
@@ -23,8 +37,9 @@ const ActionList: React.FC<{
   items: ActionItem[]; 
   itemTextColor?: string;
   type: 'pog' | 'ask'; 
+  onUpdateStatus?: ActionQueuesProps['onUpdateStatus'];
   cardStyle?: object;
-}> = ({ title, titleColor, items, itemTextColor, type, cardStyle }) => (
+}> = ({ title, titleColor, items, itemTextColor, type, onUpdateStatus, cardStyle }) => (
   <Paper 
     elevation={0}
     sx={{
@@ -46,9 +61,17 @@ const ActionList: React.FC<{
           <ListItem 
             key={item.id} 
             disableGutters
+            sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}
             >
             <ListItemText 
               primary={item.content} 
+            />
+            <Chip 
+              label={item.status}
+              color={getStatusChipColor(item.status)}
+              size="small"
+              onClick={onUpdateStatus ? () => onUpdateStatus(item.id, item.status, type) : undefined}
+              sx={{ ml: 1, cursor: onUpdateStatus ? 'pointer' : 'default' }}
             />
           </ListItem>
         ))}
@@ -60,6 +83,7 @@ const ActionList: React.FC<{
 export const ActionQueues: React.FC<ActionQueuesProps> = ({
   pogs = [], // Provide default empty arrays
   asks = [],
+  onUpdateStatus,
   onBrainstormPogs,
 }) => {
   const pogCardStyle = {
@@ -100,6 +124,7 @@ export const ActionQueues: React.FC<ActionQueuesProps> = ({
               title="Proposed Generosity" 
               items={pogs} 
               type="pog" 
+              onUpdateStatus={onUpdateStatus}
               cardStyle={pogCardStyle} 
               titleColor="#15803d" /* green-700 */
               itemTextColor="#166534" /* green-800 */
@@ -118,6 +143,7 @@ export const ActionQueues: React.FC<ActionQueuesProps> = ({
               title="Proposed Asks" 
               items={asks} 
               type="ask" 
+              onUpdateStatus={onUpdateStatus}
               cardStyle={askCardStyle} 
               titleColor="#c2410c" /* orange-700 */
               itemTextColor="#9a3412" /* orange-800 */

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
-import type { BaseArtifact, VoiceMemoArtifact } from '@/types';
+import type { BaseArtifact } from '@/types';
 import type { UpdateSuggestionRecord, ContactUpdateSuggestion } from '@/types/suggestions';
 import type { Contact } from '@/types/contact';
 
@@ -45,12 +45,12 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
       if (data) {
         console.log('[useArtifactModalData] Raw fetched data for artifact ID:', artifactId, data);
         if (data.metadata) {
-          const metadataAsAny = data.metadata as any;
-          console.log('[useArtifactModalData] Raw metadata.about:', metadataAsAny.about);
-          console.log('[useArtifactModalData] Raw metadata.experience:', metadataAsAny.experience);
-          console.log('[useArtifactModalData] Raw metadata.education:', metadataAsAny.education);
-          console.log('[useArtifactModalData] Raw metadata.skills:', metadataAsAny.skills);
-          console.log('[useArtifactModalData] All raw metadata keys:', Object.keys(metadataAsAny));
+          const metadata = data.metadata as Record<string, unknown>;
+          console.log('[useArtifactModalData] Raw metadata.about:', metadata.about);
+          console.log('[useArtifactModalData] Raw metadata.experience:', metadata.experience);
+          console.log('[useArtifactModalData] Raw metadata.education:', metadata.education);
+          console.log('[useArtifactModalData] Raw metadata.skills:', metadata.skills);
+          console.log('[useArtifactModalData] All raw metadata keys:', Object.keys(metadata));
         } else {
           console.log('[useArtifactModalData] Raw metadata is null or undefined for artifact ID:', artifactId);
         }
@@ -75,7 +75,7 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
       if (!artifactId) return [];
       const { data, error } = await supabase.from('contact_update_suggestions').select('*').eq('artifact_id', artifactId);
       if (error) throw error;
-      return (data || []).map(suggestion => ({
+      return (data || []).map((suggestion: Record<string, unknown>) => ({
         ...suggestion,
         suggested_updates: suggestion.suggested_updates as unknown as { suggestions: ContactUpdateSuggestion[] },
       })) as UpdateSuggestionRecord[];
@@ -115,9 +115,14 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
     return contactDataForModal?.linkedin_url;
   }, [contactDataForModal]);
 
-  const getValueFromPath = useCallback((obj: any, path: string): any => {
+  const getValueFromPath = useCallback((obj: Record<string, unknown>, path: string): unknown => {
     if (!obj || typeof path !== 'string') return undefined;
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    return path.split('.').reduce((acc: unknown, part: string) => {
+      if (acc && typeof acc === 'object' && acc !== null) {
+        return (acc as Record<string, unknown>)[part];
+      }
+      return undefined;
+    }, obj);
   }, []);
 
   const displayedContactProfileUpdates = useMemo(() => {
@@ -125,7 +130,7 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
     const updates: Record<string, string> = {};
     for (const fieldPath in contactFieldSourcesMap) {
       if (contactFieldSourcesMap[fieldPath] === artifactId) {
-        let value = 'Value not directly found';
+        let value: unknown = 'Value not directly found';
         let valueFoundFromSuggestion = false;
         if (relatedSuggestions && relatedSuggestions.length > 0) {
           for (const suggestion of relatedSuggestions) {
@@ -137,7 +142,7 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
                   break;
                 } else if (fieldPath.startsWith(s_update.field_path + '.')) {
                   const subPath = fieldPath.substring(s_update.field_path.length + 1);
-                  const extractedValue = getValueFromPath(s_update.suggested_value, subPath);
+                  const extractedValue = getValueFromPath(s_update.suggested_value as Record<string, unknown>, subPath);
                   if (extractedValue !== undefined) {
                     value = extractedValue;
                     valueFoundFromSuggestion = true;
@@ -150,19 +155,22 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
           }
         }
         if (!valueFoundFromSuggestion) {
-          const metaValue = getValueFromPath(artifactDetails.metadata, fieldPath);
-          if (metaValue !== undefined) {
-            value = metaValue;
-          } else if (typeof artifactDetails.content === 'string' && fieldPath === 'content') {
+          if (artifactDetails.metadata && typeof artifactDetails.metadata === 'object') {
+            const metaValue = getValueFromPath(artifactDetails.metadata as Record<string, unknown>, fieldPath);
+            if (metaValue !== undefined) {
+              value = metaValue;
+            }
+          }
+          if (typeof artifactDetails.content === 'string' && fieldPath === 'content') {
             value = artifactDetails.content;
           } else if (typeof artifactDetails.content === 'object' && artifactDetails.content !== null) {
-            const contentValue = getValueFromPath(artifactDetails.content, fieldPath);
+            const contentValue = getValueFromPath(artifactDetails.content as Record<string, unknown>, fieldPath);
             if (contentValue !== undefined) {
               value = contentValue;
             }
           }
         }
-        updates[fieldPath] = (typeof value === 'string' && (value.includes('not directly found') || value.includes('not found in matched suggestion'))) ? value : value;
+        updates[fieldPath] = String(value);
       }
     }
     return updates;

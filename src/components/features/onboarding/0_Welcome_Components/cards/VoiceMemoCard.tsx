@@ -71,7 +71,7 @@ export const VoiceMemoCard: React.FC = () => {
         </Box>
         
         <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.4, fontStyle: 'italic' }}>
-          "Met Alex at the conference - he's launching an AI startup focused on healthcare automation..."
+          &quot;Met Alex at the conference - he&apos;s launching an AI startup focused on healthcare automation...&quot;
         </Typography>
         
         <Box sx={{ mt: 1.5, display: 'flex', gap: 1 }}>

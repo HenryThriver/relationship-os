@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
+import { Typography, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import MicIcon from '@mui/icons-material/Mic'; // For Keynote
 import WorkIcon from '@mui/icons-material/Work'; // For Joined Ferrazzi Greenlight

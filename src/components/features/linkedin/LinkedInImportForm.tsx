@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, CircularProgress, Alert, Paper } from '@mui/material';
+import { TextField, Button, Box, Typography, CircularProgress, Alert } from '@mui/material';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import type { LinkedInImportApiResponse } from '@/types/rapidapi';
 
@@ -43,12 +43,13 @@ export const LinkedInImportForm = ({ onProfileFetched }: LinkedInImportFormProps
       } else {
         onProfileFetched(responseData);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('LinkedIn Import Form Error:', e);
-      setError(e.message || 'An unexpected error occurred while fetching the profile.');
+      const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred while fetching the profile.';
+      setError(errorMessage);
       onProfileFetched({
         success: false,
-        error: e.message || 'An unexpected error occurred during fetch operation.',
+        error: errorMessage,
         inputLinkedinUrl: linkedinUrl, 
       });
     }

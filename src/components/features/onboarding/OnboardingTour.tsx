@@ -12,7 +12,7 @@ const TourContent: React.FC<OnboardingTourProps> = ({
   isActive, 
   onComplete 
 }) => {
-  const { startOnborda, closeOnborda } = useOnborda();
+  const { startOnborda } = useOnborda();
 
   useEffect(() => {
     if (isActive) {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, useMediaQuery, useTheme } from '@mui/material';
+import { Button } from '@mui/material';
 import { Notifications as NotificationsIcon } from '@mui/icons-material';
 import { SuggestionNotificationBadge } from './SuggestionNotificationBadge';
 import { SuggestionsModal } from './SuggestionsModal';
@@ -23,8 +23,7 @@ export const UnifiedSuggestionManager: React.FC<UnifiedSuggestionManagerProps> =
   showSidebarButton = false,
   priority,
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // const theme = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const {
@@ -110,7 +109,6 @@ export const UnifiedSuggestionManager: React.FC<UnifiedSuggestionManagerProps> =
       <SuggestionsModal
         open={isOpen}
         onClose={handleClose}
-        contactId={contactId}
         contactName="Contact" // Could be enhanced to get actual name
         suggestions={suggestions || []}
         onApplySuggestions={handleApplySuggestions}

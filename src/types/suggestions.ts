@@ -1,8 +1,8 @@
 export interface ContactUpdateSuggestion {
   field_path: string;
   action: 'add' | 'update' | 'remove';
-  current_value?: any;
-  suggested_value: any;
+  current_value?: unknown;
+  suggested_value: unknown;
   confidence: number;
   reasoning: string;
 }

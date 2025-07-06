@@ -7,46 +7,31 @@ import {
   Button, 
   Card,
   CardContent,
-  CardHeader,
   Chip,
   TextField,
   IconButton,
   Avatar,
   Fade,
-  Stack,
-  Paper,
-  Divider,
-  Alert
+  Paper
 } from '@mui/material';
 import { 
-  Person, 
   Edit,
   Save,
   Cancel,
   LinkedIn,
-  Work,
   Psychology,
-  ConnectWithoutContact,
   AutoFixHigh,
   Add,
   Close,
   RecordVoiceOver,
-  Business,
-  LocationOn,
-  Email,
   Visibility,
   EmojiObjects,
   WorkOutline,
-  TrendingUp,
-  BusinessCenter,
   EmojiEvents,
-  Handshake,
-  School,
   Flag
 } from '@mui/icons-material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
-import type { PersonalContext, ProfessionalContext } from '@/types/contact';
 
 interface ProfessionalContextData {
   professional_brief?: string;
@@ -87,18 +72,7 @@ export default function ProfileScreen() {
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [editArrayValues, setEditArrayValues] = useState<Record<string, string[]>>({});
-  const [newPersonalInterest, setNewPersonalInterest] = useState('');
-  const [newProfessionalInterest, setNewProfessionalInterest] = useState('');
   const [showContent, setShowContent] = useState(false);
-  const [voiceAnalysis, setVoiceAnalysis] = useState<{
-    howYouComeAcross: string;
-    writingStyle: string;
-    isAnalyzing: boolean;
-  }>({
-    howYouComeAcross: '',
-    writingStyle: '',
-    isAnalyzing: false
-  });
 
   // Trigger fade-in animation on mount
   useEffect(() => {
@@ -120,14 +94,9 @@ export default function ProfileScreen() {
       const isArray = field in editArrayValues;
       const value = isArray ? editArrayValues[field] : editValues[field];
       
-      // Handle nested field updates (e.g., professional_context.professional_brief)
-      const fieldParts = field.split('.');
-      if (fieldParts.length > 1) {
-        const [contextType, contextField] = fieldParts;
-        const currentContext = (profile as any)[contextType] || {};
-        const updatedContext = { ...currentContext, [contextField]: value };
-        await updateProfile({ [contextType]: updatedContext });
-      } else {
+      // TODO: Add backend support for updating personal_context and professional_context
+      // For now, only update fields defined in UserProfileUpdate
+      if (profile && field in profile) {
         await updateProfile({ [field]: value });
       }
       
@@ -166,101 +135,6 @@ export default function ProfileScreen() {
     await nextScreen();
   };
 
-  const analyzeVoice = async () => {
-    setVoiceAnalysis(prev => ({ ...prev, isAnalyzing: true }));
-    
-    try {
-      const response = await fetch('/api/user/voice-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          linkedin_url: profile?.linkedin_url,
-          user_id: profile?.id
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setVoiceAnalysis({
-          howYouComeAcross: data.howYouComeAcross || '',
-          writingStyle: data.writingStyle || '',
-          isAnalyzing: false
-        });
-      }
-    } catch (error) {
-      console.error('Voice analysis error:', error);
-      setVoiceAnalysis(prev => ({ ...prev, isAnalyzing: false }));
-    }
-  };
-
-  // Helper function to remove duplicates
-  const removeDuplicates = (array: string[] | null | undefined): string[] => {
-    if (!Array.isArray(array)) {
-      return [];
-    }
-    return Array.from(new Set(array.filter(item => item && item.trim())));
-  };
-
-  const renderEditableVoiceField = (field: 'howYouComeAcross' | 'writingStyle', label: string, value: string) => {
-    const isEditing = editingSection === field;
-    
-    return (
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 500, color: 'text.secondary', mb: 1 }}>
-            {label}
-          </Typography>
-        {isEditing ? (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              size="small"
-              value={editValues[field] || ''}
-              onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
-              disabled={isUpdating}
-            />
-              <IconButton 
-                size="small" 
-                onClick={() => handleSave(field)}
-                disabled={isUpdating}
-                color="primary"
-              >
-                <Save fontSize="small" />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                onClick={handleCancel}
-                disabled={isUpdating}
-              >
-                <Cancel fontSize="small" />
-              </IconButton>
-          </Box>
-        ) : (
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: value ? 'text.primary' : 'text.secondary',
-                fontStyle: value ? 'normal' : 'italic',
-                flex: 1,
-                lineHeight: 1.5
-              }}
-            >
-              {value || `${label} will appear here after analysis`}
-          </Typography>
-            <IconButton 
-              size="small" 
-              onClick={() => handleEdit(field, value)}
-            >
-              <Edit fontSize="small" />
-            </IconButton>
-          </Box>
-        )}
-      </Box>
-    );
-  };
-
   if (!profile) {
   return (
       <Box sx={{ 
@@ -287,14 +161,11 @@ export default function ProfileScreen() {
   
   // Handle both string and array formats for interests
   const personalInterestsRaw = personalContext?.interests;
-  const personalInterests = removeDuplicates(
-    Array.isArray(personalInterestsRaw) 
-      ? personalInterestsRaw 
-      : personalInterestsRaw 
-        ? [personalInterestsRaw] 
-        : []
-  );
-  const professionalInterests = removeDuplicates(professionalContext?.expertise_areas || []);
+  const personalInterests = Array.isArray(personalInterestsRaw) 
+    ? personalInterestsRaw 
+    : personalInterestsRaw 
+      ? [personalInterestsRaw] 
+      : [];
 
   return (
     <Box sx={{ 
@@ -307,7 +178,7 @@ export default function ProfileScreen() {
           {/* Section Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography variant="h5" component="h2" sx={{ fontWeight: 600, color: '#111827', mb: 1 }}>
-              Here's what we found about you
+              Here&apos;s what we found about you
         </Typography>
             <Typography variant="body1" sx={{ color: '#6b7280', maxWidth: 600, mx: 'auto', lineHeight: 1.6 }}>
               AI offers a good starting point, and you can always edit any section to more accurately reflect how you want to present.
@@ -333,7 +204,7 @@ export default function ProfileScreen() {
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, md: 0 }, flexGrow: 1 }}>
                 <Avatar 
-                  src={(profile as any).profile_picture || undefined}
+                  src={typeof (profile as { profile_picture?: string }).profile_picture === 'string' ? (profile as { profile_picture?: string }).profile_picture : undefined}
                   sx={{ 
                     width: { xs: 80, md: 96 }, 
                     height: { xs: 80, md: 96 }, 
@@ -395,7 +266,7 @@ export default function ProfileScreen() {
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Business color="primary" />
+                    <WorkOutline color="primary" />
                     Professional Brief
                   </Typography>
                   <IconButton 

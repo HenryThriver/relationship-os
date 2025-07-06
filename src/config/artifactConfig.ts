@@ -12,6 +12,11 @@ const truncateText = (text: string, maxLength = 100): string => {
   return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
 };
 
+// Type guard for object content
+const isObjectContent = (content: unknown): content is Record<string, unknown> => {
+  return content !== null && typeof content === 'object';
+};
+
 // Define configurations for each artifact type
 // This will be expanded and refined
 const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> = {
@@ -19,26 +24,38 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiFileText,
     color: 'primary.main',
     badgeLabel: 'Note',
-    getPreview: (content) => truncateText(content?.text || content?.details || 'Note content'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.text as string) || (content.details as string) || 'Note content');
+      }
+      return truncateText(typeof content === 'string' ? content : 'Note content');
+    },
   },
   voice_memo: {
     icon: FiMic,
     color: 'secondary.main',
     badgeLabel: 'Voice Memo',
-    getPreview: (content) => content?.transcription 
-                        ? truncateText(content.transcription, 80)
-                        : `Duration: ${content?.duration_seconds || 'N/A'}s`,
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return content.transcription 
+          ? truncateText(content.transcription as string, 80)
+          : `Duration: ${content.duration_seconds || 'N/A'}s`;
+      }
+      return typeof content === 'string' ? truncateText(content) : 'Voice memo';
+    },
   },
   meeting: {
     icon: FiVideo,
     color: '#1976d2', // Blue for meetings
     badgeLabel: 'Meeting',
-    getPreview: (content: any) => {
+    getPreview: (content: unknown) => {
       // Handle both old and new meeting artifact formats
       // For new format, metadata should be accessible through content
-      if (content && typeof content === 'object') {
-        const title = content.title || content.summary || 'Meeting';
-        const attendeeCount = content.attendees?.length || content.attendee_emails?.length || 0;
+      if (isObjectContent(content)) {
+        const title = (content.title as string) || (content.summary as string) || 'Meeting';
+        const attendees = content.attendees as unknown[];
+        const attendeeEmails = content.attendee_emails as unknown[];
+        const attendeeCount = (attendees?.length || attendeeEmails?.length || 0) as number;
         const duration = content.duration_minutes ? ` • ${content.duration_minutes}m` : '';
         const source = content.calendar_source === 'google' ? ' 📅' : '';
         
@@ -53,17 +70,20 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiMail,
     color: 'info.main',
     badgeLabel: 'Email',
-    getPreview: (content: any) => {
+    getPreview: (content: unknown) => {
       // Handle EmailArtifactContent from metadata
-      if (content && typeof content === 'object') {
-        const subject = content.subject || '';
-        const from = content.from?.name || content.from?.email || '';
-        const threadInfo = content.thread_length > 1 ? ` (${content.thread_position}/${content.thread_length})` : '';
+      if (isObjectContent(content)) {
+        const subject = (content.subject as string) || '';
+        const from = content.from as Record<string, unknown>;
+        const fromName = (from?.name as string) || (from?.email as string) || '';
+        const threadLength = (content.thread_length as number) || 0;
+        const threadPosition = (content.thread_position as number) || 0;
+        const threadInfo = threadLength > 1 ? ` (${threadPosition}/${threadLength})` : '';
         const readStatus = content.is_read === false ? '●' : '';
         const starred = content.is_starred ? '⭐' : '';
         const attachments = content.has_attachments ? '📎' : '';
         
-        return `${readStatus}${starred}${attachments} ${from}: ${subject}${threadInfo}`.trim();
+        return `${readStatus}${starred}${attachments} ${fromName}: ${subject}${threadInfo}`.trim();
       }
       
       // Fallback for legacy format or string content
@@ -74,19 +94,34 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiLink,
     color: '#0077B5', // LinkedIn Blue
     badgeLabel: 'LinkedIn Interaction',
-    getPreview: (content) => truncateText(content?.message || content?.interaction_type || 'LinkedIn interaction'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.message as string) || (content.interaction_type as string) || 'LinkedIn interaction');
+      }
+      return truncateText(typeof content === 'string' ? content : 'LinkedIn interaction');
+    },
   },
   prompt_set: {
     icon: FiClipboard,
     color: 'warning.dark',
     badgeLabel: 'Prompt Set',
-    getPreview: (content) => `Contains ${content?.prompts?.length || 0} prompts`,
+    getPreview: (content) => {
+      if (isObjectContent(content) && Array.isArray(content.prompts)) {
+        return `Contains ${content.prompts.length} prompts`;
+      }
+      return 'Contains 0 prompts';
+    },
   },
   goal: {
     icon: FiTarget,
     color: 'error.main',
     badgeLabel: 'Goal',
-    getPreview: (content) => truncateText(content?.description || 'Goal details'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.description as string) || 'Goal details');
+      }
+      return truncateText(typeof content === 'string' ? content : 'Goal details');
+    },
   },
   loop: {
     icon: LoopIcon, // Updated Icon
@@ -131,33 +166,42 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiFileText, // Placeholder icon
     color: 'grey.700',
     badgeLabel: 'Call',
-    getPreview: (content) => truncateText(content?.summary || 'Call details'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.summary as string) || 'Call details');
+      }
+      return truncateText(typeof content === 'string' ? content : 'Call details');
+    },
   },
   linkedin_message: {
     icon: FiLink,
     color: '#0077B5',
     badgeLabel: 'LinkedIn Message',
-    getPreview: (content) => truncateText(content?.message || 'LinkedIn message'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.message as string) || 'LinkedIn message');
+      }
+      return truncateText(typeof content === 'string' ? content : 'LinkedIn message');
+    },
   },
   linkedin_post: {
     icon: FiLink,
     color: '#0077B5',
     badgeLabel: 'LinkedIn Post',
-    getPreview: (content: any) => {
+    getPreview: (content: unknown) => {
       // Handle LinkedIn post artifact metadata
-      if (content && typeof content === 'object') {
-        const post = content as any;
-        const preview = post.content || post.post_content || 'LinkedIn post';
+      if (isObjectContent(content)) {
+        const preview = (content.content as string) || (content.post_content as string) || 'LinkedIn post';
         const truncated = truncateText(preview, 120);
         
         // Add engagement metrics if available
-        if (post.engagement) {
-          const likes = post.engagement.likes || 0;
-          const comments = post.engagement.comments || 0;
+        if (content.engagement && isObjectContent(content.engagement)) {
+          const likes = (content.engagement.likes as number) || 0;
+          const comments = (content.engagement.comments as number) || 0;
           const engagement = `👍 ${likes} 💬 ${comments}`;
           
           // Add author context if not authored by contact
-          const authorContext = post.is_author === false ? ` • by ${post.author}` : '';
+          const authorContext = content.is_author === false ? ` • by ${content.author as string}` : '';
           
           return `${truncated}\n${engagement}${authorContext}`;
         }
@@ -172,39 +216,69 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
     icon: FiFileText,
     color: 'grey.700',
     badgeLabel: 'File',
-    getPreview: (content) => truncateText(content?.filename || 'File details'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.filename as string) || 'File details');
+      }
+      return truncateText(typeof content === 'string' ? content : 'File details');
+    },
   },
   other: {
     icon: FiFileText,
     color: 'grey.700',
     badgeLabel: 'Other',
-    getPreview: (content) => truncateText(content?.description || 'Other artifact'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.description as string) || 'Other artifact');
+      }
+      return truncateText(typeof content === 'string' ? content : 'Other artifact');
+    },
   },
   linkedin_profile: {
     icon: FiLink,
     color: '#0077B5',
     badgeLabel: 'LinkedIn Profile',
-    getPreview: (content) => truncateText(content?.headline || 'LinkedIn profile data'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.headline as string) || 'LinkedIn profile data');
+      }
+      return truncateText(typeof content === 'string' ? content : 'LinkedIn profile data');
+    },
   },
   pog: {
     icon: FiFileText, // Or a specific POG icon
     color: 'info.light',
     badgeLabel: 'POG',
-    getPreview: (content) => truncateText(content?.description || 'POG details'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.description as string) || 'POG details');
+      }
+      return truncateText(typeof content === 'string' ? content : 'POG details');
+    },
   },
   ask: {
     icon: FiFileText, // Or a specific Ask icon
     color: 'warning.light',
     badgeLabel: 'Ask',
-    getPreview: (content) => truncateText(content?.request_description || 'Ask details'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.request_description as string) || 'Ask details');
+      }
+      return truncateText(typeof content === 'string' ? content : 'Ask details');
+    },
   },
   milestone: {
     icon: FiTarget, // Or a specific Milestone icon
     color: 'success.dark',
     badgeLabel: 'Milestone',
-    getPreview: (content) => truncateText(content?.description || 'Milestone details'),
+    getPreview: (content) => {
+      if (isObjectContent(content)) {
+        return truncateText((content.description as string) || 'Milestone details');
+      }
+      return truncateText(typeof content === 'string' ? content : 'Milestone details');
+    },
   },
-  // Fallback for any unknown artifact types (shouldn't be hit if all ArtifactType members are covered)
+  // Fallback for unknown artifact types (shouldn't be hit if all ArtifactType members are covered)
   default: {
     icon: FiFileText,
     color: 'grey.500',

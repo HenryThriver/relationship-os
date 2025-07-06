@@ -170,9 +170,9 @@ export const MeetingContentUpload: React.FC<MeetingContentUploadProps> = ({
     if (!processingStatus || processingStatus === 'completed') return null;
 
     const statusConfig = {
-      pending: { icon: HourglassEmptyIcon, color: 'info', text: 'Queued for AI processing' },
-      processing: { icon: HourglassEmptyIcon, color: 'warning', text: 'AI processing in progress...' },
-      failed: { icon: ErrorIcon, color: 'error', text: 'AI processing failed' },
+      pending: { icon: HourglassEmptyIcon, color: 'info' as const, text: 'Queued for AI processing' },
+      processing: { icon: HourglassEmptyIcon, color: 'warning' as const, text: 'AI processing in progress...' },
+      failed: { icon: ErrorIcon, color: 'error' as const, text: 'AI processing failed' },
     };
 
     const config = statusConfig[processingStatus];
@@ -180,7 +180,7 @@ export const MeetingContentUpload: React.FC<MeetingContentUploadProps> = ({
 
     return (
       <Alert 
-        severity={config.color as any} 
+        severity={config.color} 
         icon={<StatusIcon />}
         sx={{ mb: 2 }}
       >

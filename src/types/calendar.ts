@@ -84,7 +84,7 @@ export interface UserIntegration {
   refresh_token?: string;
   token_expires_at?: string;
   scopes?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -103,7 +103,7 @@ export interface CalendarSyncLog {
     timestamp: string;
   }>;
   status: 'in_progress' | 'completed' | 'failed';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MeetingInsights {

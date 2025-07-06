@@ -10,17 +10,11 @@ import {
   Fade,
   Chip,
   Avatar,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Divider,
   IconButton,
   TextField,
   Stack
 } from '@mui/material';
 import { 
-  CheckCircle, 
   People, 
   LinkedIn,
   ArrowForward,
@@ -391,7 +385,7 @@ export default function ContactConfirmationScreen() {
                 mb: 4
               }}
             >
-              We've successfully imported your goal-related contacts.
+              We&apos;ve successfully imported your goal-related contacts.
             </Typography>
           </Box>
 
@@ -644,7 +638,7 @@ export default function ContactConfirmationScreen() {
                   📧 <strong>Context Discovery:</strong> Link your Gmail and Google Calendar for deeper connection insights
                 </Box>
                 <Box component="li" sx={{ lineHeight: 2.5 }}>
-                  🔍 <strong>Your Profile Analysis:</strong> We'll analyze your LinkedIn profile and posts
+                  🔍 <strong>Your Profile Analysis:</strong> We&apos;ll analyze your LinkedIn profile and posts
                 </Box>
                 <Box component="li" sx={{ lineHeight: 2.5 }}>
                   🤩 <strong>Platform Walkthrough:</strong> Explore features and capabilities of your relationship intelligence system
@@ -690,7 +684,7 @@ export default function ContactConfirmationScreen() {
                 mx: 'auto'
               }}
             >
-              "Your network is your net worth, but relationships are your real wealth."
+              &quot;I&apos;m not good at networking&quot;
             </Typography>
             <Typography 
               variant="caption" 

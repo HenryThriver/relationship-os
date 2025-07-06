@@ -7,11 +7,8 @@ import {
   Button, 
   Card,
   CardContent,
-  Stack,
   Fade,
   LinearProgress,
-  useTheme,
-  useMediaQuery,
   Table,
   TableBody,
   TableCell,
@@ -22,8 +19,6 @@ import {
 } from '@mui/material';
 import { 
   EmojiEvents, 
-  Psychology,
-  TrendingDown,
   Lightbulb,
   ArrowForward
 } from '@mui/icons-material';
@@ -32,8 +27,6 @@ import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { getFeatureByKey } from '@/config/cultivateFeatures';
 
 export default function ChallengeRecognitionScreen() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { nextScreen, completeScreen, currentScreen, isNavigating, state: onboardingState } = useOnboardingState();
   const { profile } = useUserProfile();
   
@@ -210,7 +203,7 @@ export default function ChallengeRecognitionScreen() {
                   fontSize: { xs: '1.5rem', md: '2rem' }
                 }}
               >
-                Here's how we address each challenge you mentioned:
+                Here&apos;s how we address each challenge you mentioned:
               </Typography>
             </Fade>
           )}
@@ -337,7 +330,7 @@ export default function ChallengeRecognitionScreen() {
                     fontSize: { xs: '0.95rem', md: '1rem' }
                   }}>
                     Your networking challenges come from caring deeply about authentic, meaningful connections. 
-                    We're going to turn that care into systematic relationship intelligence.
+                    We&apos;re going to turn that care into systematic relationship intelligence.
                   </Typography>
                   
                   <Typography variant="body1" sx={{ 
@@ -346,7 +339,7 @@ export default function ChallengeRecognitionScreen() {
                     lineHeight: 1.6,
                     fontSize: { xs: '0.95rem', md: '1rem' }
                   }}>
-                    Because you care so much about genuine connection, you're going to love what technology 
+                    Because you care so much about genuine connection, you&apos;re going to love what technology 
                     unlocks for systematic relationship building.
                   </Typography>
                 </CardContent>
@@ -358,10 +351,10 @@ export default function ChallengeRecognitionScreen() {
               <CardContent sx={{ p: { xs: 3, md: 4 }, textAlign: 'center' }}>
                 <EmojiEvents sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
                 <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
-                  That's completely understandable—trust is earned.
+                  That&apos;s completely understandable—trust is earned.
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#666', lineHeight: 1.6 }}>
-                  We understand that sharing personal challenges takes trust. Let's show you what's possible 
+                  We understand that sharing personal challenges takes trust. Let&apos;s show you what&apos;s possible 
                   with systematic relationship intelligence.
                 </Typography>
               </CardContent>
@@ -386,7 +379,7 @@ export default function ChallengeRecognitionScreen() {
                   textTransform: 'none'
                 }}
               >
-                Show me what's possible
+                Show me what&apos;s possible
               </Button>
             </Box>
           )}
@@ -409,8 +402,8 @@ export default function ChallengeRecognitionScreen() {
                   fontSize: { xs: '0.875rem', md: '0.875rem' }
                 }}
               >
-                "When you need help, you'll be searching your database of people you've helped. 
-                The bigger that database, the more likely you are to find the help you need."
+                &quot;When you need help, you&apos;ll be searching your database of people you&apos;ve helped. 
+                The bigger that database, the more likely you are to find the help you need.&quot;
               </Typography>
               <Typography 
                 variant="caption" 

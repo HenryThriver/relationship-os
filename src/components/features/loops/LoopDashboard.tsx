@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -6,13 +6,12 @@ import {
   Tabs,
   Tab,
   Button,
-  Grid,
   Alert,
   CircularProgress
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { useLoops } from '@/lib/hooks/useLoops';
-import { LoopArtifact, LoopType, LoopStatus, LoopArtifactContent } from '@/types/artifact';
+import { LoopArtifact, LoopStatus, LoopArtifactContent } from '@/types/artifact';
 import { LoopDetailModal } from './LoopDetailModal';
 import { EnhancedCreateLoopModal } from './EnhancedCreateLoopModal';
 import { EnhancedLoopTimeline } from './EnhancedLoopTimeline';

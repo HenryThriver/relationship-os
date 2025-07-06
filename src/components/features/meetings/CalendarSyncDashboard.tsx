@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   Chip,
-  LinearProgress,
   Alert,
   List,
   ListItem,
@@ -21,7 +20,6 @@ import {
   DialogActions,
   CircularProgress,
   Grid,
-  Paper,
   IconButton,
   Tooltip,
 } from '@mui/material';
@@ -30,14 +28,10 @@ import {
   Sync,
   CheckCircle,
   Error as ErrorIcon,
-  Warning,
   Info,
   Refresh,
   Settings,
   CloudSync,
-  Schedule,
-  People,
-  Event,
 } from '@mui/icons-material';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import type { CalendarSyncLog } from '@/types/calendar';
@@ -51,7 +45,7 @@ interface SyncStatus {
     connected: boolean;
     connectedAt?: string;
     lastUpdated?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
   recentSyncs: CalendarSyncLog[];
 }

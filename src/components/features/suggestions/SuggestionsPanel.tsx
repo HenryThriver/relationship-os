@@ -5,23 +5,19 @@ import {
   Box, 
   Paper, 
   Typography, 
-  Collapse, 
   IconButton,
   Divider,
   Alert,
   CircularProgress
 } from '@mui/material';
 import { 
-  ExpandLess as CollapseIcon,
-  ExpandMore as ExpandIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import { UpdateSuggestionRecord, ContactUpdateSuggestion } from '@/types/suggestions';
+import { UpdateSuggestionRecord } from '@/types/suggestions';
 import { SuggestionCard } from './SuggestionCard';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
 
 interface SuggestionsPanelProps {
-  contactId: string;
   isOpen: boolean;
   onClose: () => void;
   suggestions: UpdateSuggestionRecord[];
@@ -32,7 +28,6 @@ interface SuggestionsPanelProps {
 }
 
 export const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
-  contactId,
   isOpen,
   onClose,
   suggestions,
@@ -245,8 +240,7 @@ export const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
                         borderColor: 'grey.200'
                       }}
                     >
-                      "{String(record.artifacts.transcription).substring(0, 150)}
-                      {String(record.artifacts.transcription).length > 150 ? '...' : ''}"
+                      &quot;I&apos;m not good at networking&quot;
                     </Typography>
                   )}
                 </Box>

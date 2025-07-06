@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+// import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 // import { useSupabaseClient } from '@supabase/auth-helpers-react'; // Replaced for consistency
 import { supabase } from '@/lib/supabase/client'; // Using singleton client
@@ -40,13 +40,13 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
       // Even with generated types, explicit casting might be needed if the select string complexity
       // outpaces the type inference for `data`.
       // Also, ensure nested JSON fields are correctly typed.
-      return data ? data.map(s => ({
+      return data ? data.map((s: Record<string, unknown>) => ({
         ...s,
         suggested_updates: s.suggested_updates as unknown as { suggestions: ContactUpdateSuggestion[] },
         // Ensure artifacts is handled, it can be null from the query
         artifacts: s.artifacts ? { 
-            transcription: s.artifacts.transcription, 
-            created_at: s.artifacts.created_at 
+            transcription: (s.artifacts as Record<string, unknown>).transcription, 
+            created_at: (s.artifacts as Record<string, unknown>).created_at 
         } : undefined 
       })) as UpdateSuggestionRecord[] : []; 
     },
@@ -54,7 +54,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
   });
 
   // Apply suggestions mutation
-  const applyMutation = useMutation<any, Error, { suggestionId: string; selectedPaths: string[] }>({
+  const applyMutation = useMutation<unknown, Error, { suggestionId: string; selectedPaths: string[] }>({
     mutationFn: async ({ 
       suggestionId, 
       selectedPaths 
@@ -72,7 +72,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
       }
       return response.json();
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['update-suggestions', contactId] });
       queryClient.invalidateQueries({ queryKey: ['contact-profile', contactId] });
     },
@@ -82,7 +82,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
   });
 
   // Reject suggestions mutation
-  const rejectMutation = useMutation<any, Error, { suggestionId: string }>({
+  const rejectMutation = useMutation<unknown, Error, { suggestionId: string }>({
     mutationFn: async ({ suggestionId }) => {
       const { error: updateError } = await supabase
         .from(CONTACT_UPDATE_SUGGESTIONS_TABLE) // Use const for table name
@@ -98,7 +98,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
       }
       return { success: true };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['update-suggestions', contactId] });
     },
     onError: (err: Error) => { // Explicitly type error object
@@ -107,7 +107,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
   });
 
   // Mark suggestion as viewed mutation
-  const markViewedMutation = useMutation<any, Error, { suggestionId: string }>({
+  const markViewedMutation = useMutation<unknown, Error, { suggestionId: string }>({
     mutationFn: async ({ suggestionId }) => {
       const { error: updateError } = await supabase
         .from(CONTACT_UPDATE_SUGGESTIONS_TABLE)
@@ -131,7 +131,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
   });
 
   // Bulk apply suggestions mutation
-  const bulkApplyMutation = useMutation<any, Error, { suggestionIds: string[]; selectedPathsMap: Record<string, string[]> }>({
+  const bulkApplyMutation = useMutation<unknown, Error, { suggestionIds: string[]; selectedPathsMap: Record<string, string[]> }>({
     mutationFn: async ({ suggestionIds, selectedPathsMap }) => {
       const promises = suggestionIds.map(suggestionId => 
         fetch('/api/suggestions/apply', {
@@ -159,7 +159,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
   });
 
   // Bulk reject suggestions mutation
-  const bulkRejectMutation = useMutation<any, Error, { suggestionIds: string[] }>({
+  const bulkRejectMutation = useMutation<unknown, Error, { suggestionIds: string[] }>({
     mutationFn: async ({ suggestionIds }) => {
       const { error: updateError } = await supabase
         .from(CONTACT_UPDATE_SUGGESTIONS_TABLE)
@@ -184,7 +184,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
   });
 
   // Calculate derived values
-  const pendingCount = suggestions.filter(s => s.status === 'pending').length;
+  const pendingCount = suggestions.filter((s: UpdateSuggestionRecord) => s.status === 'pending').length;
   const highConfidenceCount = suggestions.reduce((count, record) => 
     count + record.suggested_updates.suggestions.filter(s => s.confidence >= 0.9).length, 0
   );

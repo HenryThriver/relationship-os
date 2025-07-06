@@ -1,15 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
-import { LoopArtifact, LoopStatus, LoopType, LoopArtifactContent, LoopAction, ArtifactTypeEnum, LoopTemplate, LoopTemplateAction } from '@/types/artifact';
+import { LoopArtifact, LoopStatus, LoopType, LoopArtifactContent, LoopAction, LoopTemplateAction } from '@/types/artifact';
 import { useToast } from '@/lib/contexts/ToastContext';
 import { Json, type Database, type Tables, type TablesInsert, type TablesUpdate } from '../supabase/types_db';
 
 // Helper to parse LoopTemplate default_actions
 const parseTemplateDefaultActions = (jsonInput: Json | null): LoopTemplateAction[] | null => {
   if (jsonInput === null || jsonInput === undefined) return null;
-  let actionsArray: any;
+      let actionsArray: unknown;
   if (typeof jsonInput === 'string') {
-    try { actionsArray = JSON.parse(jsonInput); } catch (e) { return null; }
+    try { actionsArray = JSON.parse(jsonInput); } catch { return null; }
   } else {
     actionsArray = jsonInput;
   }
@@ -33,7 +33,7 @@ export const useLoops = (contactId: string) => {
         .from('artifacts')
         .select<'*', Tables<'artifacts'>>('*')
         .eq('contact_id', contactId)
-        .eq('type', 'loop' as any)
+        .eq('type', 'loop' as Database['public']['Enums']['artifact_type_enum'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -48,8 +48,8 @@ export const useLoops = (contactId: string) => {
           let parsedContent: LoopArtifactContent;
           try {
             parsedContent = JSON.parse(row.content) as LoopArtifactContent;
-          } catch (e) {
-            console.error('Failed to parse loop content:', e, row.content);
+          } catch {
+            console.error('Failed to parse loop content:');
             parsedContent = { 
               type: LoopType.INTRODUCTION,
               status: LoopStatus.ABANDONED,
@@ -67,7 +67,7 @@ export const useLoops = (contactId: string) => {
             metadata: row.metadata, // Ensure metadata is passed if LoopArtifact expects it
           } as LoopArtifact; 
         })
-        .filter((loop): loop is LoopArtifact => loop !== null);
+        .filter((loop: LoopArtifact | null): loop is LoopArtifact => loop !== null);
     }
   });
 
@@ -90,14 +90,14 @@ export const useLoops = (contactId: string) => {
       let initialActions: LoopAction[] = [];
       if (loopData.templateId) {
         const { data: templateRow, error: templateError } = await supabase
-          .from('loop_templates' as any)
+          .from('loop_templates')
           .select<'default_actions', { default_actions: Json | null }>('default_actions')
           .eq('id', loopData.templateId)
           .eq('user_id', user.id)
           .single();
         
         if (templateError) {
-          console.warn(`Failed to fetch template ${loopData.templateId}:`, templateError.message);
+          console.warn(`Failed to fetch template ${loopData.templateId}:`);
         } else if (templateRow && templateRow.default_actions) {
           const templateActions = parseTemplateDefaultActions(templateRow.default_actions);
           if (templateActions) {
@@ -135,14 +135,14 @@ export const useLoops = (contactId: string) => {
       const artifactToInsert: TablesInsert<'artifacts'> = {
         contact_id: contactId,
         user_id: user.id,
-        type: 'loop' as any,
+        type: 'loop' as Database['public']['Enums']['artifact_type_enum'],
         content: JSON.stringify(newLoopContent), 
         timestamp: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
         .from('artifacts')
-        .insert(artifactToInsert as any)
+        .insert(artifactToInsert)
         .select<'*', Tables<'artifacts'>>('*')
         .single();
 
@@ -153,8 +153,8 @@ export const useLoops = (contactId: string) => {
       let parsedContent: LoopArtifactContent;
       try {
         parsedContent = JSON.parse(row.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse loop content immediately after insert:', e, row.content);
+      } catch {
+        console.error('Failed to parse loop content immediately after insert:');
         parsedContent = newLoopContent;
       }
       return {
@@ -197,8 +197,8 @@ export const useLoops = (contactId: string) => {
       let currentContent: LoopArtifactContent;
       try {
         currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse current loop content for update:', e, currentLoopResult.content);
+      } catch {
+        console.error('Failed to parse current loop content for update:');
         throw new Error('Failed to parse current loop content');
       }
 
@@ -231,14 +231,11 @@ export const useLoops = (contactId: string) => {
         delete updatedContent.next_action_due;
       }
       
-      const updatePayload: TablesUpdate<'artifacts'> = { 
-        content: JSON.stringify(updatedContent), // Let Supabase client handle stringified JSON for jsonb
-        updated_at: nowISO,
-      };
+      const updatePayload: TablesUpdate<'artifacts'> = { content: JSON.stringify(updatedContent) };
 
       const { data: updatedLoop, error: updateError } = await supabase
         .from('artifacts')
-        .update(updatePayload as any) // Re-adding 'as any' due to persistent Supabase type issue for 'loop' enum
+        .update(updatePayload)
         .eq('id', loopId)
         .select<'*', Tables<'artifacts'>>('*')
         .single();
@@ -250,8 +247,8 @@ export const useLoops = (contactId: string) => {
       let parsedUpdatedContent: LoopArtifactContent;
       try {
         parsedUpdatedContent = JSON.parse(updatedLoop.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse loop content after update:', e, updatedLoop.content);
+      } catch {
+        console.error('Failed to parse loop content after update:');
         // Fallback to the content we intended to set, though DB state is authoritative
         parsedUpdatedContent = updatedContent; 
       }
@@ -294,8 +291,8 @@ export const useLoops = (contactId: string) => {
       let currentContent: LoopArtifactContent;
       try {
         currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse current loop content for adding action:', e, currentLoopResult.content);
+      } catch {
+        console.error('Failed to parse current loop content for adding action:');
         throw new Error('Failed to parse current loop content');
       }
 
@@ -304,11 +301,11 @@ export const useLoops = (contactId: string) => {
         actions: [...(currentContent.actions || []), action],
       };
       
-      const updatePayload = { content: JSON.stringify(updatedContent) };
+      const updatePayload: TablesUpdate<'artifacts'> = { content: JSON.stringify(updatedContent) };
 
       const { data: updatedLoop, error: updateError } = await supabase
         .from('artifacts')
-        .update(updatePayload as any)
+        .update(updatePayload)
         .eq('id', loopId)
         .select<'*', Tables<'artifacts'>>('*')
         .single();
@@ -354,8 +351,8 @@ export const useLoops = (contactId: string) => {
       let currentContent: LoopArtifactContent;
       try {
         currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse current loop content for updating action:', e, currentLoopResult.content);
+      } catch {
+        console.error('Failed to parse current loop content for updating action:');
         throw new Error('Failed to parse current loop content');
       }
 
@@ -370,11 +367,11 @@ export const useLoops = (contactId: string) => {
         actions: updatedActions,
       };
       
-      const updatePayload = { content: JSON.stringify(updatedContent) };
+      const updatePayload: TablesUpdate<'artifacts'> = { content: JSON.stringify(updatedContent) };
 
       const { data: updatedLoop, error: updateError } = await supabase
         .from('artifacts')
-        .update(updatePayload as any)
+        .update(updatePayload)
         .eq('id', loopId)
         .select<'*', Tables<'artifacts'>>('*')
         .single();
@@ -427,8 +424,8 @@ export const useLoops = (contactId: string) => {
       let currentContent: LoopArtifactContent;
       try {
         currentContent = JSON.parse(currentLoopResult.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse current loop content for completion:', e, currentLoopResult.content);
+      } catch {
+        console.error('Failed to parse current loop content for completion:');
         throw new Error('Failed to parse current loop content for completion');
       }
 
@@ -465,7 +462,7 @@ export const useLoops = (contactId: string) => {
 
       const { data: updatedLoop, error: updateError } = await supabase
         .from('artifacts')
-        .update(updatePayload as any) 
+        .update(updatePayload)
         .eq('id', loopId)
         .select<'*', Tables<'artifacts'>>('*')
         .single();
@@ -476,8 +473,8 @@ export const useLoops = (contactId: string) => {
       let parsedUpdatedContent: LoopArtifactContent;
       try {
         parsedUpdatedContent = JSON.parse(updatedLoop.content) as LoopArtifactContent;
-      } catch (e) {
-        console.error('Failed to parse loop content after completion:', e, updatedLoop.content);
+      } catch {
+        console.error('Failed to parse loop content after completion:');
         parsedUpdatedContent = updatedContent; 
       }
 

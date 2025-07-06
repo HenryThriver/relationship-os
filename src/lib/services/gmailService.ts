@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { decodeBase64ToUtf8, cleanEmailText } from '@/lib/utils/textDecoding';
 import type { 
   GmailMessage, 
@@ -23,7 +23,7 @@ const REQUIRED_SCOPES = [
 ];
 
 export class GmailService {
-  private supabase = createBrowserClient(
+  private supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
@@ -72,16 +72,9 @@ export class GmailService {
     const expiryDate = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
 
     // Use service role key for server-side operations
-    const { createServerClient } = await import('@supabase/ssr');
-    const supabaseServer = createServerClient(
+    const supabaseServer = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => [],
-          setAll: () => {},
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     const { data: tokenRecord, error } = await supabaseServer
@@ -249,16 +242,9 @@ export class GmailService {
    */
   async getProfileServer(userId: string): Promise<GmailProfile> {
     // Use service role key for server-side operations
-    const { createServerClient } = await import('@supabase/ssr');
-    const supabaseServer = createServerClient(
+    const supabaseServer = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => [],
-          setAll: () => {},
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     const { data: tokenRecord, error } = await supabaseServer
@@ -445,27 +431,36 @@ export class GmailService {
   /**
    * Extract text content from Gmail message payload with proper UTF-8 decoding
    */
-  private extractTextContent(payload: any): { text: string; html: string } {
+  private extractTextContent(payload: Record<string, unknown>): { text: string; html: string } {
     let text = '';
     let html = '';
 
-    const extractFromPart = (part: any) => {
-      if (part.mimeType === 'text/plain' && part.body?.data) {
-        // Properly decode base64 to UTF-8 and clean encoding issues
-        const decodedText = decodeBase64ToUtf8(part.body.data);
-        text += cleanEmailText(decodedText);
-      } else if (part.mimeType === 'text/html' && part.body?.data) {
-        // Properly decode base64 to UTF-8 and clean encoding issues
-        const decodedHtml = decodeBase64ToUtf8(part.body.data);
-        html += cleanEmailText(decodedHtml);
-      } else if (part.parts) {
-        part.parts.forEach(extractFromPart);
+    const extractFromPart = (part: unknown) => {
+      if (
+        part &&
+        typeof part === 'object' &&
+        'mimeType' in part &&
+        ((part as Record<string, unknown>).mimeType === 'text/plain' || (part as Record<string, unknown>).mimeType === 'text/html') &&
+        'body' in part &&
+        (part as Record<string, unknown>).body &&
+        typeof (part as Record<string, unknown>).body === 'object' &&
+        (part as { body: Record<string, unknown> }).body.data
+      ) {
+        if ((part as Record<string, unknown>).mimeType === 'text/plain') {
+          const decodedText = decodeBase64ToUtf8((part as { body: { data: string } }).body.data);
+          text += cleanEmailText(decodedText);
+        } else if ((part as Record<string, unknown>).mimeType === 'text/html') {
+          const decodedHtml = decodeBase64ToUtf8((part as { body: { data: string } }).body.data);
+          html += cleanEmailText(decodedHtml);
+        }
+      } else if (part && typeof part === 'object' && 'parts' in part && Array.isArray((part as Record<string, unknown>).parts)) {
+        (part as { parts: unknown[] }).parts.forEach(extractFromPart);
       }
     };
 
-    if (payload.parts) {
+    if (payload.parts && Array.isArray(payload.parts)) {
       payload.parts.forEach(extractFromPart);
-    } else if (payload.body?.data) {
+    } else if (payload.body && typeof payload.body === 'object' && (payload.body as Record<string, unknown>).data) {
       extractFromPart(payload);
     }
 
@@ -475,25 +470,33 @@ export class GmailService {
   /**
    * Extract attachments from Gmail message payload
    */
-  private extractAttachments(payload: any): GmailAttachment[] {
+  private extractAttachments(payload: Record<string, unknown>): GmailAttachment[] {
     const attachments: GmailAttachment[] = [];
 
-    const extractFromPart = (part: any) => {
-      if (part.filename && part.body?.attachmentId) {
+    const extractFromPart = (part: unknown) => {
+      if (
+        part &&
+        typeof part === 'object' &&
+        'filename' in part &&
+        'mimeType' in part &&
+        'body' in part &&
+        (part as Record<string, unknown>).body &&
+        typeof (part as Record<string, unknown>).body === 'object' &&
+        'attachmentId' in (part as { body: Record<string, unknown> }).body
+      ) {
         attachments.push({
-          attachmentId: part.body.attachmentId,
-          size: part.body.size || 0,
-          filename: part.filename,
-          mimeType: part.mimeType,
+          attachmentId: (part as { body: { attachmentId: string } }).body.attachmentId,
+          size: (part as { body: { size?: number } }).body.size || 0,
+          filename: (part as { filename: string }).filename,
+          mimeType: (part as { mimeType: string }).mimeType,
         });
       }
-      
-      if (part.parts) {
-        part.parts.forEach(extractFromPart);
+      if (part && typeof part === 'object' && 'parts' in part && Array.isArray((part as Record<string, unknown>).parts)) {
+        (part as { parts: unknown[] }).parts.forEach(extractFromPart);
       }
     };
 
-    if (payload.parts) {
+    if (payload.parts && Array.isArray(payload.parts)) {
       payload.parts.forEach(extractFromPart);
     }
 
@@ -513,8 +516,8 @@ export class GmailService {
     }
 
     const headers = this.parseEmailHeaders(message.payload.headers || []);
-    const content = this.extractTextContent(message.payload);
-    const attachments = this.extractAttachments(message.payload);
+    const content = this.extractTextContent(message.payload as unknown as Record<string, unknown>);
+    const attachments = this.extractAttachments(message.payload as unknown as Record<string, unknown>);
 
     // Parse internal date
     const internalDate = message.internalDate 
@@ -573,16 +576,9 @@ export class GmailService {
 
     try {
       // Use service role key for server-side operations
-      const { createServerClient } = await import('@supabase/ssr');
-      const supabaseServer = createServerClient(
+      const supabaseServer = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          cookies: {
-            getAll: () => [],
-            setAll: () => {},
-          },
-        }
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
       // Get user's Gmail tokens
@@ -720,7 +716,7 @@ export class GmailService {
           }
 
           const thread = await threadResponse.json();
-          const threadPosition = thread.messages.findIndex((m: any) => m.id === message.id) + 1;
+          const threadPosition = thread.messages.findIndex((m: { id: string }) => m.id === message.id) + 1;
           const threadLength = thread.messages.length;
 
           // Transform to artifact content
@@ -795,16 +791,9 @@ export class GmailService {
       
       // Update sync state with error
       try {
-        const { createServerClient } = await import('@supabase/ssr');
-        const supabaseServer = createServerClient(
+        const supabaseServer = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          {
-            cookies: {
-              getAll: () => [],
-              setAll: () => {},
-            },
-          }
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
         await supabaseServer
@@ -973,16 +962,9 @@ export class GmailService {
    */
   async getSyncStateServer(userId: string): Promise<GmailSyncState | null> {
     // Use service role key for server-side operations
-    const { createServerClient } = await import('@supabase/ssr');
-    const supabaseServer = createServerClient(
+    const supabaseServer = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => [],
-          setAll: () => {},
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     const { data, error } = await supabaseServer

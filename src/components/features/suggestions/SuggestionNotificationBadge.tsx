@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { Badge, IconButton, Tooltip, keyframes } from '@mui/material';
 import { Notifications as NotificationsIcon } from '@mui/icons-material';
 
@@ -28,7 +28,6 @@ interface SuggestionNotificationBadgeProps {
 }
 
 const SuggestionNotificationBadgeComponent: React.FC<SuggestionNotificationBadgeProps> = ({
-  contactId,
   count,
   onClick,
   priority = 'medium',

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { LinkedInPostsService } from '@/lib/services/linkedinPostsService';
+import type { RapidLinkedInPost } from '@/types/artifact';
+import { Json } from '@/lib/supabase/database.types';
 
 export async function POST(request: NextRequest) {
   let contactId: string | undefined;
-  let supabase: any;
   
   try {
-    supabase = await createClient();
+    const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -27,16 +28,7 @@ export async function POST(request: NextRequest) {
       .select('id, name, linkedin_url, linkedin_posts_last_sync_at, linkedin_posts_sync_status')
       .eq('id', contactId)
       .eq('user_id', user.id)
-      .single() as { 
-        data: {
-          id: string;
-          name: string;
-          linkedin_url: string;
-          linkedin_posts_last_sync_at: string | null;
-          linkedin_posts_sync_status: string | null;
-        } | null;
-        error: any;
-      };
+      .single();
 
     if (contactError || !contact) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
@@ -76,7 +68,7 @@ export async function POST(request: NextRequest) {
     // Update sync status to in_progress
     await supabase
       .from('contacts')
-      .update({ linkedin_posts_sync_status: 'in_progress' } as any)
+      .update({ linkedin_posts_sync_status: 'in_progress' })
       .eq('id', contactId);
 
     console.log(`Starting LinkedIn posts sync for contact ${contactId} (${contact.name})`);
@@ -90,7 +82,7 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id);
 
     const existingPostIds = new Set<string>(
-      existingArtifacts?.map((a: any) => (a.metadata as any)?.post_id).filter(Boolean) || []
+      existingArtifacts?.map((a: { metadata: unknown }) => (a.metadata as Record<string, unknown>)?.post_id as string).filter(Boolean) || []
     );
 
     console.log(`Found ${existingPostIds.size} existing posts in database`);
@@ -108,18 +100,18 @@ export async function POST(request: NextRequest) {
 
     // Transform new posts (these should all be new since we filtered during fetch)
     const newPosts = posts
-      .filter((post: any) => post.urn) // Just ensure we have valid URNs
-      .map((post: any) => {
+      .filter((post: RapidLinkedInPost) => post.urn) // Just ensure we have valid URNs
+      .map((post: RapidLinkedInPost) => {
         const artifactContent = postsService.transformPostToArtifact(post, contactId!, contact?.name || '');
         const contentSummary = postsService.generateContentSummary(artifactContent);
         
         return {
           type: 'linkedin_post' as const,
-          contact_id: contactId,
+          contact_id: contactId!, // Non-null assertion since we already validated contactId exists
           user_id: user.id,
           content: contentSummary,
           timestamp: artifactContent.posted_at,
-          metadata: artifactContent as any, // Type cast needed for database insertion
+          metadata: artifactContent, // Type cast needed for database insertion
           ai_parsing_status: 'pending' as const, // Will be processed by parse-artifact function
         };
       });
@@ -138,7 +130,10 @@ export async function POST(request: NextRequest) {
         // Try batch insert first (fastest path for new posts)
         const { data: insertedData, error: insertError } = await supabase
           .from('artifacts')
-          .insert(batch)
+          .insert(batch.map(post => ({
+            ...post,
+            metadata: post.metadata as unknown as Json
+          })))
           .select('id');
 
         if (insertError) {
@@ -151,15 +146,18 @@ export async function POST(request: NextRequest) {
               try {
                 const { data: singleInsert } = await supabase
                   .from('artifacts')
-                  .insert([post])
+                  .insert([{
+                    ...post,
+                    metadata: post.metadata as unknown as Json
+                  }])
                   .select('id');
                 
                 if (singleInsert && singleInsert.length > 0) {
                   batchInsertedCount++;
                 }
-              } catch (singleError: any) {
+              } catch (singleError: unknown) {
                 // Skip duplicates silently
-                if (singleError.code !== '23505') {
+                if (singleError && typeof singleError === 'object' && 'code' in singleError && singleError.code !== '23505') {
                   console.error('Error inserting single post:', singleError);
                 }
               }
@@ -190,7 +188,7 @@ export async function POST(request: NextRequest) {
       .update({
         linkedin_posts_last_sync_at: new Date().toISOString(),
         linkedin_posts_sync_status: 'completed'
-      } as any)
+      })
       .eq('id', contactId);
 
     console.log(`LinkedIn posts sync completed for contact ${contactId}`);
@@ -209,12 +207,13 @@ export async function POST(request: NextRequest) {
     // Try to reset sync status to allow retry
     try {
       if (contactId) {
+        const supabase = await createClient();
         await supabase
           .from('contacts')
           .update({ 
             linkedin_posts_sync_status: 'failed',
             linkedin_posts_last_sync_at: new Date().toISOString()
-          } as any)
+          })
           .eq('id', contactId);
       }
     } catch (statusUpdateError) {
@@ -270,13 +269,7 @@ export async function GET(request: NextRequest) {
       .select('linkedin_posts_last_sync_at, linkedin_posts_sync_status')
       .eq('id', contactId)
       .eq('user_id', user.id)
-      .single() as {
-        data: {
-          linkedin_posts_last_sync_at: string | null;
-          linkedin_posts_sync_status: string | null;
-        } | null;
-        error: any;
-      };
+      .single();
 
     if (contactError || !contact) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 });

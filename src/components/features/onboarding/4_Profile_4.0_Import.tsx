@@ -7,7 +7,6 @@ import {
   Button, 
   TextField, 
   Alert,
-  CircularProgress,
   Fade
 } from '@mui/material';
 import { LinkedIn } from '@mui/icons-material';
@@ -15,7 +14,7 @@ import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 
 export default function LinkedInScreen() {
-  const { nextScreen, completeScreen, currentScreen, isNavigating } = useOnboardingState();
+  const { nextScreen, completeScreen, currentScreen } = useOnboardingState();
   const { analyzeLinkedIn } = useUserProfile();
   
   const [linkedinUrl, setLinkedinUrl] = useState('');
@@ -58,9 +57,10 @@ export default function LinkedInScreen() {
       // Immediately move to the next screen (ProcessingScreen will handle waiting)
       await completeScreen(currentScreen);
       await nextScreen();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('LinkedIn flow error:', err);
-      setError(err?.message || 'Failed to start LinkedIn analysis');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start LinkedIn analysis';
+      setError(errorMessage);
       setIsAnalyzing(false);
     }
   };
@@ -81,7 +81,7 @@ export default function LinkedInScreen() {
             Analyze Your Professional Presence
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
-            We'll analyze your LinkedIn profile and posts to understand your public persona, develop content guidelines, and identify surface area for connection.
+            We&apos;ll analyze your LinkedIn profile and posts to understand your public persona, develop content guidelines, and identify surface area for connection.
           </Typography>
 
       {(

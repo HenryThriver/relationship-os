@@ -44,7 +44,7 @@ export const useGmailIntegration = (): UseGmailIntegrationReturn => {
     queryKey: ['gmail', 'status'],
     queryFn: async (): Promise<{
       isConnected: boolean;
-      profile: any;
+      profile: Record<string, unknown>;
       syncState: GmailSyncState | null;
     }> => {
       const response = await fetch('/api/gmail/sync');
@@ -146,7 +146,7 @@ export const useGmailIntegration = (): UseGmailIntegrationReturn => {
   // Create connection status object
   const connectionStatus: GmailConnectionStatus | null = statusData ? {
     is_connected: statusData.isConnected,
-    email_address: statusData.profile?.email,
+    email_address: typeof statusData.profile?.email === 'string' ? statusData.profile.email : undefined,
     connection_date: undefined, // Not provided by current API
     last_sync: statusData.syncState?.last_sync_timestamp,
     total_emails_synced: statusData.syncState?.total_emails_synced,

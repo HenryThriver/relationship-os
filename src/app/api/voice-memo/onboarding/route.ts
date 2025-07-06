@@ -55,12 +55,15 @@ export async function POST(request: NextRequest) {
     //   .getPublicUrl(filename);
 
     // Get or create user's self-contact
-    let { data: selfContact, error: selfContactError } = await supabase
+    let selfContact;
+    const { data, error: selfContactError } = await supabase
       .from('contacts')
       .select('id')
       .eq('user_id', user.id)
       .eq('is_self_contact', true)
       .single();
+
+    selfContact = data;
 
     if (selfContactError && selfContactError.code !== 'PGRST116') {
       console.error('Error getting self contact:', selfContactError);

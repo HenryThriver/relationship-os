@@ -31,7 +31,7 @@ const typeIcons = {
 };
 
 export const ToastItem: React.FC<ToastItemProps> = ({ toast, onHide }) => {
-  const { id, message, type, duration, icon, action } = toast;
+  const { message, type, duration = 5000, icon, action } = toast;
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {

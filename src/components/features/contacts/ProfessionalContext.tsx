@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Card, CardContent, CardHeader, List, ListItem, ListItemText, Chip } from '@mui/material';
-import type { Contact, ProfessionalContext as ProfessionalContextType, Mentions } from '@/types';
+import type { ProfessionalContext as ProfessionalContextType } from '@/types';
 import { SourcedField } from '@/components/ui/SourceAttribution';
 
 interface ProfessionalContextProps {

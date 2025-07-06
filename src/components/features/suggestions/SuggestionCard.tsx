@@ -6,8 +6,7 @@ import {
   CardContent, 
   Box, 
   Typography, 
-  Checkbox, 
-  FormControlLabel,
+  Checkbox,
   Chip,
   Divider
 } from '@mui/material';
@@ -65,7 +64,7 @@ export const SuggestionCard: React.FC<SuggestionCardProps> = ({
     }
   };
 
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) {
       return 'N/A'; // Or an empty string, or "(empty)"
     }

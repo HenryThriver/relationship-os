@@ -17,8 +17,6 @@ import {
   Menu,
   MenuItem,
   Divider,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -42,8 +40,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const theme = useTheme();
-  const isMobile = useMediaQuery('(max-width:900px)');
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen);

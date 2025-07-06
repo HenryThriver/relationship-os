@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Paper, Typography, Chip, IconButton, Tooltip } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 import { getArtifactConfig } from '@/config/artifactConfig'; // Will create this based on sourceConfig
 import type { ArtifactGlobal } from '@/types';
 import { format, parseISO } from 'date-fns';

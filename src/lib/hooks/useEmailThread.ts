@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import type { EmailArtifact, EmailThread } from '@/types/email';
+import type { Json } from '@/lib/supabase/types_db';
 
 interface UseEmailThreadProps {
   threadId?: string;
@@ -35,12 +36,12 @@ export const useEmailThread = ({ threadId, contactId, enabled = true }: UseEmail
       }
 
       // Convert database rows to EmailArtifact objects
-      const emailArtifacts: EmailArtifact[] = emails.map(email => ({
+      const emailArtifacts: EmailArtifact[] = emails.map((email: Record<string, unknown>) => ({
         ...email,
         type: 'email' as const,
-        metadata: email.metadata as any, // Cast to any to avoid complex Json type conflicts
+        metadata: email.metadata as Json, // Cast to Json for database compatibility
         ai_parsing_status: email.ai_parsing_status as EmailArtifact['ai_parsing_status']
-      }));
+      })) as EmailArtifact[];
 
       // Helper function to determine email direction
       const getEmailDirection = (email: EmailArtifact): 'sent' | 'received' => {

@@ -17,7 +17,7 @@ import {
   Person as PersonIcon,
   TrendingUp as ProgressIcon
 } from '@mui/icons-material';
-import { LoopArtifact, LoopStatus, LoopArtifactContent, LoopAction } from '@/types/artifact'; // Ensure LoopAction is imported
+import { LoopArtifact, LoopStatus, LoopArtifactContent } from '@/types/artifact'; // Ensure LoopAction is imported
 import { LoopStatusBadge } from '@/components/ui/LoopStatusBadge';
 import { formatDistanceToNow, format } from 'date-fns'; // Import format
 
@@ -26,7 +26,6 @@ interface LoopCardProps {
   contactName: string;
   onStatusUpdate: (loopId: string, newStatus: LoopStatus) => void;
   onViewDetails: (loop: LoopArtifact) => void;
-  onQuickAction?: (loopId: string, actionType: string) => void;
 }
 
 // Copied from LoopStatusBadge temporarily, ideally import from a shared config if STATUS_CONFIG is used elsewhere
@@ -50,7 +49,6 @@ export const LoopCard: React.FC<LoopCardProps> = ({
   contactName,
   onStatusUpdate,
   onViewDetails,
-  onQuickAction
 }) => {
   const content = loop.content as LoopArtifactContent;
   const sortedActions = content.actions ? [...content.actions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) : [];

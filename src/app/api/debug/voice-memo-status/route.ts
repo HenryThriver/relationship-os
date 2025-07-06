@@ -26,10 +26,10 @@ export async function GET(): Promise<NextResponse> {
       .select('id, is_self_contact, name')
       .eq('user_id', user.id);
 
-    const contactMap = contacts?.reduce((acc, contact) => {
+    const contactMap = contacts?.reduce((acc: Record<string, { id: string; is_self_contact: boolean | null; name: string | null }>, contact: { id: string; is_self_contact: boolean | null; name: string | null }) => {
       acc[contact.id] = contact;
       return acc;
-    }, {} as Record<string, any>) || {};
+    }, {} as Record<string, { id: string; is_self_contact: boolean | null; name: string | null }>) || {};
 
     if (fetchError) {
       console.error('Error fetching voice memos:', fetchError);
@@ -37,15 +37,15 @@ export async function GET(): Promise<NextResponse> {
     }
 
     // Enhance voice memos with contact info
-    const enhancedVoiceMemos = voiceMemos?.map(vm => {
-      const metadata = vm.metadata as Record<string, any> || {};
+    const enhancedVoiceMemos = voiceMemos?.map((vm: Record<string, unknown>) => {
+      const metadata = vm.metadata as Record<string, unknown> || {};
       return {
         ...vm,
-        contact_info: contactMap[vm.contact_id] || null,
+        contact_info: contactMap[vm.contact_id as string] || null,
         is_onboarding: metadata.is_onboarding === 'true' || metadata.source === 'onboarding_voice_recorder',
-        memo_type: metadata.memo_type || 'unknown',
+        memo_type: metadata.memo_type || {},
         has_transcription: !!vm.transcription,
-        transcription_preview: vm.transcription ? vm.transcription.substring(0, 100) + '...' : null
+        transcription_preview: vm.transcription ? (vm.transcription as string).substring(0, 100) + '...' : null
       };
     }) || [];
 
@@ -54,17 +54,17 @@ export async function GET(): Promise<NextResponse> {
       voice_memos: enhancedVoiceMemos,
       summary: {
         total: voiceMemos?.length || 0,
-        onboarding_memos: enhancedVoiceMemos.filter(vm => vm.is_onboarding).length,
-        self_contact_memos: enhancedVoiceMemos.filter(vm => vm.contact_info?.is_self_contact).length,
-        regular_memos: enhancedVoiceMemos.filter(vm => !vm.contact_info?.is_self_contact).length,
-        pending_transcription: voiceMemos?.filter(vm => vm.transcription_status === 'pending').length || 0,
-        processing_transcription: voiceMemos?.filter(vm => vm.transcription_status === 'processing').length || 0,
-        completed_transcription: voiceMemos?.filter(vm => vm.transcription_status === 'completed').length || 0,
-        failed_transcription: voiceMemos?.filter(vm => vm.transcription_status === 'failed').length || 0,
-        pending_ai: voiceMemos?.filter(vm => vm.ai_parsing_status === 'pending').length || 0,
-        processing_ai: voiceMemos?.filter(vm => vm.ai_parsing_status === 'processing').length || 0,
-        completed_ai: voiceMemos?.filter(vm => vm.ai_parsing_status === 'completed').length || 0,
-        failed_ai: voiceMemos?.filter(vm => vm.ai_parsing_status === 'failed').length || 0,
+        onboarding_memos: enhancedVoiceMemos.filter((vm: Record<string, unknown>) => vm.is_onboarding).length,
+        self_contact_memos: enhancedVoiceMemos.filter((vm: Record<string, unknown>) => (vm.contact_info as { is_self_contact?: boolean })?.is_self_contact).length,
+        regular_memos: enhancedVoiceMemos.filter((vm: Record<string, unknown>) => !(vm.contact_info as { is_self_contact?: boolean })?.is_self_contact).length,
+        pending_transcription: voiceMemos?.filter((vm: Record<string, unknown>) => vm.transcription_status === 'pending').length || 0,
+        processing_transcription: voiceMemos?.filter((vm: Record<string, unknown>) => vm.transcription_status === 'processing').length || 0,
+        completed_transcription: voiceMemos?.filter((vm: Record<string, unknown>) => vm.transcription_status === 'completed').length || 0,
+        failed_transcription: voiceMemos?.filter((vm: Record<string, unknown>) => vm.transcription_status === 'failed').length || 0,
+        pending_ai: voiceMemos?.filter((vm: Record<string, unknown>) => vm.ai_parsing_status === 'pending').length || 0,
+        processing_ai: voiceMemos?.filter((vm: Record<string, unknown>) => vm.ai_parsing_status === 'processing').length || 0,
+        completed_ai: voiceMemos?.filter((vm: Record<string, unknown>) => vm.ai_parsing_status === 'completed').length || 0,
+        failed_ai: voiceMemos?.filter((vm: Record<string, unknown>) => vm.ai_parsing_status === 'failed').length || 0,
       }
     });
 

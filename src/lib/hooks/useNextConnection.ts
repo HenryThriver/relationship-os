@@ -143,7 +143,7 @@ export const useNextConnection = (contactId: string | null) => {
       };
       return createNextConnection(paramsForCreate);
     },
-    onSuccess: (newConnection) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });

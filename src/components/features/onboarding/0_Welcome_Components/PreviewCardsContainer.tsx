@@ -7,7 +7,7 @@ import { ActionItemCard } from './cards/ActionItemCard';
 import { GoalProgressCard } from './cards/GoalProgressCard';
 import { VoiceMemoCard } from './cards/VoiceMemoCard';
 import { TimelineCard } from './cards/TimelineCard';
-import { PreviewCard, getResponsiveCardPositions, shuffleArray } from './utils/cardPositioning';
+import { PreviewCard, getResponsiveCardPositions } from './utils/cardPositioning';
 
 interface PreviewCardsContainerProps {
   startDelay?: number;
@@ -34,8 +34,7 @@ export const PreviewCardsContainer: React.FC<PreviewCardsContainerProps> = ({
   };
 
   useEffect(() => {
-    let cardIndex = 0;
-    let timeouts: NodeJS.Timeout[] = [];
+    const timeouts: NodeJS.Timeout[] = [];
     
     const screenSize = isSmall ? 'sm' : isMobile ? 'md' : 'lg';
     const positions = getResponsiveCardPositions(screenSize);

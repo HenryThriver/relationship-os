@@ -1,6 +1,6 @@
 import React from 'react';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
-import { ConversationStarters, ConversationStartersProps } from './ConversationStarters'; // Import existing component and its props
+import { ConversationStarters } from './ConversationStarters'; // Import existing component and its props
 
 // This card will simply wrap the ConversationStarters component, passing only personal topics.
 interface PersonalConversationStartersCardProps {

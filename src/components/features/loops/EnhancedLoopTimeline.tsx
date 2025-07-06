@@ -14,10 +14,6 @@ import {
   MenuItem,
   Alert,
   Tooltip,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   Paper,
   List,
   ListItem,
@@ -44,11 +40,8 @@ import {
   CheckCircle as CompleteIcon,
   Warning as WarningIcon,
   Edit as EditIcon,
-  Add as AddIcon,
   Share as ShareIcon,
   Delete as DeleteIcon,
-  PlayArrow as StartIcon,
-  Pause as PauseIcon,
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
   AccessTime as TimeIcon,
@@ -68,7 +61,7 @@ import {
   Event as EventIcon,
   Workspaces as WorkspacesIcon
 } from '@mui/icons-material';
-import { formatDistanceToNow, format, isAfter, isBefore, addDays } from 'date-fns';
+import { formatDistanceToNow, format, isBefore, addDays } from 'date-fns';
 import { LoopArtifact, LoopStatus, LoopType, LoopArtifactContent } from '@/types/artifact';
 import { LoopStatusBadge } from '@/components/ui/LoopStatusBadge';
 

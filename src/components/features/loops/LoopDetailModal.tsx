@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,10 +13,6 @@ import {
   FormControl,
   InputLabel,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
   SelectChangeEvent,
   Chip,
   Grid,
@@ -32,7 +28,7 @@ import {
   TimelineDot
 } from '@mui/lab';
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
-import { LoopArtifact, LoopStatus, LoopType, LoopAction, LoopArtifactContent } from '@/types/artifact';
+import { LoopArtifact, LoopStatus, LoopAction, LoopArtifactContent } from '@/types/artifact';
 import { useLoops } from '@/lib/hooks/useLoops';
 import { LoopStatusBadge } from '@/components/ui/LoopStatusBadge';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -259,7 +255,7 @@ export const LoopDetailModal: React.FC<LoopDetailModalProps> = ({
                 </Box>
                 {loopContent.contact_feedback.comments && (
                   <Typography variant="body2" color="text.secondary" paragraph>
-                    <em>"{loopContent.contact_feedback.comments}"</em>
+                    <em>&quot;{loopContent.contact_feedback.comments}&quot;</em>
                   </Typography>
                 )}
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>

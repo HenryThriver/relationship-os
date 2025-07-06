@@ -6,8 +6,8 @@ export interface ArtifactTimelineConfig {
   icon: IconType | React.ElementType; // React component or MUI SvgIconComponent
   color: string; // MUI theme color key (e.g., 'primary.main', 'secondary.light') or hex code
   badgeLabel: string; // Short label for the item header (e.g., "Voice Memo")
-  getPreview: (content: any) => string | React.ReactNode; // Function to generate a concise preview string or JSX
-  // Potentially add: getDetailView: (content: any) => React.ReactNode; for modal
+  getPreview: (content: unknown) => string | React.ReactNode; // Function to generate a concise preview string or JSX
+  // Potentially add: getDetailView: (content: unknown) => React.ReactNode; for modal
 }
 
 // Represents a group of artifacts, typically by day

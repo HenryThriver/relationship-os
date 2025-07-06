@@ -1,6 +1,6 @@
 import React from 'react';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
-import { ConversationStarters, ConversationStartersProps } from './ConversationStarters'; // Import existing component and its props
+import { ConversationStarters } from './ConversationStarters'; // Import existing component and its props
 
 interface ProfessionalConversationStartersCardProps {
   professionalStarters?: string[] | null;

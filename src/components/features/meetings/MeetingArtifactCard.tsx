@@ -13,13 +13,11 @@ import {
   Avatar,
   AvatarGroup,
   Tooltip,
-  Collapse,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Divider,
-  Link,
   Checkbox,
   LinearProgress,
 } from '@mui/material';
@@ -27,32 +25,25 @@ import {
   Event as EventIcon,
   LocationOn as LocationOnIcon,
   People as PeopleIcon,
-  Notes as NotesIcon,
-  Mic as MicIcon,
-  Videocam as VideocamIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
   MoreVert as MoreVertIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Info as InfoIcon,
   ErrorOutline as ErrorOutlineIcon,
   HourglassEmpty as HourglassEmptyIcon,
   LightbulbOutlined as LightbulbOutlinedIcon,
   FlagOutlined as FlagOutlinedIcon,
-  Link as LinkIcon,
   NoteAdd as NoteAddIcon,
   RecordVoiceOver as RecordVoiceOverIcon,
   CloudUpload as CloudUploadIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import type { MeetingArtifact, MeetingArtifactContent } from '@/types/artifact';
 
 // Type aliases for convenience
 type ActionItem = NonNullable<NonNullable<MeetingArtifactContent['insights']>['actionItems']>[number];
-type FollowUpSuggestion = NonNullable<NonNullable<MeetingArtifactContent['insights']>['followUpSuggestions']>[number];
 type MeetingAttendee = NonNullable<MeetingArtifactContent['attendees']>[number];
 
 interface MeetingArtifactCardProps {
@@ -60,22 +51,38 @@ interface MeetingArtifactCardProps {
   onOpenModal?: (artifact: MeetingArtifact) => void;
   onAddContent?: (artifact: MeetingArtifact, contentType: 'notes' | 'transcript' | 'recording') => void;
   onUpdateActionItem?: (artifactId: string, actionItemId: string, completed: boolean) => void;
-  onApplySuggestion?: (artifactId: string, suggestionId: string) => void;
   onViewDetails?: (artifactId: string) => void;
   className?: string;
 }
+
+// Type guard for metadata access
+const getMetadataValue = (metadata: unknown, key: string): unknown => {
+  if (metadata && typeof metadata === 'object' && metadata !== null) {
+    return (metadata as Record<string, unknown>)[key];
+  }
+  return undefined;
+};
+
+const getMetadataString = (metadata: unknown, key: string): string | undefined => {
+  const value = getMetadataValue(metadata, key);
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getMetadataArray = (metadata: unknown, key: string): unknown[] => {
+  const value = getMetadataValue(metadata, key);
+  return Array.isArray(value) ? value : [];
+};
 
 export const MeetingArtifactCard: React.FC<MeetingArtifactCardProps> = ({
   artifact,
   onOpenModal,
   onAddContent,
   onUpdateActionItem,
-  onApplySuggestion,
   onViewDetails,
   className,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const { id, content, metadata, ai_parsing_status, timestamp } = artifact;
+  const { id, content, metadata, ai_parsing_status } = artifact;
   const meetingContent = content as MeetingArtifactContent;
   const insights = meetingContent.insights;
 
@@ -112,10 +119,9 @@ export const MeetingArtifactCard: React.FC<MeetingArtifactCardProps> = ({
     }
     
     // Fall back to metadata (Google Calendar sync)
-    const metadataAny = metadata as any;
-    if (metadataAny?.meeting_date) {
-      const meetingDate = metadataAny.meeting_date;
-      const durationMinutes = metadataAny.duration_minutes || 60; // Default to 1 hour
+    const meetingDate = getMetadataString(metadata, 'meeting_date');
+    if (meetingDate) {
+      const durationMinutes = (getMetadataValue(metadata, 'duration_minutes') as number) || 60; // Default to 1 hour
       
       const startTime = new Date(meetingDate);
       const endTime = new Date(startTime.getTime() + (durationMinutes * 60 * 1000));
@@ -133,31 +139,6 @@ export const MeetingArtifactCard: React.FC<MeetingArtifactCardProps> = ({
   };
 
   const { startTime, endTime } = getMeetingTimes();
-
-  const meetingDate = metadata?.meeting_date ? new Date(metadata.meeting_date) : new Date(timestamp);
-  const isUpcoming = meetingDate > new Date();
-  const isPast = meetingDate < new Date();
-
-  const getStatusColor = (): 'default' | 'primary' | 'secondary' | 'success' | 'warning' => {
-    if (isUpcoming) return 'primary';
-    if (isPast) return 'default';
-    return 'secondary';
-  };
-
-  const getStatusLabel = (): string => {
-    if (isUpcoming) return 'Upcoming';
-    if (isPast) return 'Completed';
-    return 'In Progress';
-  };
-
-  const hasContent = Boolean(
-    meetingContent.notes || 
-    meetingContent.transcript || 
-    (meetingContent.insights?.summary && meetingContent.insights.summary.trim() !== '')
-  );
-
-  const actionItems: ActionItem[] = metadata?.insights?.actionItems || [];
-  const completedItems = actionItems.filter((item: ActionItem) => item.completed).length;
 
   const getProcessingStatusIndicator = () => {
     if (ai_parsing_status === 'pending' || ai_parsing_status === 'processing') {
@@ -199,7 +180,7 @@ export const MeetingArtifactCard: React.FC<MeetingArtifactCardProps> = ({
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Typography variant="h6" component="div" gutterBottom>
-            {meetingContent.title || (metadata as any)?.title || 'Meeting'}
+            {meetingContent.title || getMetadataString(metadata, 'title') || 'Meeting'}
           </Typography>
           <Tooltip title="More options">
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); /* Handle menu */}}>
@@ -215,18 +196,18 @@ export const MeetingArtifactCard: React.FC<MeetingArtifactCardProps> = ({
           </Typography>
         </Box>
 
-        {(meetingContent.location || (metadata as any)?.location) && (
+        {(meetingContent.location || getMetadataString(metadata, 'location')) && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', mb: 1 }}>
             <LocationOnIcon fontSize="inherit" />
-            <Typography variant="body2">{meetingContent.location || (metadata as any)?.location}</Typography>
+            <Typography variant="body2">{meetingContent.location || getMetadataString(metadata, 'location')}</Typography>
           </Box>
         )}
 
         {/* Get attendees from either content or metadata */}
         {(() => {
           const contentAttendees = meetingContent.attendees || [];
-          const metadataAttendees = (metadata as any)?.attendees || [];
-          const allAttendees = contentAttendees.length > 0 ? contentAttendees : metadataAttendees.map((name: string) => ({ name, email: name }));
+          const metadataAttendees = getMetadataArray(metadata, 'attendees');
+          const allAttendees = contentAttendees.length > 0 ? contentAttendees : metadataAttendees.map((name: unknown) => ({ name: String(name), email: String(name) }));
           
           return allAttendees.length > 0 && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', mb: 1 }}>

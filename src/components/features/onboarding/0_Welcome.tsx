@@ -8,7 +8,7 @@ import { NetworkFormationBackground } from './0_Welcome_Components/NetworkFormat
 import { TypewriterText } from './0_Welcome_Components/TypewriterText';
 import { PreviewCardsContainer } from './0_Welcome_Components/PreviewCardsContainer';
 import { GoalCelebrationCard } from './0_Welcome_Components/cards/GoalCelebrationCard';
-import { animateIn, sleep } from './0_Welcome_Components/utils/animationSequence';
+import { sleep } from './0_Welcome_Components/utils/animationSequence';
 
 export const EnhancedWelcomeScreen: React.FC = () => {
   const router = useRouter();
@@ -313,7 +313,7 @@ export const EnhancedWelcomeScreen: React.FC = () => {
               }
             }}
           >
-            Let's Begin
+            Let&apos;s get started!
           </Button>
         </Box>
       )}

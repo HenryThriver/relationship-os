@@ -24,14 +24,10 @@ import {
   Delete,
   CheckCircle,
   ArrowForward,
-  Search,
-  Sync,
   Person
 } from '@mui/icons-material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
-import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useGmailIntegration } from '@/lib/hooks/useGmailIntegration';
-import { useContactEmails } from '@/lib/hooks/useContactEmails';
 import { supabase } from '@/lib/supabase/client';
 
 interface ContactWithEmails {
@@ -53,13 +49,9 @@ interface ServiceStats {
 
 export default function ContextDiscoveryScreen() {
   const { nextScreen, completeScreen, currentScreen, isNavigating, state } = useOnboardingState();
-  const { profile } = useUserProfile();
   const { 
     isConnected: gmailConnected, 
-    connectGmail, 
-    syncContactEmails,
-    isSyncing,
-    syncProgress 
+    syncContactEmails
   } = useGmailIntegration();
   
   const [showContent, setShowContent] = useState(false);
@@ -207,7 +199,7 @@ export default function ContextDiscoveryScreen() {
                 name: contact.name || 'Unknown',
                 profile_picture: contact.profile_picture,
                 linkedin_url: contact.linkedin_url,
-                emails: existingEmails?.map(e => e.email) || [],
+                emails: existingEmails?.map((e: { email: string }) => e.email) || [],
                 isAddingEmail: false,
                 newEmail: ''
               };
@@ -284,7 +276,7 @@ export default function ContextDiscoveryScreen() {
         }, 100);
       }
     }
-  }, [calendarConnected, handleAutoAnalysis]);
+  }, [calendarConnected, handleAutoAnalysis, contacts.length, serviceStats.hasAnalyzed]);
 
   // Helper function to determine if we should show the services section
   const shouldShowServices = () => {
@@ -292,9 +284,9 @@ export default function ContextDiscoveryScreen() {
   };
 
   // Helper function to determine if we should show the analysis section
-  const shouldShowAnalysis = () => {
-    return shouldShowServices() && (gmailConnected || calendarConnected);
-  };
+  // const shouldShowAnalysis = () => {
+  //   return shouldShowServices() && (gmailConnected || calendarConnected);
+  // };
 
   // Helper function to determine if we have emails added (for enhanced styling)
   const hasEmailsAdded = () => {
@@ -420,10 +412,12 @@ export default function ContextDiscoveryScreen() {
 
   // Show analysis section when services are connected
   useEffect(() => {
-    if (shouldShowAnalysis() && animationStep < 4) {
+    const hasEmails = contacts.some(contact => contact.emails.length > 0);
+    const showAnalysis = hasEmails && (gmailConnected || calendarConnected);
+    if (showAnalysis && animationStep < 4) {
       setAnimationStep(4);
     }
-  }, [gmailConnected, calendarConnected, shouldShowAnalysis]);
+  }, [gmailConnected, calendarConnected, contacts, animationStep]);
 
   if (isLoadingContacts) {
     return (
@@ -471,7 +465,7 @@ export default function ContextDiscoveryScreen() {
                   }}
                 >
                   Connect your Gmail and Google Calendar to find existing emails and meetings 
-                  with these contacts. We'll show you your relationship history.
+                  with these contacts. We&apos;ll show you your relationship history.
                 </Typography>
               </Box>
             </Fade>
@@ -555,8 +549,8 @@ export default function ContextDiscoveryScreen() {
                               size="small"
                               placeholder="email@example.com"
                               value={contact.newEmail}
-                              onChange={(e) => updateNewEmail(contact.id, e.target.value)}
-                              onKeyPress={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateNewEmail(contact.id, e.target.value)}
+                              onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                 if (e.key === 'Enter') {
                                   handleAddEmail(contact.id, contact.newEmail);
                                 }
@@ -617,7 +611,7 @@ export default function ContextDiscoveryScreen() {
                   
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Connect Gmail and Google Calendar to automatically find emails and meetings 
-                    with your contacts. We'll show you exactly what we found.
+                    with your contacts. We&apos;ll show you exactly what we found.
                   </Typography>
 
                   <Grid container spacing={3}>

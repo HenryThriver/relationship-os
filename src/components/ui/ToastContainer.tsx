@@ -1,20 +1,20 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
 import { Box } from '@mui/material';
 import { ToastItem } from './ToastItem';
 import { useToast } from '@/lib/contexts/ToastContext';
 
 // Re-define Toast interface here if not imported, or ensure it is exported from context and imported properly
-interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'info' | 'warning' | 'error';
-  duration?: number;
-  icon?: ReactNode;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
+// interface Toast {
+//   id: string;
+//   message: string;
+//   type: 'success' | 'info' | 'warning' | 'error';
+//   duration?: number;
+//   icon?: ReactNode;
+//   action?: {
+//     label: string;
+//     onClick: () => void;
+//   };
+// }
 
 // Props for ToastContainer itself are minimal if it consumes context internally
 // interface ToastContainerProps {

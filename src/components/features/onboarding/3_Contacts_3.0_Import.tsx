@@ -10,25 +10,18 @@ import {
   CardContent,
   Alert,
   Fade,
-  Chip,
   IconButton,
   InputAdornment,
   Stack,
-  useTheme,
-  useMediaQuery,
   Tooltip
 } from '@mui/material';
 import { 
-  People, 
   LinkedIn, 
-  Add,
-  Delete,
   CheckCircle,
   Help,
-  Settings,
   NavigateBefore,
   NavigateNext,
-  Flag
+  Settings
 } from '@mui/icons-material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
@@ -44,8 +37,6 @@ interface ContactInput {
 export default function ContactImportScreen() {
   const { nextScreen, completeScreen, currentScreen, isNavigating, updateState } = useOnboardingState();
   const { profile } = useUserProfile();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [animationStep, setAnimationStep] = useState(0);
   const [contact, setContact] = useState<ContactInput>({
@@ -216,7 +207,7 @@ export default function ContactImportScreen() {
       </Typography>
       <Box component="ul" sx={{ pl: 2, mb: 0 }}>
         <Typography component="li" variant="body2" sx={{ mb: 1 }}>
-          Someone who's achieved what you want
+          Someone who&apos;s achieved what you want
         </Typography>
         <Typography component="li" variant="body2" sx={{ mb: 1 }}>
           Someone in your target industry/company
@@ -310,7 +301,7 @@ export default function ContactImportScreen() {
                   mb: 3
                 }}
               >
-                Perfect! Here's your goal:
+                Perfect! Here&apos;s your goal:
               </Typography>
 
               {profile?.primary_goal && (
@@ -342,7 +333,7 @@ export default function ContactImportScreen() {
                   mb: 4
                 }}
               >
-                Now let's identify one person related to this goal.
+                Now let&apos;s identify one person related to this goal.
               </Typography>
 
               <Typography 
@@ -356,8 +347,8 @@ export default function ContactImportScreen() {
                 }}
               >
                 Think about anyone who could help, inspire, or guide you toward this goal - 
-                whether you've never interacted with them, occasionally stay in touch, 
-                or they're your absolute closest friend.
+                whether you&apos;ve never interacted with them, occasionally stay in touch, 
+                or they&apos;re your absolute closest friend.
               </Typography>
             </Box>
           </Fade>
@@ -474,7 +465,7 @@ export default function ContactImportScreen() {
                     mx: 'auto'
                   }}
                 >
-                  "Great things in business are never done by one person. They're done by a team of people."
+                  &quot;Great things in business are never done by one person. They&apos;re done by a team of people.&quot;
                 </Typography>
                 <Typography 
                   variant="caption" 

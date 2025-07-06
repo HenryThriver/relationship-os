@@ -66,7 +66,7 @@ export const useLoopTemplates = () => {
         default_title_template: newTemplateData.default_title_template,
         default_status: newTemplateData.default_status,
         reciprocity_direction: newTemplateData.reciprocity_direction,
-        default_actions: newTemplateData.default_actions as any, // JSONB handling
+        default_actions: newTemplateData.default_actions as Database["public"]["Tables"]["loop_templates"]["Row"]["default_actions"], // JSONB handling
         typical_duration: newTemplateData.typical_duration, // Match DB column
         follow_up_schedule: newTemplateData.follow_up_schedule, // Match DB column
         completion_criteria: newTemplateData.completion_criteria,
@@ -108,7 +108,7 @@ export const useLoopTemplates = () => {
       if (templateUpdate.default_title_template !== undefined) updatePayload.default_title_template = templateUpdate.default_title_template;
       if (templateUpdate.default_status !== undefined) updatePayload.default_status = templateUpdate.default_status;
       if (templateUpdate.reciprocity_direction !== undefined) updatePayload.reciprocity_direction = templateUpdate.reciprocity_direction;
-      if (templateUpdate.default_actions !== undefined) updatePayload.default_actions = templateUpdate.default_actions as any;
+      if (templateUpdate.default_actions !== undefined) updatePayload.default_actions = templateUpdate.default_actions as Database["public"]["Tables"]["loop_templates"]["Row"]["default_actions"];
       if (templateUpdate.typical_duration !== undefined) updatePayload.typical_duration = templateUpdate.typical_duration;
       if (templateUpdate.follow_up_schedule !== undefined) updatePayload.follow_up_schedule = templateUpdate.follow_up_schedule;
       if (templateUpdate.completion_criteria !== undefined) updatePayload.completion_criteria = templateUpdate.completion_criteria;

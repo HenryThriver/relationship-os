@@ -15,13 +15,11 @@ import {
   Grid,
   TextField,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   Chip,
   Avatar,
   IconButton,
-  Divider,
   Alert,
   Slider,
   FormControlLabel,
@@ -37,7 +35,6 @@ import {
   School as AdviceIcon,
   Handshake as CollabIcon,
   Campaign as ResourceIcon,
-  Groups as ConnectionIcon,
   Close as CloseIcon,
   ArrowBack as BackIcon,
   Preview as PreviewIcon,
@@ -51,7 +48,7 @@ import {
   Event as EventIcon,
   Workspaces as WorkspacesIcon
 } from '@mui/icons-material';
-import { LoopType, LoopArtifactContent, LinkedInArtifactContent } from '@/types/artifact';
+import { LoopType, LoopArtifactContent } from '@/types/artifact';
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
 
 interface EnhancedCreateLoopModalProps {
@@ -267,7 +264,7 @@ export const EnhancedCreateLoopModal: React.FC<EnhancedCreateLoopModalProps> = (
           <Box display="flex" alignItems="center" gap={1} mb={3}>
             <Avatar 
               sx={{ width: 32, height: 32 }} 
-              src={contact?.linkedin_data && typeof contact.linkedin_data === 'object' && (contact.linkedin_data as Record<string, any>).profilePicture ? (contact.linkedin_data as Record<string, any>).profilePicture : undefined}
+              src={contact?.linkedin_data && typeof contact.linkedin_data === 'object' && (contact.linkedin_data as Record<string, unknown>).profilePicture && typeof (contact.linkedin_data as Record<string, unknown>).profilePicture === 'string' ? (contact.linkedin_data as Record<string, unknown>).profilePicture as string : undefined}
             >
               {contact?.name?.[0]?.toUpperCase()}
             </Avatar>
@@ -460,7 +457,7 @@ export const EnhancedCreateLoopModal: React.FC<EnhancedCreateLoopModalProps> = (
                   <FormControl fullWidth size="small">
                     <Select
                       value={formData.urgency || 'medium'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, urgency: e.target.value as any }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, urgency: e.target.value as 'low' | 'medium' | 'high' }))}
                     >
                       <MenuItem value="low">Low - No rush</MenuItem>
                       <MenuItem value="medium">Medium - Standard timeline</MenuItem>
@@ -597,7 +594,7 @@ export const EnhancedCreateLoopModal: React.FC<EnhancedCreateLoopModalProps> = (
 
             <Alert severity="info" icon={<PreviewIcon />}>
               <Typography variant="body2">
-                Your loop will be created with status "Idea". You can then manage its progress from the contact's timeline.
+                Your loop will be created with status &quot;Idea&quot;. You can then manage its progress from the contact&apos;s timeline.
               </Typography>
             </Alert>
           </Box>

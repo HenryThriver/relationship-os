@@ -80,7 +80,7 @@ export const useLoopAnalytics = (loopArtifactId?: string, contactId?: string) =>
         if (error) throw error;
         return mapRowToLoopAnalytic(data);
       },
-      onSuccess: (newAnalytic) => {
+      onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: analyticsQueryKey });
         // Potentially invalidate other related queries
         showToast('Loop analytic record created!', 'success');
@@ -161,7 +161,7 @@ export const useLoopAnalytics = (loopArtifactId?: string, contactId?: string) =>
       // 2. Update the record
       const { data, error } = await supabase
         .from('loop_analytics')
-        .update({ status_transitions: updatedTransitions as any }) // Cast to any for JSONB
+        .update({ status_transitions: updatedTransitions as unknown as Database["public"]["Tables"]["loop_analytics"]["Row"]["status_transitions"] })
         .eq('id', analyticId)
         .select()
         .single();

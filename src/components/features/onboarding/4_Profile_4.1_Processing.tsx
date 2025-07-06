@@ -159,7 +159,7 @@ export default function ProcessingScreen() {
                       mb: 2
                     }}
                   >
-                    "{quotes[currentQuote].text}"
+                    &quot;{quotes[currentQuote].text}&quot;
                   </Typography>
                   <Typography 
                     variant="subtitle2" 

@@ -26,10 +26,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  List,
-  ListItem,
-  ListItemText,
-  Divider
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,10 +37,6 @@ import {
 import { useLoopTemplates } from '@/lib/hooks/useLoopTemplates';
 import { LoopTemplate, LoopType, LoopStatus, LoopTemplateAction } from '@/types/artifact';
 import { useToast } from '@/lib/contexts/ToastContext';
-
-interface LoopTemplatesManagerProps {
-  // Empty for now, could add props for filtering or context
-}
 
 interface TemplateFormData {
   name: string;
@@ -72,8 +64,8 @@ const initialFormData: TemplateFormData = {
   completion_criteria: []
 };
 
-export const LoopTemplatesManager: React.FC<LoopTemplatesManagerProps> = () => {
-  const { showToast } = useToast();
+export const LoopTemplatesManager = () => {
+  useToast();
   const {
     loopTemplates,
     isLoading,

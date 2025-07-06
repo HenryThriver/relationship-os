@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
+import { Typography, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import CakeIcon from '@mui/icons-material/Cake';
 import HomeIcon from '@mui/icons-material/Home';

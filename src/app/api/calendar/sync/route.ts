@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { syncUserCalendarData } from '@/lib/services/googleCalendarService';
-import type { CalendarSyncOptions } from '@/types/calendar';
+import type { CalendarSyncOptions, UserIntegration } from '@/types/calendar';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -149,11 +149,13 @@ export async function GET() {
         const calendarService = new GoogleCalendarService(supabase);
         
         // This will throw an error if tokens are invalid
-        await calendarService.fetchMeetings(integration, {
-          startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          endDate: new Date(),
-          maxResults: 1
-        });
+        if (integration) {
+          await calendarService.fetchMeetings(integration as UserIntegration, {
+            startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+            endDate: new Date(),
+            maxResults: 1
+          });
+        }
       } catch (error) {
         console.error('Calendar connection test failed:', error);
         

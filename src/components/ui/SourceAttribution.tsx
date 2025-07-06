@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useSourceAttribution, SourceInfo } from '@/lib/hooks/useSourceAttribution';
-import { Tooltip, Box, Chip, IconButton, CircularProgress, Typography } from '@mui/material';
+import { Tooltip, Box, IconButton, CircularProgress, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 // Import Icons (these will be referenced by SOURCE_CONFIG)
@@ -154,17 +154,6 @@ const SourcedFieldWrapper = styled(Box, {
     backgroundColor: hasSource ? theme.palette.action.hover : 'transparent',
   },
 }));
-
-const CompactSourceIcon = styled(IconButton)({
-  padding: '2px',
-  position: 'absolute',
-  top: '-8px',
-  right: '-8px',
-  backgroundColor: 'rgba(255,255,255,0.8)',
-  '&:hover': {
-    backgroundColor: 'rgba(255,255,255,1)',
-  }
-});
 
 export const SourcedField: React.FC<SourcedFieldProps> = ({
   fieldPath,

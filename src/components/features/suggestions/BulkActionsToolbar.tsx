@@ -13,7 +13,6 @@ import {
 import { 
   CheckCircle as ApplyIcon,
   Cancel as RejectIcon,
-  SelectAll as SelectAllIcon,
   Clear as ClearIcon
 } from '@mui/icons-material';
 

@@ -77,8 +77,8 @@ import { useToast } from '@/lib/contexts/ToastContext';
 import { ProcessingStatusBar } from '@/components/features/voice/ProcessingStatusBar'; // Revert to alias import
 
 interface ContactProfilePageProps {
-  // Props interface for future use
-  params?: Record<string, string>;
+  // Props interface for Next.js 14 App Router
+  params?: Promise<Record<string, string>>;
 }
 
 const mapPOGStatusToActionQueueStatus = (pogStatus?: POGArtifactContentStatus): ActionQueuesActionItemStatus => {
@@ -356,7 +356,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
   const handleOpenArtifactModal = useCallback((artifact: BaseArtifact) => {
     if (artifact.type === 'loop') {
-      setSelectedLoopForEnhancedModal(artifact as LoopArtifact);
+      setSelectedLoopForEnhancedModal(artifact as unknown as LoopArtifact);
       setIsEnhancedLoopModalOpen(true);
       setIsArtifactModalOpen(false);
     } else if (artifact.type === 'voice_memo') {
@@ -444,7 +444,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           table: 'artifacts',
           filter: `contact_id=eq.${contactId}`,
         },
-        (payload) => {
+        (payload: Record<string, unknown>) => {
           const oldData = payload.old as VoiceMemoArtifact | undefined;
           const newData = payload.new as VoiceMemoArtifact;
 
@@ -472,7 +472,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           }
         }
       )
-      .subscribe((status, err) => {
+      .subscribe((status: string, err: unknown) => {
         if (status === 'SUBSCRIBED') {
           console.log(`Subscribed to artifact updates for contact: ${contactId}`);
         }
@@ -483,7 +483,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
     return () => {
       if (channel) {
-        supabase.removeChannel(channel).catch(err => console.error('Error removing channel:', err));
+        supabase.removeChannel(channel).catch((err: unknown) => console.error('Error removing channel:', err));
       }
     };
   }, [contactId, contact?.name, showToast]);
@@ -596,7 +596,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                 </Typography>
                 <Card sx={{ p: 3, backgroundColor: '#e8f5e8' }}>
                   <Typography variant="body1">
-                    🎯 <strong>Matches your goal:</strong> "Find a senior product role at a growth-stage startup"
+                    🎯 <strong>Matches your goal:</strong> &quot;Find a senior product role at a growth-stage startup&quot;
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Their company is hiring senior PMs and they influence hiring decisions
@@ -650,7 +650,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           }
           sx={{ mb: 3 }}
         >
-          <strong>Tour Complete!</strong> You're now ready to use Connection OS to build meaningful relationships.
+          <strong>Tour Complete!</strong> You&apos;re now ready to use Connection OS to build meaningful relationships.
         </Alert>
       )}
 
@@ -725,7 +725,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
               </Typography>
               <Card sx={{ p: 3, backgroundColor: '#e8f5e8' }}>
                 <Typography variant="body1">
-                  🎯 <strong>Matches your goal:</strong> "Find a senior product role at a growth-stage startup"
+                  🎯 <strong>Matches your goal:</strong> &quot;Find a senior product role at a growth-stage startup&quot;
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                   Their company is hiring senior PMs and they influence hiring decisions
@@ -788,12 +788,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
               <Typography variant="h5" gutterBottom component="div" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}>
                 Meeting Intelligence
               </Typography>
-              <MeetingManager 
-                contactId={contactId}
-                limit={10}
-                includeUpcoming={true}
-                showAsCards={true}
-              />
+                              <MeetingManager 
+                  contactId={contactId}
+                />
             </Box>
 
             {/* Email Management Integration Point */}
@@ -815,7 +812,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                 </Typography>
                 <LinkedInPostsSyncStatus 
                   contactId={contactId}
-                  contactName={contact.name || undefined}
+
                 />
               </Box>
             )}

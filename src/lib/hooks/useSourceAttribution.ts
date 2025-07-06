@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import type { Contact, FieldSources } from '@/types/contact'; // Assuming FieldSources will be defined here or Contact has field_sources directly
+import type { FieldSources } from '@/types/contact'; // Assuming FieldSources will be defined here or Contact has field_sources directly
 import type { ArtifactGlobal, ArtifactType, EmailArtifactMetadata, MeetingArtifactMetadata, NoteArtifactMetadata, VoiceMemoArtifact, LinkedInArtifactContent } from '@/types/artifact';
 import { SOURCE_CONFIG } from '@/config/sourceConfig'; // Import the new config
 
@@ -37,7 +37,6 @@ interface UseSourceAttributionReturn {
 
 export const useSourceAttribution = (contactId: string): UseSourceAttributionReturn => {
   const router = useRouter();
-  const [contact, setContact] = useState<Contact | null>(null);
   const [fieldSources, setFieldSources] = useState<FieldSources | null>(null);
   const [isLoadingContact, setIsLoadingContact] = useState<boolean>(true);
   const [isLoadingArtifact, setIsLoadingArtifact] = useState<boolean>(false);
@@ -56,11 +55,8 @@ export const useSourceAttribution = (contactId: string): UseSourceAttributionRet
 
       if (error) {
         console.error('Error fetching contact field_sources:', error);
-        setContact(null);
         setFieldSources(null);
       } else if (data) {
-        setContact(data as Contact);
-        // Assuming field_sources is { [key: string]: string } as per user spec
         setFieldSources(data.field_sources as FieldSources || {}); 
       }
       setIsLoadingContact(false);
@@ -88,7 +84,9 @@ export const useSourceAttribution = (contactId: string): UseSourceAttributionRet
         artifactId: cachedArtifact.id,
         artifactType: cachedArtifact.type as ArtifactType,
         timestamp: cachedArtifact.created_at, // Or timestamp field if different
-        excerpt: cachedArtifact.content?.substring(0, 150) + (cachedArtifact.content && cachedArtifact.content.length > 150 ? '...' : ''), // Basic excerpt
+        excerpt: typeof cachedArtifact.content === 'string' 
+          ? cachedArtifact.content.substring(0, 150) + (cachedArtifact.content.length > 150 ? '...' : '')
+          : 'No preview available', // Basic excerpt
         title: extractTitleFromArtifact(cachedArtifact),
       };
     }
@@ -115,7 +113,9 @@ export const useSourceAttribution = (contactId: string): UseSourceAttributionRet
           artifactId: fetchedArtifact.id,
           artifactType: fetchedArtifact.type as ArtifactType,
           timestamp: fetchedArtifact.created_at, // Or specific timestamp field
-          excerpt: fetchedArtifact.content?.substring(0, 150) + (fetchedArtifact.content && fetchedArtifact.content.length > 150 ? '...' : ''), // Basic excerpt from content
+          excerpt: typeof fetchedArtifact.content === 'string'
+            ? fetchedArtifact.content.substring(0, 150) + (fetchedArtifact.content.length > 150 ? '...' : '')
+            : 'No preview available', // Basic excerpt from content
           title: extractTitleFromArtifact(fetchedArtifact),
         };
       }
@@ -141,14 +141,17 @@ export const useSourceAttribution = (contactId: string): UseSourceAttributionRet
       case 'meeting':
         return (artifact.metadata as MeetingArtifactMetadata)?.title || 'Meeting Notes';
       case 'note':
-        return (artifact.metadata as NoteArtifactMetadata)?.title || artifact.content?.substring(0,50) || 'Note';
+        return (artifact.metadata as NoteArtifactMetadata)?.title || 
+          (typeof artifact.content === 'string' ? artifact.content.substring(0,50) : '') || 'Note';
       default:
         // Try to get a title from metadata if it exists and has a title prop
         if (artifact.metadata && typeof artifact.metadata === 'object' && 'title' in artifact.metadata) {
-          return (artifact.metadata as any).title;
+          return (artifact.metadata as { title?: string }).title;
         }
         // Fallback to first few words of content
-        return artifact.content ? artifact.content.split(' ').slice(0, 10).join(' ') + '...' : 'Artifact';
+        return typeof artifact.content === 'string' && artifact.content 
+          ? artifact.content.split(' ').slice(0, 10).join(' ') + '...' 
+          : 'Artifact';
     }
   };
 

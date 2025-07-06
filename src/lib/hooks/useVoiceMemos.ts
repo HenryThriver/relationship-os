@@ -3,23 +3,30 @@
 import { useEffect, useMemo, useCallback } from 'react';
 // import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Remove this
 import { supabase } from '@/lib/supabase/client'; // Import the shared client
-import { useQuery, useQueryClient, QueryKey } from '@tanstack/react-query';
-import { Database } from '@/lib/supabase/types_db';
-import { VoiceMemoArtifact, ArtifactGlobal, TranscriptionStatus } from '@/types/artifact';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+// import { Database } from '@/lib/supabase/types_db'; // Unused import
+import { VoiceMemoArtifact, ArtifactGlobal } from '@/types/artifact';
 
 // const supabase = createClientComponentClient<Database>(); // Remove this line, use imported supabase
 
 // Helper to assert and type artifact as VoiceMemoArtifact
 // This guard helps ensure that the object not only has type 'voice_memo' 
 // but also the essential fields expected for a VoiceMemoArtifact after fetching.
-function isVoiceMemoArtifact(artifact: any): artifact is VoiceMemoArtifact {
-  return (
+function isVoiceMemoArtifact(artifact: unknown): artifact is VoiceMemoArtifact {
+  if (
     artifact &&
-    artifact.type === 'voice_memo' &&
-    typeof artifact.audio_file_path === 'string' && // Essential field
-    typeof artifact.transcription_status === 'string' // Essential field
-    // duration_seconds and transcription can be null/undefined initially
-  );
+    typeof artifact === 'object' &&
+    artifact !== null &&
+    'type' in artifact &&
+    (artifact as { type?: unknown }).type === 'voice_memo' &&
+    'audio_file_path' in artifact &&
+    typeof (artifact as { audio_file_path?: unknown }).audio_file_path === 'string' &&
+    'transcription_status' in artifact &&
+    typeof (artifact as { transcription_status?: unknown }).transcription_status === 'string'
+  ) {
+    return true;
+  }
+  return false;
 }
 
 async function fetchVoiceMemos(contactId: string): Promise<VoiceMemoArtifact[]> {
@@ -64,7 +71,7 @@ export interface UseVoiceMemosReturn {
 export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions): UseVoiceMemosReturn => {
   const queryClient = useQueryClient();
   // QueryKey must be a list of serializable values
-  const queryKey: QueryKey = ['voiceMemos', contact_id]; 
+  const queryKey = useMemo(() => ['voice-memos', contact_id], [contact_id]); 
 
   const { data: voiceMemos = [], isLoading, isError, error } = useQuery<VoiceMemoArtifact[], Error>({
     queryKey: queryKey,
@@ -82,9 +89,7 @@ export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions)
 
     const channel = supabase
       .channel(`voice_memos_contact_${contact_id}`)
-      .on<
-        Database['public']['Tables']['artifacts']['Row'] // Explicitly type the payload if possible
-      >(
+      .on(
         'postgres_changes',
         {
           event: '*', 
@@ -92,20 +97,21 @@ export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions)
           table: 'artifacts',
           filter: `contact_id=eq.${contact_id}`,
         },
-        (payload) => {
+        (payload: Record<string, unknown>) => {
           console.log('Realtime voice memo event:', payload);
           const newArtifact = payload.new as ArtifactGlobal | undefined;
           const oldArtifact = payload.old as ArtifactGlobal | undefined;
+          const eventType = payload.eventType as string;
 
           // Check if the change is relevant to voice memos before invalidating
           let isRelevantChange = false;
-          if (payload.eventType === 'INSERT' && newArtifact?.type === 'voice_memo') {
+          if (eventType === 'INSERT' && newArtifact?.type === 'voice_memo') {
             isRelevantChange = true;
           }
-          if (payload.eventType === 'UPDATE' && newArtifact?.type === 'voice_memo') {
+          if (eventType === 'UPDATE' && newArtifact?.type === 'voice_memo') {
             isRelevantChange = true;
           }
-          if (payload.eventType === 'DELETE' && oldArtifact?.type === 'voice_memo') {
+          if (eventType === 'DELETE' && oldArtifact?.type === 'voice_memo') {
             isRelevantChange = true;
           }
 
@@ -114,7 +120,7 @@ export const useVoiceMemos = ({ contact_id, initialData }: UseVoiceMemosOptions)
           }
         }
       )
-      .subscribe((status, err) => {
+      .subscribe((status: string, err: unknown) => {
         if (status === 'SUBSCRIBED') {
           console.log('Subscribed to voice memo updates for contact:', contact_id);
         }

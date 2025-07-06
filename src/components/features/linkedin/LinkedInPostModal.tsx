@@ -12,7 +12,6 @@ import {
   Stack,
   Avatar,
   Divider,
-  Link as MuiLink,
   Fade,
 } from '@mui/material';
 import {
@@ -32,7 +31,6 @@ interface LinkedInPostModalProps {
   open: boolean;
   onClose: () => void;
   artifact: LinkedInPostArtifact;
-  contactName?: string;
   contactId?: string;
 }
 
@@ -69,7 +67,6 @@ export const LinkedInPostModal: React.FC<LinkedInPostModalProps> = ({
   open,
   onClose,
   artifact,
-  contactName,
   contactId,
 }) => {
   if (!artifact?.metadata) return null;

@@ -8,8 +8,6 @@ import {
   Card,
   CardContent,
   Fade,
-  useTheme,
-  useMediaQuery
 } from '@mui/material';
 import { 
   ArrowForward,
@@ -19,8 +17,6 @@ import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 
 export default function BridgeScreen() {
   const { nextScreen, completeScreen, currentScreen, isNavigating } = useOnboardingState();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [animationStep, setAnimationStep] = useState(0);
 
@@ -91,7 +87,7 @@ export default function BridgeScreen() {
                   fontSize: { xs: '1.75rem', md: '2.125rem' }
                 }}
               >
-                You'll feel confident, generous, and genuinely excited about connecting.
+                You&apos;ll feel confident, generous, and genuinely excited about connecting.
               </Typography>
             </Fade>
           )}
@@ -109,7 +105,7 @@ export default function BridgeScreen() {
                   fontSize: { xs: '1.5rem', md: '2rem' }
                 }}
               >
-                We'll guide you on your path to mastery:
+                We&apos;ll guide you on your path to mastery:
               </Typography>
             </Fade>
           )}
@@ -159,7 +155,7 @@ export default function BridgeScreen() {
                       lineHeight: 1.5,
                       fontSize: { xs: '0.875rem', md: '0.875rem' }
                     }}>
-                      Learn proven practices from the world's most successful professionals
+                      Learn proven practices from the world&apos;s most successful professionals
                     </Typography>
                   </Box>
 
@@ -223,7 +219,7 @@ export default function BridgeScreen() {
                   mb: 2,
                   fontSize: { xs: '1.1rem', md: '1.25rem' }
                 }}>
-                  Let's start by excelling at fundamentals
+                  Let&apos;s start by excelling at fundamentals
                 </Typography>
                 
                 <Typography variant="body1" sx={{ 
@@ -285,8 +281,8 @@ export default function BridgeScreen() {
                   fontSize: { xs: '0.875rem', md: '0.875rem' }
                 }}
               >
-                "Your network is the people who want to help you, and you want to help them, 
-                and that's really powerful."
+                &quot;Your network is the people who want to help you, and you want to help them, 
+                and that&apos;s really powerful.&quot;
               </Typography>
               <Typography 
                 variant="caption" 

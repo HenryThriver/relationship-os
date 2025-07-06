@@ -2,11 +2,8 @@
 
 import React from 'react';
 import {
-  Card,
-  CardContent,
   Box,
   Typography,
-  Avatar,
   Chip,
   Paper
 } from '@mui/material';
@@ -15,14 +12,12 @@ import {
   Inbox as InboxIcon,
   PriorityHigh as PriorityIcon,
 } from '@mui/icons-material';
-import { formatDistanceToNow } from 'date-fns';
-import { BaseArtifact, LoopArtifact } from '@/types/artifact';
+import { BaseArtifact, VoiceMemoArtifact, MeetingArtifact } from '@/types/artifact';
 import { EmailArtifact } from '@/types/email';
 import { getArtifactConfig } from '@/config/artifactConfig';
-import { EmailTimelineItem } from '@/components/features/emails/EmailTimelineItem';
 
 interface EnhancedTimelineItemProps {
-  artifact: BaseArtifact<any>;
+  artifact: BaseArtifact<unknown>;
   position: 'left' | 'right';
   onClick: () => void;
 }
@@ -127,7 +122,8 @@ export const EnhancedTimelineItem: React.FC<EnhancedTimelineItemProps> = ({
     }
 
     if (artifact.type === 'voice_memo') {
-      const status = (artifact as any).transcription_status || 'processing';
+      const voiceMemoArtifact = artifact as VoiceMemoArtifact;
+      const status = voiceMemoArtifact.transcription_status || 'processing';
       const statusConfig = {
         completed: { color: '#d4edda', textColor: '#155724', label: 'Transcribed' },
         processing: { color: '#fff3cd', textColor: '#856404', label: 'Processing' },
@@ -153,7 +149,8 @@ export const EnhancedTimelineItem: React.FC<EnhancedTimelineItemProps> = ({
     }
 
     if (artifact.type === 'meeting') {
-      const status = (artifact as any).ai_parsing_status || 'pending';
+      const meetingArtifact = artifact as MeetingArtifact;
+      const status = meetingArtifact.ai_parsing_status || 'pending';
       const statusConfig = {
         completed: { color: '#d4edda', textColor: '#155724', label: 'AI Processed' },
         processing: { color: '#fff3cd', textColor: '#856404', label: 'AI Processing' },
@@ -189,8 +186,11 @@ export const EnhancedTimelineItem: React.FC<EnhancedTimelineItemProps> = ({
       }
       return 'Email';
     }
-    if (artifact.type === 'voice_memo' && (artifact as any).duration_seconds) {
-      return `${(artifact as any).duration_seconds}s`;
+    if (artifact.type === 'voice_memo') {
+      const voiceMemoArtifact = artifact as VoiceMemoArtifact;
+      if (voiceMemoArtifact.duration_seconds) {
+        return `${voiceMemoArtifact.duration_seconds}s`;
+      }
     }
     return 'Artifact';
   };

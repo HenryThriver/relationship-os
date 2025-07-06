@@ -1,6 +1,6 @@
 import React from 'react';
-import { Alert, Box, CircularProgress, Typography } from '@mui/material';
-import InfoIcon from '@mui/icons-material/Info'; // Or another suitable icon
+import { Alert, CircularProgress, Typography } from '@mui/material';
+// import { Error as ErrorIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 
 interface ProcessingStatusBarProps {
   activeProcessingCount: number;

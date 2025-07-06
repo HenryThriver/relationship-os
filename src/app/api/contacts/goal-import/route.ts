@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { LinkedInPostsService } from '@/lib/services/linkedinPostsService';
-import type { RapidLinkedInProfile, LinkedInImportApiResponse } from '@/types/rapidapi';
+import type { RapidLinkedInProfile } from '@/types/rapidapi';
 import { LinkedInProfileData } from '@/types/linkedin';
 
 interface GoalContactRequest {

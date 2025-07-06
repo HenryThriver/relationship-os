@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Alert, Card, CardContent, LinearProgress, useTheme, useMediaQuery } from '@mui/material';
-import { Psychology, SkipNext } from '@mui/icons-material';
+import { Box, Typography, Button, Alert, Card, CardContent, LinearProgress } from '@mui/material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import OnboardingVoiceRecorder from './OnboardingVoiceRecorder';
 
@@ -15,19 +14,17 @@ interface SelectedStruggle {
 }
 
 export default function ChallengesScreen() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // const theme = useTheme();
+  // const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { nextScreen, completeScreen, currentScreen, isNavigating, updateState } = useOnboardingState();
   
   // Animation orchestration states - renamed for clarity
-  const [textPosition, setTextPosition] = useState<'center' | 'top'>('center');
   const [showHonestLine, setShowHonestLine] = useState(false); // "Let's be honest about networking -"
   const [showHateLine, setShowHateLine] = useState(false); // "most people hate it."
   const [showSuckLine, setShowSuckLine] = useState(false); // "Or suck at it."
   const [showBothLine, setShowBothLine] = useState(false); // "Or both."
   const [fadeOutHeader, setFadeOutHeader] = useState(false); // Fade out the header after impact
   const [showSubtitle, setShowSubtitle] = useState(false); // Question subtitle
-  const [subtitlePosition, setSubtitlePosition] = useState<'center' | 'top'>('center'); // Control subtitle position
   const [showRecorder, setShowRecorder] = useState(false);
   const [showExamples, setShowExamples] = useState(false); // Examples below recorder
   const [showSkipButton, setShowSkipButton] = useState(false);
@@ -71,8 +68,8 @@ export default function ChallengesScreen() {
     }
   ];
 
-  // Responsive timing adjustments
-  const timing = isMobile ? {
+  // Responsive timing adjustments (kept for potential future use)
+  /* const timing = isMobile ? {
     opener: 300,
     reality: 1000,
     examples: 1200,
@@ -86,7 +83,7 @@ export default function ChallengesScreen() {
     validation: 1500,
     recorder: 1500,
     skipButton: 2000
-  };
+  }; */
 
   useEffect(() => {
     if (sequenceStarted) return;
@@ -119,7 +116,6 @@ export default function ChallengesScreen() {
         setShowSubtitle(true); // H2 subtitle fades in at same 35% position
         
         await sleep(1500); // Let subtitle fade in
-        setSubtitlePosition('top'); // Drift subtitle up to make room
         
         await sleep(1400); // Brief drift animation
         setShowRecorder(true); // Show voice recorder underneath
@@ -140,7 +136,7 @@ export default function ChallengesScreen() {
     const timeoutId = setTimeout(orchestrateSequence, 500);
     
     return () => clearTimeout(timeoutId);
-  }, [sequenceStarted, timing]);
+  }, [sequenceStarted]); // timing is stable, doesn't need to be in dependencies
 
 
 
@@ -288,7 +284,7 @@ export default function ChallengesScreen() {
                 }
               }}
             >
-              <span>Let's be honest about networking -</span>
+              <span>Let&apos;s be honest about networking -</span>
               {/* "most people hate it" fades in on same line */}
               {showHateLine && (
                 <span
@@ -456,7 +452,7 @@ export default function ChallengesScreen() {
                           }
                         }}
                       >
-                        I'd rather not share
+                        I&apos;d rather not share
                       </Button>
                     </Box>
                   )}
@@ -482,7 +478,7 @@ export default function ChallengesScreen() {
                       fontWeight: 500
                     }}
                   >
-                    You're not alone if you...
+                    You&apos;re not alone if you...
                   </Typography>
                   
                   {selectedStruggles.map((struggle, index) => (
@@ -559,7 +555,7 @@ export default function ChallengesScreen() {
                 Processing your story...
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                We're analyzing your networking challenges to create personalized insights
+                We&apos;re analyzing your networking challenges to create personalized insights
               </Typography>
             </Box>
             <LinearProgress 

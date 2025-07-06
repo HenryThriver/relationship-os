@@ -4,9 +4,7 @@ import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  CircularProgress,
-  Alert,
-  Divider
+  Alert
 } from '@mui/material';
 
 import { EnhancedTimelineItem } from './EnhancedTimelineItem';
@@ -46,7 +44,6 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({
     isError,
   } = useArtifactTimeline(contactId, { filterTypes });
 
-  const artifacts = timelineData?.allArtifacts || [];
   const groupedArtifacts = timelineData?.groupedArtifacts || [];
   const stats = timelineData?.stats || defaultStats;
   
@@ -74,7 +71,7 @@ export const ArtifactTimeline: React.FC<ArtifactTimelineProps> = ({
         <Typography sx={{ fontSize: '3rem', mb: 2 }}>📭</Typography>
         <Typography variant="h6" gutterBottom>No artifacts recorded yet</Typography>
         <Typography>
-          Record a voice memo or add a note to start building this contact's timeline.
+          Record a voice memo or add a note to start building this contact&apos;s timeline.
         </Typography>
       </Box>
     );

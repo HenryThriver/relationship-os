@@ -7,8 +7,6 @@ import {
   Collapse,
   Paper,
   Chip,
-  IconButton,
-  Divider,
   Stack,
   CircularProgress,
 } from '@mui/material';
@@ -49,13 +47,13 @@ interface Suggestion {
       reasoning: string;
       confidence: number;
       field_path: string;
-      suggested_value: any;
+      suggested_value: unknown;
     }>;
   };
   field_paths: string[];
-  confidence_scores: any; // JSONB
+  confidence_scores: Record<string, unknown>; // JSONB
   status: 'pending' | 'approved' | 'rejected' | 'partial' | 'skipped';
-  user_selections: any; // JSONB
+  user_selections: Record<string, unknown>; // JSONB
   created_at: string;
   reviewed_at: string | null;
   applied_at: string | null;
@@ -87,7 +85,7 @@ const getSuggestionTypeLabel = (fieldPath: string) => {
   return lastPart.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
-const formatSuggestionValue = (value: any, fieldPath: string): string => {
+const formatSuggestionValue = (value: unknown, fieldPath: string): string => {
   // Handle simple string values
   if (typeof value === 'string') {
     return value;
@@ -96,16 +94,17 @@ const formatSuggestionValue = (value: any, fieldPath: string): string => {
   // Handle object values based on field path
   if (typeof value === 'object' && value !== null) {
     const path = fieldPath.toLowerCase();
+    const obj = value as Record<string, unknown>;
     
     // Handle projects
     if (path.includes('project')) {
-      if (value.name && value.status) {
-        let formatted = `${value.name}`;
-        if (value.status) {
-          formatted += ` (${value.status})`;
+      if (typeof obj.name === 'string' && typeof obj.status === 'string') {
+        let formatted = `${obj.name}`;
+        if (obj.status) {
+          formatted += ` (${obj.status})`;
         }
-        if (value.details) {
-          formatted += ` - ${value.details}`;
+        if (typeof obj.details === 'string') {
+          formatted += ` - ${obj.details}`;
         }
         return formatted;
       }
@@ -113,44 +112,44 @@ const formatSuggestionValue = (value: any, fieldPath: string): string => {
     
     // Handle family/relationships
     if (path.includes('family') || path.includes('partner') || path.includes('children')) {
-      if (value.name && value.relationship) {
-        return `${value.name} (${value.relationship})`;
-      } else if (value.relationship && value.details) {
-        return `${value.details} (${value.relationship})`;
+      if (typeof obj.name === 'string' && typeof obj.relationship === 'string') {
+        return `${obj.name} (${obj.relationship})`;
+      } else if (typeof obj.relationship === 'string' && typeof obj.details === 'string') {
+        return `${obj.details} (${obj.relationship})`;
       }
     }
     
     // Handle education
     if (path.includes('education')) {
-      if (value.institution && value.degree) {
-        return `${value.degree} from ${value.institution}`;
-      } else if (value.institution) {
-        return `Attended ${value.institution}`;
+      if (typeof obj.institution === 'string' && typeof obj.degree === 'string') {
+        return `${obj.degree} from ${obj.institution}`;
+      } else if (typeof obj.institution === 'string') {
+        return `Attended ${obj.institution}`;
       }
     }
     
     // Handle contact info
     if (path.includes('contact') || path.includes('email') || path.includes('phone')) {
-      if (value.type && value.value) {
-        return `${value.value} (${value.type})`;
+      if (typeof obj.type === 'string' && typeof obj.value === 'string') {
+        return `${obj.value} (${obj.type})`;
       }
     }
     
     // For any other object, try to extract meaningful information
-    if (value.name) {
-      return value.name;
-    } else if (value.value) {
-      return value.value;
-    } else if (value.details) {
-      return value.details;
+    if (typeof obj.name === 'string') {
+      return obj.name;
+    } else if (typeof obj.value === 'string') {
+      return obj.value;
+    } else if (typeof obj.details === 'string') {
+      return obj.details;
     }
     
     // Last resort: create a readable summary
-    const keys = Object.keys(value);
+    const keys = Object.keys(obj);
     if (keys.length === 1) {
-      return String(value[keys[0]]);
+      return String(obj[keys[0]]);
     } else if (keys.length <= 3) {
-      return keys.map(key => `${key}: ${value[key]}`).join(', ');
+      return keys.map(key => `${key}: ${String(obj[key])}`).join(', ');
     }
   }
   
@@ -247,7 +246,7 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
     }
   };
 
-  const handleApplySuggestion = async (suggestionId: string) => {
+  const handleApplySuggestion = async (suggestion: Suggestion) => {
     try {
       const response = await fetch('/api/suggestions/apply', {
         method: 'POST',
@@ -255,7 +254,7 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          suggestionId,
+          suggestionId: suggestion.id,
           contactId,
         }),
       });
@@ -301,11 +300,83 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
     }
   };
 
+  const renderSuggestionCard = (suggestion: Suggestion, index: number) => {
+    const SuggestionIcon = getSuggestionIcon(suggestion.suggested_updates.suggestions[index].field_path);
+    const typeLabel = getSuggestionTypeLabel(suggestion.suggested_updates.suggestions[index].field_path);
+    
+    return (
+      <Paper key={`${suggestion.id}-${index}`} sx={{ p: 2, backgroundColor: 'white' }} elevation={1}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2}>
+          <Box flex={1}>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <SuggestionIcon sx={{ fontSize: '16px', color: 'primary.main' }} />
+              <Chip 
+                label={typeLabel} 
+                size="small" 
+                sx={{ 
+                  fontSize: '11px', 
+                  height: '20px',
+                  backgroundColor: 'primary.50',
+                  color: 'primary.main'
+                }} 
+              />
+              <Chip 
+                label={`${Math.round(suggestion.suggested_updates.suggestions[index].confidence * 100)}% confidence`} 
+                size="small" 
+                sx={{ 
+                  fontSize: '11px', 
+                  height: '20px',
+                  backgroundColor: suggestion.suggested_updates.suggestions[index].confidence > 0.8 ? 'success.50' : 
+                                 suggestion.suggested_updates.suggestions[index].confidence > 0.6 ? 'warning.50' : 'error.50',
+                  color: suggestion.suggested_updates.suggestions[index].confidence > 0.8 ? 'success.main' : 
+                         suggestion.suggested_updates.suggestions[index].confidence > 0.6 ? 'warning.main' : 'error.main'
+                }} 
+              />
+            </Box>
+            
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+              {formatSuggestionValue(suggestion.suggested_updates.suggestions[index].suggested_value, suggestion.suggested_updates.suggestions[index].field_path)}
+            </Typography>
+            
+            {suggestion.suggested_updates.suggestions[index].reasoning && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mb: 1 }}>
+                AI Reasoning: {suggestion.suggested_updates.suggestions[index].reasoning}
+              </Typography>
+            )}
+            
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Generated {formatDate(suggestion.created_at)}
+            </Typography>
+          </Box>
+          
+          <Box display="flex" gap={1} flexShrink={0}>
+            <Button 
+              variant="contained" 
+              size="small"
+              onClick={() => handleApplySuggestion(suggestion)}
+              sx={{ minWidth: 'auto' }}
+            >
+              Apply
+            </Button>
+            <Button 
+              variant="outlined" 
+              size="small" 
+              color="error"
+              sx={{ minWidth: 'auto' }}
+            >
+              Dismiss
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+    );
+  };
+
   return (
     <Box>
       {/* Status Alert */}
       <Alert 
-        severity={config.color as any} 
+        severity={config.color as 'error' | 'warning' | 'info' | 'success'} 
         icon={<StatusIcon />}
         sx={{ mb: expanded ? 1 : 0 }}
       >
@@ -363,79 +434,9 @@ export const ArtifactSuggestions: React.FC<ArtifactSuggestionsProps> = ({
           </Typography>
           
           <Stack spacing={2}>
-            {suggestions?.map((suggestionRecord, recordIndex) => {
+            {suggestions?.map((suggestion, index) => {
               // Each record can have multiple individual suggestions
-              return suggestionRecord.suggested_updates.suggestions.map((individualSuggestion, index) => {
-                const SuggestionIcon = getSuggestionIcon(individualSuggestion.field_path);
-                const typeLabel = getSuggestionTypeLabel(individualSuggestion.field_path);
-                
-                return (
-                  <Paper key={`${suggestionRecord.id}-${index}`} sx={{ p: 2, backgroundColor: 'white' }} elevation={1}>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2}>
-                      <Box flex={1}>
-                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                          <SuggestionIcon sx={{ fontSize: '16px', color: 'primary.main' }} />
-                          <Chip 
-                            label={typeLabel} 
-                            size="small" 
-                            sx={{ 
-                              fontSize: '11px', 
-                              height: '20px',
-                              backgroundColor: 'primary.50',
-                              color: 'primary.main'
-                            }} 
-                          />
-                          <Chip 
-                            label={`${Math.round(individualSuggestion.confidence * 100)}% confidence`} 
-                            size="small" 
-                            sx={{ 
-                              fontSize: '11px', 
-                              height: '20px',
-                              backgroundColor: individualSuggestion.confidence > 0.8 ? 'success.50' : 
-                                             individualSuggestion.confidence > 0.6 ? 'warning.50' : 'error.50',
-                              color: individualSuggestion.confidence > 0.8 ? 'success.main' : 
-                                     individualSuggestion.confidence > 0.6 ? 'warning.main' : 'error.main'
-                            }} 
-                          />
-                        </Box>
-                        
-                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                          {formatSuggestionValue(individualSuggestion.suggested_value, individualSuggestion.field_path)}
-                        </Typography>
-                        
-                        {individualSuggestion.reasoning && (
-                          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mb: 1 }}>
-                            AI Reasoning: {individualSuggestion.reasoning}
-                          </Typography>
-                        )}
-                        
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                          Generated {formatDate(suggestionRecord.created_at)}
-                        </Typography>
-                      </Box>
-                      
-                      <Box display="flex" gap={1} flexShrink={0}>
-                        <Button 
-                          variant="contained" 
-                          size="small"
-                          onClick={() => handleApplySuggestion(suggestionRecord.id)}
-                          sx={{ minWidth: 'auto' }}
-                        >
-                          Apply
-                        </Button>
-                        <Button 
-                          variant="outlined" 
-                          size="small" 
-                          color="error"
-                          sx={{ minWidth: 'auto' }}
-                        >
-                          Dismiss
-                        </Button>
-                      </Box>
-                    </Box>
-                  </Paper>
-                );
-              });
+              return renderSuggestionCard(suggestion, index);
             }).flat()}
           </Stack>
         </Paper>

@@ -19,7 +19,7 @@ import { ArtifactModal } from '@/components/features/timeline/ArtifactModal';
 import { useContactProfile } from '@/lib/hooks/useContactProfile';
 import { useLoops } from '@/lib/hooks/useLoops';
 import { useGmailIntegration } from '@/lib/hooks/useGmailIntegration';
-import { BaseArtifact, LoopStatus, LoopArtifactContent, LinkedInArtifactContent, LoopCompletionOutcome } from '@/types';
+import { BaseArtifact, LoopStatus, LinkedInArtifactContent } from '@/types';
 import { PersonalContext as PersonalContextType } from '@/types/contact';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -67,7 +67,7 @@ export default function ContactTimelinePage() {
     
     // Add additional emails from contact_emails if available
     if (contact.contact_emails && Array.isArray(contact.contact_emails)) {
-      const additionalEmails = contact.contact_emails.map((ce: any) => ce.email);
+      const additionalEmails = contact.contact_emails.map((ce: { email: string }) => ce.email);
       emailAddresses.push(...additionalEmails);
     }
 
@@ -132,7 +132,7 @@ export default function ContactTimelinePage() {
       localStorage.removeItem(lastSyncKey);
     });
 
-  }, [contact, gmailConnected, contactId, emailSyncing]); // Removed syncContactEmails from dependencies
+  }, [contact, gmailConnected, contactId, emailSyncing, queryClient]); // Removed syncContactEmails from dependencies
 
   const handleArtifactClick = (artifact: BaseArtifact) => {
     setSelectedArtifact(artifact);
@@ -155,11 +155,11 @@ export default function ContactTimelinePage() {
     }
   };
 
-  const handleLoopEdit = async (_loopId: string, _updates: Partial<LoopArtifactContent>) => {
+  const handleLoopEdit = async () => {
     console.warn('updateLoopDetails function is not available or its name needs verification in useLoops.');
   };
 
-  const handleLoopDelete = async (_loopId: string) => {
+  const handleLoopDelete = async () => {
     console.warn('deleteLoop function is not available or its name needs verification in useLoops.');
   };
 
@@ -167,7 +167,7 @@ export default function ContactTimelinePage() {
     console.log('Share loop triggered in timeline page:', loopId);
   };
 
-  const handleLoopComplete = async (_loopId: string, _outcomeData: LoopCompletionOutcome) => {
+  const handleLoopComplete = async () => {
     console.warn('completeLoop function is not available or its name needs verification in useLoops.');
   };
 

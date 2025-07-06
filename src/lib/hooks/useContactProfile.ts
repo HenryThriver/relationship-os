@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client'; // Assuming supabase client is here
-import type { Contact, ProfessionalContext, PersonalContext, LinkedInArtifactContent, ConversationStarters } from '@/types';
+import type { Contact, ProfessionalContext, PersonalContext, LinkedInArtifactContent } from '@/types';
 import type { Json } from '@/lib/supabase/types_db'; // Ensure Json is imported if not already
 
 // Placeholder for Supabase API functions. These would typically be in a separate file e.g., src/lib/supabase/contactsApi.ts
@@ -52,7 +52,7 @@ async function updateContactContext<K extends 'professional_context' | 'personal
 
   // existingContactWrapper will be an object like { [contextField]: { ... actual context data ... } }
   // or { [contextField]: null } if the field is null in the DB.
-  const currentContextData = (existingContactWrapper as Record<K, any>)[contextField] || {};
+  const currentContextData = (existingContactWrapper as Record<K, Json>)[contextField] || {};
   const newContext = { ...currentContextData, ...updates };
 
   const { data, error } = await supabase

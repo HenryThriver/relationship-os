@@ -9,18 +9,24 @@ export type ArtifactType = ArtifactTypeEnum | ExtendedArtifactType;
 export type ArtifactGlobal = BaseArtifact;
 
 // Renamed from ArtifactGlobal to BaseArtifact
-export interface BaseArtifact<TContent = Record<string, any> | string | null> { 
+export interface BaseArtifact<TContent = Record<string, unknown> | string | null, TMetadata = Record<string, unknown> | null> {
   id: string;
   contact_id: string;
   user_id: string;
   type: ArtifactType;
   content: TContent;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata?: Record<string, any> | null;
+  // Metadata can contain any structured data
+  metadata?: TMetadata;
   timestamp: string; 
   created_at: string;
   updated_at: string;
   ai_parsing_status?: 'pending' | 'processing' | 'completed' | 'failed' | null; // Added here
+}
+
+// Database-compatible artifact type (what we get from Supabase)
+export interface DatabaseArtifact extends BaseArtifact<string | null, Record<string, unknown> | null> {
+  // This matches what the database returns
+  database_compatible: true; // Marker to distinguish from client-side artifacts
 }
 
 // --- LinkedIn Artifact --- 
@@ -82,9 +88,12 @@ export interface LinkedInArtifactContent {
   // Add any other fields from RapidLinkedInProfile that are stored in metadata
   company?: string; // Current company, often at top level in some scrapers
   location?: string; // General location string, if different from geo.full
+  
+  // Index signature for additional properties
+  [key: string]: unknown;
 }
 
-export interface LinkedInArtifact extends BaseArtifact<string> { // Assuming content is a string for LinkedIn Profile, specific data in metadata
+export interface LinkedInArtifact extends BaseArtifact<string, LinkedInArtifactContent> { // Assuming content is a string for LinkedIn Profile, specific data in metadata
   type: 'linkedin_profile';
   metadata: LinkedInArtifactContent; // metadata holds the rich object
 }
@@ -98,9 +107,12 @@ export interface POGArtifactContent {
   status?: POGArtifactContentStatus;
   type_of_pog?: 'intro' | 'endorsement' | 'advice' | 'reference' | 'other';
   // ... other POG-specific fields
+  
+  // Index signature for additional properties
+  [key: string]: unknown;
 }
 
-export interface POGArtifact extends BaseArtifact<string> { // Assuming content is a string, specific data in metadata
+export interface POGArtifact extends BaseArtifact<string, POGArtifactContent> { // Assuming content is a string, specific data in metadata
   type: 'pog';
   metadata: POGArtifactContent;
 }
@@ -114,9 +126,12 @@ export interface AskArtifactContent {
   status?: AskArtifactContentStatus;
   type_of_ask?: 'feedback' | 'intro' | 'help' | 'question' | 'other';
   // ... other Ask-specific fields
+  
+  // Index signature for additional properties
+  [key: string]: unknown;
 }
 
-export interface AskArtifact extends BaseArtifact<string> { // Assuming content is a string, specific data in metadata
+export interface AskArtifact extends BaseArtifact<string, AskArtifactContent> { // Assuming content is a string, specific data in metadata
   type: 'ask';
   metadata: AskArtifactContent;
 }
@@ -148,7 +163,7 @@ export interface EmailArtifactMetadata {
 
 // Meeting artifact metadata alias for backwards compatibility
 export type MeetingArtifactMetadata = MeetingArtifactContent;
-export interface EmailArtifact extends BaseArtifact<string | null> {
+export interface EmailArtifact extends BaseArtifact<string | null, EmailArtifactMetadata | null> {
   type: 'email';
   metadata?: EmailArtifactMetadata | null; // Allow null for metadata
 }
@@ -206,6 +221,9 @@ export interface MeetingArtifactContent {
     summary?: string;
     nextSteps?: string[];
   };
+  
+  // Index signature for additional properties
+  [key: string]: unknown;
 }
 
 export interface MeetingArtifact extends BaseArtifact<MeetingArtifactContent> {
@@ -221,7 +239,7 @@ export interface NoteArtifactMetadata {
   title?: string;
   // content is the note itself
 }
-export interface NoteArtifact extends BaseArtifact<string> { // Assuming content is the note text
+export interface NoteArtifact extends BaseArtifact<string, NoteArtifactMetadata | null> { // Assuming content is the note text
   type: 'note';
   metadata?: NoteArtifactMetadata | null; // Allow null for metadata
 }
@@ -423,7 +441,7 @@ export interface LinkedInPostArtifactContent {
   relevance_reason?: 'authored_by_contact' | 'mentioned_contact' | 'engaged_with_contact' | 'topic_relevant';
 }
 
-export interface LinkedInPostArtifact extends BaseArtifact<string> {
+export interface LinkedInPostArtifact extends BaseArtifact<string, LinkedInPostArtifactContent> {
   type: 'linkedin_post';
   content: string; // Brief summary for timeline display
   metadata: LinkedInPostArtifactContent;
@@ -468,7 +486,7 @@ export interface RapidLinkedInPostArticle {
     height: number;
     url: string;
   }>;
-  newsletter: Record<string, any>;
+  newsletter: Record<string, unknown>;
 }
 
 export interface RapidLinkedInPost {
@@ -490,13 +508,13 @@ export interface RapidLinkedInPost {
   postedDateTimestamp: number;
   urn: string;
   author: RapidLinkedInPostAuthor;
-  company: Record<string, any>;
-  document: Record<string, any>;
-  celebration: Record<string, any>;
-  poll: Record<string, any>;
+  company: Record<string, unknown>;
+  document: Record<string, unknown>;
+  celebration: Record<string, unknown>;
+  poll: Record<string, unknown>;
   contentType: string;
   article?: RapidLinkedInPostArticle;
-  entity: Record<string, any>;
+  entity: Record<string, unknown>;
   mentions?: RapidLinkedInPostMention[];
   companyMentions?: RapidLinkedInPostCompanyMention[];
 }

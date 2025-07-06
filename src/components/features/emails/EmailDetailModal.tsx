@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,15 +15,9 @@ import {
   Stack,
   Tooltip,
   Collapse,
-  Divider,
-  Link,
-
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  Reply as ReplyIcon,
-  ReplyAll as ReplyAllIcon,
-  Forward as ForwardIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   AttachFile as AttachFileIcon,
@@ -51,9 +45,6 @@ interface EmailDetailModalProps {
   onClose: () => void;
   email: EmailArtifact | null;
   thread?: EmailThread | null;
-  onReply?: (email: EmailArtifact) => void;
-  onReplyAll?: (email: EmailArtifact) => void;
-  onForward?: (email: EmailArtifact) => void;
   onDelete?: (email: EmailArtifact) => void;
   onArchive?: (email: EmailArtifact) => void;
   onToggleStar?: (email: EmailArtifact) => void;
@@ -64,9 +55,6 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
   onClose,
   email,
   thread,
-  onReply,
-  onReplyAll,
-  onForward,
   onDelete,
   onArchive,
   onToggleStar,
@@ -122,22 +110,6 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
     bodyHtml: email.metadata?.body_html,
     snippet: email.metadata?.snippet
   });
-
-  // Initialize expanded emails - expand the clicked email and latest email by default
-  useEffect(() => {
-    if (emailThread.messages.length > 0) {
-      const latestEmail = emailThread.messages[emailThread.messages.length - 1];
-      const clickedEmailId = email.id;
-      
-      if (emailThread.messages.length === 1) {
-        // Single email - expand it
-        setExpandedEmails(new Set([clickedEmailId]));
-      } else {
-        // Multiple emails - expand clicked email and latest email
-        setExpandedEmails(new Set([latestEmail.id, clickedEmailId]));
-      }
-    }
-  }, [emailThread.messages, email.id]);
 
   const toggleEmailExpansion = (emailId: string) => {
     const newExpanded = new Set(expandedEmails);
@@ -250,15 +222,10 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
     return hasImportant ? 'high' : 'normal';
   };
 
-  const threadImportance = getThreadImportance();
-  const threadHasAttachments = emailThread.has_attachments;
-
-  // Sort messages chronologically
-  const sortedMessages = [...emailThread.messages].sort((a, b) => {
-    const dateA = new Date(a.timestamp || a.created_at).getTime();
-    const dateB = new Date(b.timestamp || b.created_at).getTime();
-    return dateA - dateB;
-  });
+  // Filter messages to display (all messages in the thread)
+  const messagesToDisplay = emailThread.messages.slice().sort((a, b) => 
+    new Date(a.timestamp || a.created_at).getTime() - new Date(b.timestamp || b.created_at).getTime()
+  );
 
   return (
     <Dialog 
@@ -286,12 +253,12 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
           <Typography variant="h6" sx={{ fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {emailThread.subject}
           </Typography>
-          {threadImportance === 'high' && (
+          {getThreadImportance() === 'high' && (
             <Tooltip title="Important">
               <PriorityIcon sx={{ color: 'warning.main', fontSize: '20px' }} />
             </Tooltip>
           )}
-          {threadHasAttachments && (
+          {emailThread.has_attachments && (
             <Tooltip title="Has attachments">
               <AttachFileIcon sx={{ color: 'text.secondary', fontSize: '20px' }} />
             </Tooltip>
@@ -338,17 +305,15 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
           </Box>
         ) : (
           <Box sx={{ flex: 1, overflow: 'auto' }}>
-            {sortedMessages.map((emailMessage, index) => {
+            {messagesToDisplay.map((emailMessage, index) => {
             const isExpanded = expandedEmails.has(emailMessage.id);
             const showHeaders = showFullHeaders.has(emailMessage.id);
             const direction = getEmailDirection(emailMessage);
-            const importance = getEmailImportance(emailMessage);
             const isStarred = emailMessage.metadata?.is_starred;
             const hasAttachments = emailMessage.metadata?.has_attachments;
-            const isLatest = index === sortedMessages.length - 1;
 
             return (
-              <Box key={emailMessage.id} sx={{ borderBottom: index < sortedMessages.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+              <Box key={emailMessage.id} sx={{ borderBottom: index < messagesToDisplay.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
                 {/* Email Header */}
                 <Box 
                   sx={{ 

@@ -8,8 +8,6 @@ import {
   CardContent,
   CardActions,
   Chip,
-  Alert,
-  IconButton,
   CircularProgress // Added for loading state
 } from '@mui/material';
 import {
@@ -21,7 +19,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import { LoopType, LoopStatus, LoopAction } from '@/types/artifact'; // Added LoopStatus, LoopAction for initial action
 import { useToast } from '@/lib/contexts/ToastContext';
-import { TablesInsert } from '@/lib/supabase/types_db';
+import { TablesInsert, Tables } from '@/lib/supabase/types_db';
 
 interface LoopSuggestionFromDB {
   id: string;
@@ -65,16 +63,16 @@ export const LoopSuggestions: React.FC<LoopSuggestionsProps> = ({ contactId }) =
       
       // Filter and type-cast the data to ensure proper structure
       return (data || [])
-        .filter(item => item.suggestion_data && typeof item.suggestion_data === 'object')
-        .map(item => ({
+        .filter((item: { suggestion_data: unknown }) => item.suggestion_data && typeof item.suggestion_data === 'object')
+        .map((item: { suggestion_data: unknown; [key: string]: unknown }) => ({
           ...item,
           suggestion_data: item.suggestion_data as LoopSuggestionFromDB['suggestion_data']
-        }));
+        })) as LoopSuggestionFromDB[];
     }
   });
 
   const acceptSuggestionMutation = useMutation<
-    any, // Return type of created loop artifact (can be more specific)
+    Tables<'artifacts'>,
     Error,
     string // suggestionId
   >({
@@ -96,7 +94,7 @@ export const LoopSuggestions: React.FC<LoopSuggestionsProps> = ({ contactId }) =
       const artifactToInsert: TablesInsert<'artifacts'> = {
         contact_id: contactId,
         user_id: user.id,
-        type: 'loop' as any, // Known type issue
+        type: 'loop',
         content: JSON.stringify({
           title: suggestion.suggestion_data.title,
           description: suggestion.suggestion_data.description,
@@ -111,7 +109,7 @@ export const LoopSuggestions: React.FC<LoopSuggestionsProps> = ({ contactId }) =
 
       const { data: loop, error: loopError } = await supabase
         .from('artifacts')
-        .insert(artifactToInsert as any) // Known type issue
+        .insert(artifactToInsert)
         .select()
         .single();
 
@@ -146,7 +144,7 @@ export const LoopSuggestions: React.FC<LoopSuggestionsProps> = ({ contactId }) =
   });
 
   const rejectSuggestionMutation = useMutation<
-    any,
+    void,
     Error,
     string // suggestionId
   >({

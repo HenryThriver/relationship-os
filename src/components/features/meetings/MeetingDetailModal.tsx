@@ -97,9 +97,9 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     if (!meeting.ai_parsing_status || meeting.ai_parsing_status === 'completed') return null;
 
     const statusConfig = {
-      pending: { icon: HourglassEmptyIcon, color: 'info', text: 'Queued for AI processing' },
-      processing: { icon: HourglassEmptyIcon, color: 'warning', text: 'AI processing in progress...' },
-      failed: { icon: ErrorOutlineIcon, color: 'error', text: 'AI processing failed' },
+      pending: { icon: HourglassEmptyIcon, color: 'info' as const, text: 'Queued for AI processing' },
+      processing: { icon: HourglassEmptyIcon, color: 'warning' as const, text: 'AI processing in progress...' },
+      failed: { icon: ErrorOutlineIcon, color: 'error' as const, text: 'AI processing failed' },
     };
 
     const config = statusConfig[meeting.ai_parsing_status];
@@ -107,7 +107,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 
     return (
       <Alert 
-        severity={config.color as any} 
+        severity={config.color} 
         icon={<StatusIcon />}
         sx={{ mb: 2 }}
       >
@@ -123,9 +123,9 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     if (!sentiment) return null;
     
     const sentimentConfig = {
-      positive: { color: 'success', label: '😊 Positive' },
-      neutral: { color: 'default', label: '😐 Neutral' },
-      negative: { color: 'error', label: '😟 Negative' },
+      positive: { color: 'success' as const, label: '😊 Positive' },
+      neutral: { color: 'default' as const, label: '😐 Neutral' },
+      negative: { color: 'error' as const, label: '😟 Negative' },
     };
 
     const config = sentimentConfig[sentiment as keyof typeof sentimentConfig];
@@ -134,7 +134,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     return (
       <Chip 
         label={config.label} 
-        color={config.color as any} 
+        color={config.color} 
         size="small" 
         variant="outlined" 
       />

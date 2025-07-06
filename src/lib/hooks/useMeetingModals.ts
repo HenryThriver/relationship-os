@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import type { MeetingArtifact } from '@/types/artifact';
+import type { MeetingArtifact, MeetingArtifactContent } from '@/types/artifact';
 
 interface UseMeetingModalsReturn {
   // Modal states
@@ -69,7 +69,7 @@ export const useMeetingModals = (): UseMeetingModalsReturn => {
     setError(null);
 
     try {
-      let contentData: any = { ...selectedMeeting.content };
+      const contentData: MeetingArtifactContent = { ...(selectedMeeting.content as MeetingArtifactContent) };
 
       if (contentType === 'recording' && content instanceof File) {
         // Upload file to Supabase Storage
@@ -92,14 +92,14 @@ export const useMeetingModals = (): UseMeetingModalsReturn => {
 
         contentData.recording_url = publicUrl;
       } else if (typeof content === 'string') {
-        contentData[contentType] = content;
+        (contentData as unknown as Record<string, unknown>)[contentType] = content;
       }
 
       // Update the artifact in the database
       const { error: updateError } = await supabase
         .from('artifacts')
         .update({
-          content: contentData,
+          content: JSON.stringify(contentData), // Convert to string for database storage
           ai_parsing_status: 'pending', // Trigger AI processing
           updated_at: new Date().toISOString(),
         })
@@ -148,9 +148,11 @@ export const useMeetingModals = (): UseMeetingModalsReturn => {
       }
 
       // Update action item in content
-      const content = artifact.content as any;
+      const content = typeof artifact.content === 'string' 
+        ? JSON.parse(artifact.content) as MeetingArtifactContent 
+        : artifact.content as MeetingArtifactContent;
       if (content.insights?.actionItems) {
-        const actionItems = content.insights.actionItems.map((item: any) => 
+        const actionItems = content.insights.actionItems.map((item: typeof content.insights.actionItems[0]) => 
           (item.id === actionItemId || item.description === actionItemId)
             ? { ...item, completed }
             : item
@@ -162,7 +164,7 @@ export const useMeetingModals = (): UseMeetingModalsReturn => {
       const { error: updateError } = await supabase
         .from('artifacts')
         .update({
-          content,
+          content: JSON.stringify(content), // Convert to string for database storage
           updated_at: new Date().toISOString(),
         })
         .eq('id', artifactId);
@@ -222,6 +224,12 @@ export const useMeetingModals = (): UseMeetingModalsReturn => {
       throw new Error(errorMessage);
     }
   }, [user]);
+
+  // const _handleError = (error: Error) => {
+  //   console.error('Error:', error);
+  //   setError(error.message);
+  //   throw error;
+  // };
 
   return {
     // Modal states

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -33,7 +33,6 @@ interface StatusResponse {
 
 interface LinkedInPostsSyncStatusProps {
   contactId: string;
-  contactName?: string;
   lastSyncAt?: string | null;
   syncStatus?: string;
   postsCount?: number;
@@ -43,7 +42,6 @@ interface LinkedInPostsSyncStatusProps {
 
 export const LinkedInPostsSyncStatus: React.FC<LinkedInPostsSyncStatusProps> = ({
   contactId,
-  contactName,
   lastSyncAt: propLastSyncAt,
   syncStatus: propSyncStatus = 'never',
   postsCount: propPostsCount = 0,
@@ -63,7 +61,9 @@ export const LinkedInPostsSyncStatus: React.FC<LinkedInPostsSyncStatusProps> = (
   const postsCount = fetchedData?.postsCount ?? propPostsCount;
 
   // Fetch current sync status from API
-  const fetchSyncStatus = async () => {
+  const fetchSyncStatus = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/linkedin/sync-posts?contactId=${contactId}`);
       if (response.ok) {
@@ -72,13 +72,17 @@ export const LinkedInPostsSyncStatus: React.FC<LinkedInPostsSyncStatusProps> = (
       }
     } catch (err) {
       console.error('Failed to fetch sync status:', err);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [contactId]);
 
   // Fetch status on mount
   useEffect(() => {
     fetchSyncStatus();
-  }, [contactId]);
+    const interval = setInterval(fetchSyncStatus, 10000);
+    return () => clearInterval(interval);
+  }, [fetchSyncStatus]);
 
   const getSyncStatusChip = () => {
     switch (syncStatus) {

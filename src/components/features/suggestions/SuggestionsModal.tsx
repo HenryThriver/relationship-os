@@ -29,7 +29,6 @@ import { BulkActionsToolbar } from './BulkActionsToolbar';
 interface SuggestionsModalProps {
   open: boolean;
   onClose: () => void;
-  contactId: string;
   contactName?: string;
   suggestions: UpdateSuggestionRecord[];
   onApplySuggestions: (suggestionIds: string[], selectedPathsMap: Record<string, string[]>) => Promise<void>;
@@ -41,7 +40,6 @@ interface SuggestionsModalProps {
 export const SuggestionsModal: React.FC<SuggestionsModalProps> = ({
   open,
   onClose,
-  contactId,
   contactName,
   suggestions,
   onApplySuggestions,

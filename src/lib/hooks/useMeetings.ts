@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import type { MeetingArtifact } from '@/types/artifact';
@@ -22,7 +22,7 @@ export const useMeetings = (options: UseMeetingsOptions = {}): UseMeetingsReturn
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const fetchMeetings = async (): Promise<void> => {
+  const fetchMeetings = useCallback(async (): Promise<void> => {
     if (!user) {
       setLoading(false);
       return;
@@ -58,27 +58,27 @@ export const useMeetings = (options: UseMeetingsOptions = {}): UseMeetingsReturn
       // Filter out upcoming meetings if not requested
       if (!options.includeUpcoming) {
         const now = new Date();
-        filteredMeetings = filteredMeetings.filter((meeting: any) => {
-          const metadata = meeting.metadata as any;
+        filteredMeetings = filteredMeetings.filter((meeting: Record<string, unknown>) => {
+          const metadata = meeting.metadata as Record<string, unknown>;
           const meetingDate = metadata?.meeting_date 
-            ? new Date(metadata.meeting_date)
-            : new Date(meeting.timestamp);
+            ? new Date(metadata.meeting_date as string)
+            : new Date(meeting.timestamp as string);
           return meetingDate <= now;
         });
       }
 
-      setMeetings(filteredMeetings as MeetingArtifact[]);
+      setMeetings(filteredMeetings as unknown as MeetingArtifact[]);
     } catch (err) {
       console.error('Error fetching meetings:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch meetings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, options.contactId, options.limit, options.includeUpcoming]);
 
   useEffect(() => {
     fetchMeetings();
-  }, [user, options.contactId, options.limit, options.includeUpcoming]);
+  }, [fetchMeetings]);
 
   return {
     meetings,

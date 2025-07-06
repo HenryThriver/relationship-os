@@ -20,9 +20,8 @@ export async function POST(): Promise<NextResponse> {
       );
     }
 
-    const emailsToDelete = deletedEmails?.filter((email: { id: string; metadata: { from?: { email?: string } } }) => 
-      email.metadata?.from?.email === 'ronen@agentstation.ai'
-    ).map((email: { id: string }) => email.id) || [];
+    // Since we're deleting all emails for this contact, we don't need to filter by email address
+    const emailsToDelete = deletedEmails?.map((email: { id: string }) => email.id) || [];
 
     return NextResponse.json({
       success: true,

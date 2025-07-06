@@ -22,13 +22,7 @@ import CompleteScreen from '@/components/features/onboarding/4_Profile_4.3_Compl
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const {
-    state: onboardingState,
-    updateState,
-    completeScreen,
-    // nextScreen,
-    // previousScreen,
-  } = useOnboardingState();
+  const onboarding = useOnboardingState();
 
   // Handle OAuth success/error messages
   const [showAlert, setShowAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -55,12 +49,12 @@ function OnboardingContent() {
 
   // Redirect if onboarding is complete
   useEffect(() => {
-    if (completeScreen) {
+    if (onboarding.isComplete) {
       router.push('/dashboard');
     }
-  }, [completeScreen, router]);
+  }, [onboarding, router]);
 
-  if (onboardingState === null) {
+  if (!onboarding.state) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -82,7 +76,8 @@ function OnboardingContent() {
 
   // Render the appropriate screen based on current state
   const renderCurrentScreen = () => {
-    switch (onboardingState.currentScreenName) {
+    const currentScreen = onboarding.currentScreenName;
+    switch (currentScreen) {
       case 'welcome':
         return <EnhancedWelcomeScreen />;
       case 'challenges':
@@ -114,7 +109,7 @@ function OnboardingContent() {
               Unknown Screen
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Screen "{onboardingState.currentScreenName}" not found. Please contact support.
+              Screen &quot;{currentScreen}&quot; not found. Please contact support.
             </Typography>
           </Box>
         );

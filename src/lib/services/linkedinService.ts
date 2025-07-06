@@ -1,5 +1,25 @@
-import type { Contact, ProfessionalContext } from '@/types/contact';
+import type { Contact } from '@/types/contact';
 import type { LinkedInArtifact, LinkedInArtifactContent } from '@/types/artifact';
+import type { Json } from '@/lib/supabase/types_db';
+
+// Type definitions for LinkedIn API response structures
+interface DateRange {
+  start: {
+    month?: string | number;
+    year?: string | number;
+  };
+  end?: {
+    month?: string | number;
+    year?: string | number;
+  };
+}
+
+interface LocationData {
+  basicLocation?: {
+    city?: string;
+    countryCode?: string;
+  };
+}
 
 /**
  * Processes the raw API response from a LinkedIn profile scrape.
@@ -11,28 +31,91 @@ import type { LinkedInArtifact, LinkedInArtifactContent } from '@/types/artifact
  * @returns An object containing `contactUpdates` (for the contacts table) 
  *          and `linkedinArtifact` (to be stored in the artifacts table).
  */
-export const processLinkedInProfile = (apiResponse: any, contactId: string): {
+export const processLinkedInProfile = (apiResponse: Record<string, unknown>, contactId: string): {
   contactUpdates: Partial<Contact>;
   linkedinArtifact: LinkedInArtifact;
 } => {
-  
+  // Type guards for apiResponse
+  const getString = (obj: Record<string, unknown>, key: string): string | undefined => {
+    const val = obj[key];
+    return typeof val === 'string' ? val : undefined;
+  };
+  const getArray = (obj: Record<string, unknown>, key: string): Array<Record<string, unknown>> => {
+    const val = obj[key];
+    return Array.isArray(val) ? (val as Array<Record<string, unknown>>) : [];
+  };
+
+  const getDateRange = (obj: Record<string, unknown>): DateRange | null => {
+    if (obj.dateRange && typeof obj.dateRange === 'object' && obj.dateRange !== null) {
+      const dateRange = obj.dateRange as Record<string, unknown>;
+      if ('start' in dateRange && typeof dateRange.start === 'object' && dateRange.start !== null) {
+        const start = dateRange.start as Record<string, unknown>;
+        const end = 'end' in dateRange && dateRange.end && typeof dateRange.end === 'object' && dateRange.end !== null 
+          ? dateRange.end as Record<string, unknown> 
+          : undefined;
+        
+        return {
+          start: {
+            month: typeof start.month === 'string' || typeof start.month === 'number' ? start.month : undefined,
+            year: typeof start.year === 'string' || typeof start.year === 'number' ? start.year : undefined,
+          },
+          end: end ? {
+            month: typeof end.month === 'string' || typeof end.month === 'number' ? end.month : undefined,
+            year: typeof end.year === 'string' || typeof end.year === 'number' ? end.year : undefined,
+          } : undefined,
+        };
+      }
+    }
+    return null;
+  };
+
+  const getLocation = (obj: Record<string, unknown>): LocationData | null => {
+    if (obj.location && typeof obj.location === 'object' && obj.location !== null) {
+      const location = obj.location as Record<string, unknown>;
+      if ('basicLocation' in location && typeof location.basicLocation === 'object' && location.basicLocation !== null) {
+        const basicLocation = location.basicLocation as Record<string, unknown>;
+        return {
+          basicLocation: {
+            city: typeof basicLocation.city === 'string' ? basicLocation.city : undefined,
+            countryCode: typeof basicLocation.countryCode === 'string' ? basicLocation.countryCode : undefined,
+          }
+        };
+      }
+    }
+    return null;
+  };
+
   // Create LinkedIn artifact with comprehensive data from the API response
   const linkedinArtifactContent: LinkedInArtifactContent = {
-    profile_url: apiResponse.profile_url || apiResponse.public_identifier, // Use common variations
-    headline: apiResponse.headline,
-    about: apiResponse.summary || apiResponse.about, // Use common variations
-    experience: apiResponse.experiences?.map((exp: any) => ({
-      company: exp.companyName || exp.company,
-      title: exp.title,
-      duration: exp.dateRange ? `${exp.dateRange.start.month}/${exp.dateRange.start.year} - ${exp.dateRange.end ? exp.dateRange.end.month+'/'+exp.dateRange.end.year : 'Present'}` : exp.duration,
-      description: exp.description
-    })) || [],
-    education: apiResponse.education?.map((edu: any) => ({
-      school: edu.schoolName || edu.school,
-      degree: edu.degreeName || edu.degree,
-      field: edu.fieldOfStudy || edu.field,
-      years: edu.dateRange ? `${edu.dateRange.start.year} - ${edu.dateRange.end ? edu.dateRange.end.year : 'Present'}` : edu.years
-    })) || [],
+    profile_url: getString(apiResponse, 'profile_url') || getString(apiResponse, 'public_identifier') || '',
+    headline: getString(apiResponse, 'headline') || '',
+    about: getString(apiResponse, 'summary') || getString(apiResponse, 'about') || '',
+    experience: getArray(apiResponse, 'experiences').map((exp) => {
+      const dateRange = getDateRange(exp);
+      const duration = dateRange 
+        ? `${dateRange.start.month || ''}/${dateRange.start.year || ''} - ${dateRange.end ? `${dateRange.end.month || ''}/${dateRange.end.year || ''}` : 'Present'}`
+        : getString(exp, 'duration') || '';
+      
+      return {
+        company: getString(exp, 'companyName') || getString(exp, 'company') || '',
+        title: getString(exp, 'title') || '',
+        duration,
+        description: getString(exp, 'description') || ''
+      };
+    }),
+    education: getArray(apiResponse, 'education').map((edu) => {
+      const dateRange = getDateRange(edu);
+      const years = dateRange 
+        ? `${dateRange.start.year || ''} - ${dateRange.end ? dateRange.end.year || '' : 'Present'}`
+        : getString(edu, 'years') || '';
+      
+      return {
+        school: getString(edu, 'schoolName') || getString(edu, 'school') || '',
+        degree: getString(edu, 'degreeName') || getString(edu, 'degree') || '',
+        field: getString(edu, 'fieldOfStudy') || getString(edu, 'field') || '',
+        years
+      };
+    }),
     scraped_at: new Date().toISOString()
   };
 
@@ -51,10 +134,30 @@ export const processLinkedInProfile = (apiResponse: any, contactId: string): {
   // Synthesize key data for the main contact record update
   const contactUpdates: Partial<Contact> = {
     // Basic Info - ensure name is constructed if only firstName/lastName are present
-    name: (apiResponse.firstName && apiResponse.lastName) ? `${apiResponse.firstName} ${apiResponse.lastName}` : apiResponse.name,
-    company: apiResponse.experiences?.[0]?.companyName || apiResponse.experiences?.[0]?.company,
-    title: apiResponse.experiences?.[0]?.title,
-    location: apiResponse.location?.basicLocation?.countryCode ? `${apiResponse.location.basicLocation.city}, ${apiResponse.location.basicLocation.countryCode}` : apiResponse.locationName,
+    name: (getString(apiResponse, 'firstName') && getString(apiResponse, 'lastName'))
+      ? `${getString(apiResponse, 'firstName') || ''} ${getString(apiResponse, 'lastName') || ''}`.trim()
+      : getString(apiResponse, 'name') || '',
+    company: (() => {
+      const experiences = getArray(apiResponse, 'experiences');
+      if (experiences.length > 0) {
+        return getString(experiences[0], 'companyName') || getString(experiences[0], 'company') || '';
+      }
+      return '';
+    })(),
+    title: (() => {
+      const experiences = getArray(apiResponse, 'experiences');
+      if (experiences.length > 0) {
+        return getString(experiences[0], 'title') || '';
+      }
+      return '';
+    })(),
+    location: (() => {
+      const location = getLocation(apiResponse);
+      if (location?.basicLocation) {
+        return `${location.basicLocation.city || ''}, ${location.basicLocation.countryCode || ''}`;
+      }
+      return getString(apiResponse, 'locationName') || '';
+    })(),
     linkedin_url: linkedinArtifactContent.profile_url, // Ensure linkedin_url on contact is updated/set
     
     // Distill into professional context (a curated subset of LinkedIn data)
@@ -73,10 +176,10 @@ export const processLinkedInProfile = (apiResponse: any, contactId: string): {
       speaking_topics: [], 
       achievements: [], 
       goals: [], // Goals are not usually on a public LinkedIn profile
-    } as any, // Cast to Json for database compatibility
+    } as Json, // Cast to Json for database compatibility
     
     // The linkedin_data field on the Contact record itself
-    linkedin_data: linkedinArtifactContent as any // Cast to Json for database compatibility
+    linkedin_data: linkedinArtifactContent as unknown as Json // Cast to Json for database compatibility
   };
 
   return { contactUpdates, linkedinArtifact };

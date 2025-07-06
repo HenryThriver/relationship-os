@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton,
   TextField,
 } from '@mui/material';
 import {
@@ -25,7 +24,6 @@ import {
   Error as ErrorIcon,
   Refresh as RefreshIcon,
   Close as CloseIcon,
-  Sync as SyncIcon,
 } from '@mui/icons-material';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useGmailIntegration } from '@/lib/hooks/useGmailIntegration';
@@ -179,7 +177,7 @@ export const GmailConnectionCard: React.FC<GmailConnectionCardProps> = ({
                     <Typography variant="caption" color="text.secondary">
                       {syncProgress.processed_emails} of {syncProgress.total_emails} emails processed
                       {syncProgress.created_artifacts > 0 && ` • ${syncProgress.created_artifacts} new artifacts`}
-                      {syncProgress.errors > 0 && ` • ${syncProgress.errors} errors`}
+                      {syncProgress.errors > 0 && ` • ${syncProgress.errors} error&apos;s`}
                     </Typography>
                   )}
                 </Box>
@@ -241,7 +239,7 @@ export const GmailConnectionCard: React.FC<GmailConnectionCardProps> = ({
               <strong>How to sync emails:</strong>
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              • Go to any contact's profile page<br/>
+              • Go to any contact&apos;s profile page<br/>
               • View their timeline to automatically sync emails<br/>
               • Or visit a contact and emails will sync in the background
             </Typography>

@@ -125,7 +125,7 @@ export const UpdateSuggestionsModal: React.FC<UpdateSuggestionsModalProps> = ({
       <DialogContent dividers>
         {transcriptionText && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            From voice memo: "{transcriptionText.substring(0, 150)}{transcriptionText.length > 150 ? '...' : ''}"
+            From voice memo: &quot;{transcriptionText.substring(0, 150)}{transcriptionText.length > 150 ? '...' : ''}&quot;
           </Alert>
         )}
 

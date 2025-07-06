@@ -12,12 +12,10 @@ import {
 } from '@mui/material';
 import { CheckCircle, Celebration } from '@mui/icons-material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
-import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useRouter } from 'next/navigation';
 
 export default function CompleteScreen() {
   const { completeOnboarding, state: onboardingState } = useOnboardingState();
-  const { profile } = useUserProfile();
   const router = useRouter();
   
   const [progress, setProgress] = useState(0);
@@ -164,7 +162,7 @@ export default function CompleteScreen() {
           </Card>
 
           <Typography variant="body2" color="text.secondary">
-            You're about to see how Connection OS transforms your networking approach
+            You&apos;re about to see how Connection OS transforms your networking approach
           </Typography>
         </Box>
       </Fade>

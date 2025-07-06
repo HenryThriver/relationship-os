@@ -19,19 +19,15 @@ import {
   ExpandLess as ExpandLessIcon,
   Email as EmailIcon,
   Star as StarIcon,
-  StarBorder as StarBorderIcon,
   AttachFile as AttachIcon,
   Reply as ReplyIcon,
   Forward as ForwardIcon,
-  MoreVert as MoreIcon,
   Send as SendIcon,
   Inbox as InboxIcon,
-  Schedule as ScheduleIcon,
   PriorityHigh as PriorityIcon,
 } from '@mui/icons-material';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import type { EmailArtifact, EmailThread } from '@/types/email';
-import type { BaseArtifact } from '@/types/artifact';
 
 export interface EmailTimelineItemProps {
   artifacts: EmailArtifact[];
