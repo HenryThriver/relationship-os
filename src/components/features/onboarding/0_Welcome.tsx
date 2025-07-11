@@ -244,26 +244,14 @@ export const EnhancedWelcomeScreen: React.FC = () => {
             variant={isMobile ? "h4" : "h3"} 
             sx={{ 
               fontWeight: 600,
-              letterSpacing: '0.2px',
+              letterSpacing: '-0.02em',
               color: '#1a1a1a',
-              lineHeight: 1.3,
+              lineHeight: 1.2,
               fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem', lg: '3.25rem' },
               mb: 2
             }}
           >
-            Cultivate Meaningful Connections
-          </Typography>
-          <Typography 
-            variant={isMobile ? "h5" : "h4"} 
-            sx={{ 
-              fontWeight: 300,
-              letterSpacing: '0.3px',
-              color: '#555555',
-              lineHeight: 1.4,
-              fontSize: { xs: '1.3rem', sm: '1.6rem', md: '2rem', lg: '2.25rem' }
-            }}
-          >
-            Transform networking from overwhelming to effortless
+            Where strategic minds cultivate extraordinary outcomes
           </Typography>
         </Box>
       )}
@@ -313,7 +301,7 @@ export const EnhancedWelcomeScreen: React.FC = () => {
               }
             }}
           >
-            Let&apos;s get started!
+            Begin your transformation
           </Button>
         </Box>
       )}
