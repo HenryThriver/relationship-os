@@ -30,7 +30,7 @@ const GOAL_CATEGORIES = [
 
 export default function GoalsScreen() {
   const { user } = useAuth();
-  const { nextScreen, completeScreen, currentScreen, isNavigating, updateState } = useOnboardingState();
+  const { nextScreen, completeScreen, currentScreen, isNavigating, updateState, state } = useOnboardingState();
   const { isLoading: isLoadingProfile } = useUserProfile();
   
   const [animationStep, setAnimationStep] = useState(0);
@@ -58,10 +58,42 @@ export default function GoalsScreen() {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  const handleCategorySelect = (category: string) => {
+  const handleCategorySelect = async (category: string) => {
     setSelectedCategory(category);
-    setShowVoiceRecorder(true);
-    setShowUnsureFlow(false);
+    setError('');
+
+    try {
+      // Create initial goal record with selected category
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          create_initial_goal: true,
+          goal_category: category
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create goal record');
+      }
+
+      const result = await response.json();
+      console.log('Initial goal created:', result.goal);
+
+      // Store goal ID in onboarding state
+      await updateState({
+        goal_id: result.goal.id
+      });
+
+      setShowVoiceRecorder(true);
+      setShowUnsureFlow(false);
+    } catch (error) {
+      console.error('Error creating initial goal:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create goal. Please try again.');
+    }
   };
 
   const handleUnsureClick = () => {
@@ -81,6 +113,10 @@ export default function GoalsScreen() {
       formData.append('memo_type', 'goal');
       if (selectedCategory) {
         formData.append('goal_category', selectedCategory);
+      }
+      // Link voice memo to existing goal record
+      if (state?.goal_id) {
+        formData.append('goal_id', state.goal_id);
       }
 
       // Upload and process the voice memo
@@ -104,6 +140,7 @@ export default function GoalsScreen() {
 
         console.log('Goal voice memo processing:', {
           artifact_id: result.artifact_id,
+          goal_id: state?.goal_id,
           category: selectedCategory,
           memo_type: 'goal',
           user_id: user?.id,

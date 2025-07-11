@@ -9,6 +9,9 @@ interface GoalContactRequest {
   linkedin_urls: string[];
   goal_id?: string;
   voice_memo_id?: string;
+  include_email_sync?: boolean;
+  email_address?: string;
+  additional_emails?: string[];
 }
 
 interface EnrichedContact {
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
 
     // Parse request body
     const body: GoalContactRequest = await request.json();
-    const { linkedin_urls, goal_id, voice_memo_id } = body;
+    const { linkedin_urls, goal_id, voice_memo_id, include_email_sync, email_address, additional_emails } = body;
 
     if (!linkedin_urls || !Array.isArray(linkedin_urls) || linkedin_urls.length === 0) {
       return NextResponse.json(
@@ -166,6 +169,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
             }
           }
         } else {
+          // Contact doesn't exist, create new one
+          
           // Fetch LinkedIn profile data
           const linkedinProfile = await fetchLinkedInProfile(linkedinUrl);
           
@@ -183,12 +188,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
           profilePicture = linkedinProfile?.profilePicture;
           headline = linkedinProfile?.headline;
 
+          // Prepare email addresses - combine primary and additional emails
+          const allEmails: string[] = [];
+          if (email_address?.trim()) {
+            allEmails.push(email_address.trim());
+          }
+          if (additional_emails && Array.isArray(additional_emails)) {
+            // Add additional emails, filtering out duplicates and empty strings
+            const uniqueAdditionalEmails = additional_emails
+              .map(e => e.trim())
+              .filter(e => e && !allEmails.includes(e));
+            allEmails.push(...uniqueAdditionalEmails);
+          }
+
           const { data: newContact, error: createError } = await supabase
             .from('contacts')
             .insert({
               user_id: user.id,
               name: realName,
               linkedin_url: linkedinUrl,
+              email: allEmails[0] || null, // Primary email in email field
+              email_addresses: allEmails.length > 0 ? allEmails : [], // All emails in array
               company: company,
               title: title,
               location: linkedinProfile?.geo?.full || linkedinProfile?.geo?.city,
@@ -209,6 +229,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
           contactName = newContact.name;
           contactCompany = newContact.company;
           contactTitle = newContact.title;
+
+          console.log(`Created new contact ${realName} with emails:`, allEmails);
 
           // Create LinkedIn profile artifact for AI processing
           const { error: artifactError } = await supabase

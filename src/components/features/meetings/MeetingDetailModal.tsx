@@ -80,8 +80,12 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 
   const meetingContent = meeting.content as MeetingArtifactContent;
   const insights = meetingContent.insights;
-  const startTime = new Date(meetingContent.startTime);
-  const endTime = new Date(meetingContent.endTime);
+  const startTime = meetingContent.startTime ? new Date(meetingContent.startTime) : 
+    meetingContent.meeting_date ? new Date(meetingContent.meeting_date) : new Date();
+  const endTime = meetingContent.endTime ? new Date(meetingContent.endTime) : 
+    meetingContent.meeting_date && meetingContent.duration_minutes ? 
+      new Date(new Date(meetingContent.meeting_date).getTime() + meetingContent.duration_minutes * 60000) : 
+      new Date();
   
   const duration = intervalToDuration({ start: startTime, end: endTime });
   const durationText = formatDuration(duration, { format: ['hours', 'minutes'] });

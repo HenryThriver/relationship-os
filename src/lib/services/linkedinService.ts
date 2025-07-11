@@ -21,6 +21,12 @@ interface LocationData {
   };
 }
 
+interface ProfilePicture {
+  width: number;
+  height: number;
+  url: string;
+}
+
 /**
  * Processes the raw API response from a LinkedIn profile scrape.
  * Generates a structured LinkedIn artifact and synthesizes key information 
@@ -43,6 +49,18 @@ export const processLinkedInProfile = (apiResponse: Record<string, unknown>, con
   const getArray = (obj: Record<string, unknown>, key: string): Array<Record<string, unknown>> => {
     const val = obj[key];
     return Array.isArray(val) ? (val as Array<Record<string, unknown>>) : [];
+  };
+
+  const getProfilePicture = (obj: Record<string, unknown>): string | undefined => {
+    const profilePictures = obj.profilePictures;
+    if (Array.isArray(profilePictures) && profilePictures.length > 0) {
+      // Prefer 200x200 size, fall back to first available
+      const preferred = profilePictures.find((pic: any) => pic.width === 200 && pic.height === 200);
+      const selected = preferred || profilePictures[0];
+      return typeof selected?.url === 'string' ? selected.url : undefined;
+    }
+    // Fallback for older API responses that might have a single profilePicture field
+    return getString(obj, 'profilePicture');
   };
 
   const getDateRange = (obj: Record<string, unknown>): DateRange | null => {
@@ -85,11 +103,15 @@ export const processLinkedInProfile = (apiResponse: Record<string, unknown>, con
     return null;
   };
 
+  // Extract profile picture URL
+  const profilePictureUrl = getProfilePicture(apiResponse);
+
   // Create LinkedIn artifact with comprehensive data from the API response
   const linkedinArtifactContent: LinkedInArtifactContent = {
     profile_url: getString(apiResponse, 'profile_url') || getString(apiResponse, 'public_identifier') || '',
     headline: getString(apiResponse, 'headline') || '',
     about: getString(apiResponse, 'summary') || getString(apiResponse, 'about') || '',
+    profilePicture: profilePictureUrl, // Store in artifact metadata
     experience: getArray(apiResponse, 'experiences').map((exp) => {
       const dateRange = getDateRange(exp);
       const duration = dateRange 
@@ -158,7 +180,8 @@ export const processLinkedInProfile = (apiResponse: Record<string, unknown>, con
       }
       return getString(apiResponse, 'locationName') || '';
     })(),
-    linkedin_url: linkedinArtifactContent.profile_url, // Ensure linkedin_url on contact is updated/set
+    linkedin_url: linkedinArtifactContent.profile_url,
+    // profile_picture: profilePictureUrl, // TODO: Fix type compatibility - will sync via separate mechanism
     
     // Distill into professional context (a curated subset of LinkedIn data)
     professional_context: {

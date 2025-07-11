@@ -604,6 +604,15 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
           console.log(`Added ${validMappings.length} challenge-feature mappings to contact updates`);
         }
       }
+
+      // Handle profile picture sync for LinkedIn profiles
+      if (fetchedArtifactRecord.type === 'linkedin_profile' && fetchedArtifactRecord.metadata?.profilePicture) {
+        const profilePictureUrl = fetchedArtifactRecord.metadata.profilePicture;
+        if (profilePictureUrl && typeof profilePictureUrl === 'string') {
+          contactUpdates.profile_picture = profilePictureUrl;
+          console.log(`Syncing profile picture from LinkedIn artifact: ${profilePictureUrl}`);
+        }
+      }
       
       // Apply the updates to the contact record
       if (Object.keys(contactUpdates).length > 0) {
@@ -670,7 +679,7 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
       }
     }
     
-    // For onboarding goal memos, create goal record in goals table
+    // For onboarding goal memos, create or update goal record in goals table
     if (isOnboardingMemo && (fetchedArtifactRecord.metadata?.memo_type === 'goal' || fetchedArtifactRecord.metadata?.memo_type === 'goals')) {
       try {
         // Extract goal information from AI results
@@ -679,30 +688,51 @@ ANALYSIS FOCUS: Extract professional updates, career changes, skills, achievemen
         const goalTimeline = aiParseResult.contact_updates.find(u => u.field_path === 'goal_timeline')?.suggested_value;
         const goalSuccessCriteria = aiParseResult.contact_updates.find(u => u.field_path === 'goal_success_criteria')?.suggested_value;
         const goalCategory = fetchedArtifactRecord.metadata?.goal_category || null;
+        const existingGoalId = fetchedArtifactRecord.metadata?.goal_id || null;
 
         if (goalTitle) {
-          // Create goal in new goals table
-          const { data: newGoal, error: goalError } = await supabase
-            .from('goals')
-            .insert({
-              user_id: userId,
-              title: goalTitle,
-              description: goalDescription,
-              category: goalCategory,
-              timeline: goalTimeline,
-              success_criteria: goalSuccessCriteria,
-              is_primary: true, // First goal from onboarding is primary
-              voice_memo_id: fetchedArtifactRecord.id,
-              created_from: 'onboarding',
-              status: 'active'
-            })
-            .select()
-            .single();
+          if (existingGoalId) {
+            // Update existing goal record with AI-extracted information
+            const { error: goalUpdateError } = await supabase
+              .from('goals')
+              .update({
+                title: goalTitle,
+                description: goalDescription,
+                timeline: goalTimeline,
+                success_criteria: goalSuccessCriteria
+              })
+              .eq('id', existingGoalId)
+              .eq('user_id', userId);
 
-          if (goalError) {
-            console.error('Error creating goal record:', goalError);
+            if (goalUpdateError) {
+              console.error('Error updating existing goal record:', goalUpdateError);
+            } else {
+              console.log(`Updated existing goal record: ${existingGoalId} for user ${userId}`);
+            }
           } else {
-            console.log(`Created goal record: ${newGoal.id} for user ${userId}`);
+            // Fallback: Create new goal if no existing goal ID (legacy behavior)
+            const { data: newGoal, error: goalError } = await supabase
+              .from('goals')
+              .insert({
+                user_id: userId,
+                title: goalTitle,
+                description: goalDescription,
+                category: goalCategory,
+                timeline: goalTimeline,
+                success_criteria: goalSuccessCriteria,
+                is_primary: true,
+                voice_memo_id: fetchedArtifactRecord.id,
+                created_from: 'onboarding',
+                status: 'active'
+              })
+              .select()
+              .single();
+
+            if (goalError) {
+              console.error('Error creating goal record:', goalError);
+            } else {
+              console.log(`Created goal record: ${newGoal.id} for user ${userId}`);
+            }
           }
         }
       } catch (error) {

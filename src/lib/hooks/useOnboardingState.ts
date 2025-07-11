@@ -246,6 +246,42 @@ export const useOnboardingState = () => {
     },
   });
 
+  // Navigate to specific screen
+  const navigateToScreenMutation = useMutation({
+    mutationFn: async (screenNumber: number): Promise<OnboardingState> => {
+      if (!user || !state) throw new Error('User not authenticated or state not loaded');
+
+      // Validate screen number
+      if (screenNumber < 1 || screenNumber > ONBOARDING_CONFIG.total_screens) {
+        throw new Error(`Invalid screen number: ${screenNumber}`);
+      }
+
+      // Check if navigation is allowed
+      if (!canNavigateToScreen(screenNumber)) {
+        throw new Error(`Cannot navigate to screen ${screenNumber}`);
+      }
+
+      const { data, error } = await supabase
+        .from('onboarding_state')
+        .update({
+          current_screen: screenNumber,
+          last_activity_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', state.id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return castToOnboardingState(data);
+    },
+    onSuccess: (updatedState) => {
+      queryClient.setQueryData(['onboardingState', user?.id], updatedState);
+      queryClient.invalidateQueries({ queryKey: ['onboardingState', user?.id] });
+    },
+  });
+
   // Mark onboarding as complete
   const completeOnboardingMutation = useMutation({
     mutationFn: async (): Promise<void> => {
@@ -365,13 +401,19 @@ export const useOnboardingState = () => {
   const canNavigateToScreen = (screenNumber: number): boolean => {
     if (!state || !state.current_screen) return false;
     
-    // Can always go to current screen or earlier
-    if (screenNumber <= state.current_screen) return true;
+    // Can always go to current screen
+    if (screenNumber === state.current_screen) return true;
+    
+    // Can navigate to any completed screen
+    if (state.completed_screens?.includes(screenNumber)) return true;
     
     // Can go to next screen if current is completed
     if (screenNumber === state.current_screen + 1 && isScreenCompleted(state.current_screen)) {
       return true;
     }
+    
+    // Can go to previous screen (even if not completed)
+    if (screenNumber < state.current_screen) return true;
     
     return false;
   };
@@ -410,12 +452,13 @@ export const useOnboardingState = () => {
     completeScreen: completeScreenMutation.mutateAsync,
     nextScreen: nextScreenMutation.mutateAsync,
     previousScreen: previousScreenMutation.mutateAsync,
+    navigateToScreen: navigateToScreenMutation.mutateAsync,
     completeOnboarding: completeOnboardingMutation.mutateAsync,
     restartOnboarding: restartOnboardingMutation.mutateAsync,
     
     // Loading states
     isUpdating: updateStateMutation.isPending,
-    isNavigating: nextScreenMutation.isPending || previousScreenMutation.isPending,
+    isNavigating: nextScreenMutation.isPending || previousScreenMutation.isPending || navigateToScreenMutation.isPending,
     isCompleting: completeOnboardingMutation.isPending,
     isRestarting: restartOnboardingMutation.isPending,
   };

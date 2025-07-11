@@ -6,6 +6,7 @@ import { ArrowBack, Close } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { StageProgress } from '@/components/features/onboarding/StageProgress';
+import { ScreenNavigator } from '@/components/features/onboarding/ScreenNavigator';
 
 interface OnboardingLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,8 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
   const { 
     currentScreen, 
     previousScreen, 
+    navigateToScreen,
+    canNavigateToScreen,
     isNavigating,
     state
   } = useOnboardingState();
@@ -30,6 +33,22 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
     router.push('/dashboard');
   };
 
+  const handleNavigateToStage = async (stageScreenNumber: number) => {
+    try {
+      await navigateToScreen(stageScreenNumber);
+    } catch (error) {
+      console.error('Failed to navigate to stage:', error);
+    }
+  };
+
+  const handleNavigateToScreen = async (screenNumber: number) => {
+    try {
+      await navigateToScreen(screenNumber);
+    } catch (error) {
+      console.error('Failed to navigate to screen:', error);
+    }
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
       {/* Header/Status Bar Section - Fixed Height */}
@@ -41,7 +60,7 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
         borderBottom: 1,
         borderColor: 'divider',
         py: 1.5,
-        height: 94, // Fixed header height
+        height: 120, // Fixed header height (increased to accommodate both navigation components)
         flexShrink: 0 // Prevent shrinking
       }}>
         {/* Back and Close buttons outside container */}
@@ -71,11 +90,32 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
           </IconButton>
         </Box>
 
-        {/* Stage Progress - centered */}
-        <StageProgress 
-          currentScreen={currentScreen}
-          completedScreens={state?.completed_screens || []}
-        />
+        {/* Navigation Controls - centered */}
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: 1
+        }}>
+          {/* Stage Progress */}
+          <StageProgress 
+            currentScreen={currentScreen}
+            completedScreens={state?.completed_screens || []}
+            onNavigateToStage={handleNavigateToStage}
+            isNavigating={isNavigating}
+          />
+          
+          {/* Screen Navigator */}
+          <ScreenNavigator
+            currentScreen={currentScreen}
+            completedScreens={state?.completed_screens || []}
+            onNavigateToScreen={handleNavigateToScreen}
+            canNavigateToScreen={canNavigateToScreen}
+            isNavigating={isNavigating}
+          />
+        </Box>
       </Box>
 
       {/* Main Content Area - Consistent spacing below header */}

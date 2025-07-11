@@ -359,6 +359,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          added_via_session_id: string | null
           challenge_feature_mappings: Json | null
           company: string | null
           connection_cadence_days: number | null
@@ -398,6 +399,7 @@ export type Database = {
           ways_to_help_others: string[] | null
         }
         Insert: {
+          added_via_session_id?: string | null
           challenge_feature_mappings?: Json | null
           company?: string | null
           connection_cadence_days?: number | null
@@ -437,6 +439,7 @@ export type Database = {
           ways_to_help_others?: string[] | null
         }
         Update: {
+          added_via_session_id?: string | null
           challenge_feature_mappings?: Json | null
           company?: string | null
           connection_cadence_days?: number | null
@@ -475,7 +478,15 @@ export type Database = {
           user_id?: string
           ways_to_help_others?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_added_via_session_id_fkey"
+            columns: ["added_via_session_id"]
+            isOneToOne: false
+            referencedRelation: "relationship_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_sync_jobs: {
         Row: {
@@ -709,6 +720,7 @@ export type Database = {
           status: string | null
           success_criteria: string | null
           tags: string[] | null
+          target_contact_count: number | null
           target_date: string | null
           timeline: string | null
           title: string
@@ -730,6 +742,7 @@ export type Database = {
           status?: string | null
           success_criteria?: string | null
           tags?: string[] | null
+          target_contact_count?: number | null
           target_date?: string | null
           timeline?: string | null
           title: string
@@ -751,6 +764,7 @@ export type Database = {
           status?: string | null
           success_criteria?: string | null
           tags?: string[] | null
+          target_contact_count?: number | null
           target_date?: string | null
           timeline?: string | null
           title?: string
@@ -987,6 +1001,7 @@ export type Database = {
           current_screen: number | null
           gmail_connected: boolean | null
           goal_contact_urls: string[] | null
+          goal_id: string | null
           goal_voice_memo_id: string | null
           id: string
           imported_goal_contacts: Json | null
@@ -1006,6 +1021,7 @@ export type Database = {
           current_screen?: number | null
           gmail_connected?: boolean | null
           goal_contact_urls?: string[] | null
+          goal_id?: string | null
           goal_voice_memo_id?: string | null
           id?: string
           imported_goal_contacts?: Json | null
@@ -1025,6 +1041,7 @@ export type Database = {
           current_screen?: number | null
           gmail_connected?: boolean | null
           goal_contact_urls?: string[] | null
+          goal_id?: string | null
           goal_voice_memo_id?: string | null
           id?: string
           imported_goal_contacts?: Json | null
@@ -1045,6 +1062,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "onboarding_state_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "onboarding_state_goal_voice_memo_id_fkey"
             columns: ["goal_voice_memo_id"]
             isOneToOne: false
@@ -1056,6 +1080,148 @@ export type Database = {
             columns: ["profile_enhancement_voice_memo_id"]
             isOneToOne: false
             referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relationship_sessions: {
+        Row: {
+          actions_completed: number | null
+          actions_skipped: number | null
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number | null
+          goal_id: string | null
+          id: string
+          session_notes: string | null
+          session_rating: number | null
+          session_type: string
+          started_at: string
+          status: string
+          timer_paused_at: string | null
+          timer_started_at: string | null
+          total_paused_duration: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions_completed?: number | null
+          actions_skipped?: number | null
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          goal_id?: string | null
+          id?: string
+          session_notes?: string | null
+          session_rating?: number | null
+          session_type?: string
+          started_at?: string
+          status?: string
+          timer_paused_at?: string | null
+          timer_started_at?: string | null
+          total_paused_duration?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions_completed?: number | null
+          actions_skipped?: number | null
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          goal_id?: string | null
+          id?: string
+          session_notes?: string | null
+          session_rating?: number | null
+          session_type?: string
+          started_at?: string
+          status?: string
+          timer_paused_at?: string | null
+          timer_started_at?: string | null
+          total_paused_duration?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relationship_sessions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_actions: {
+        Row: {
+          action_data: Json | null
+          action_type: string
+          completed_at: string | null
+          contact_id: string | null
+          created_at: string
+          goal_id: string | null
+          id: string
+          meeting_artifact_id: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type: string
+          completed_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          goal_id?: string | null
+          id?: string
+          meeting_artifact_id?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string
+          completed_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          goal_id?: string | null
+          id?: string
+          meeting_artifact_id?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_actions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_actions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_actions_meeting_artifact_id_fkey"
+            columns: ["meeting_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_actions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "relationship_sessions"
             referencedColumns: ["id"]
           },
         ]

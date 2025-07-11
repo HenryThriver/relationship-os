@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Get optional goal category for goal memos
     const goalCategory = formData.get('goal_category') as string | null;
+    const goalId = formData.get('goal_id') as string | null;
 
     // Convert file to buffer for upload
     const arrayBuffer = await audioFile.arrayBuffer();
@@ -123,7 +124,8 @@ export async function POST(request: NextRequest) {
           is_onboarding: 'true',
           file_size: buffer.length,
           original_filename: filename,
-          ...(goalCategory && { goal_category: goalCategory })
+          ...(goalCategory && { goal_category: goalCategory }),
+          ...(goalId && { goal_id: goalId })
         }
       })
       .select()
@@ -137,6 +139,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Transcription and AI processing will be automatically triggered by database trigger
+    
+    // If this is a goal memo with an existing goal_id, update the goal record
+    if (memoType === 'goal' && goalId && artifact) {
+      try {
+        const { error: goalUpdateError } = await supabase
+          .from('goals')
+          .update({
+            voice_memo_id: artifact.id,
+            status: 'active' // Change from draft to active now that voice memo is linked
+          })
+          .eq('id', goalId)
+          .eq('user_id', user.id);
+
+        if (goalUpdateError) {
+          console.error('Error linking voice memo to goal:', goalUpdateError);
+          // Don't fail the whole operation, but log the error
+        } else {
+          console.log(`Successfully linked voice memo ${artifact.id} to goal ${goalId}`);
+        }
+      } catch (error) {
+        console.error('Error updating goal with voice memo:', error);
+        // Don't fail the whole operation
+      }
+    }
     
     return NextResponse.json({
       success: true,

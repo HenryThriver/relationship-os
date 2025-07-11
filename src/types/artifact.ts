@@ -171,8 +171,9 @@ export interface EmailArtifact extends BaseArtifact<string | null, EmailArtifact
 // --- Meeting Artifact --- NEW
 export interface MeetingArtifactContent {
   title?: string;
-  startTime: string; // Ensure these are present, adjust types if necessary (e.g., Date or string)
-  endTime: string;   // Ensure these are present
+  startTime?: string; // Made optional since we also have meeting_date
+  endTime?: string;   // Made optional since we also have meeting_date
+  meeting_date?: string; // Added for Google Calendar format
   location?: string;
   attendees?: Array<{ // This was string[] in metadata, changing to a more structured type
     email: string;

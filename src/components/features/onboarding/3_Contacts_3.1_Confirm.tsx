@@ -248,13 +248,44 @@ export default function ContactConfirmationScreen() {
 
   const handleContinue = async () => {
     try {
+      // Associate imported contacts with the existing goal
+      if (state?.goal_id && importedContacts.length > 0) {
+        const response = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            associate_contacts_with_goal: true,
+            goal_id: state.goal_id,
+            imported_contacts: importedContacts.map(contact => ({ id: contact.id }))
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.warn('Failed to associate contacts with goal:', errorData.error);
+          // Don't fail the whole operation
+        } else {
+          const result = await response.json();
+          console.log('Contacts associated with goal successfully:', result);
+        }
+      }
+
       // Mark this screen as complete
       await completeScreen(currentScreen);
       
       // Move to next screen (LinkedIn Analysis)
       await nextScreen();
     } catch (error) {
-      console.error('Error continuing to next screen:', error);
+      console.error('Error associating contacts and continuing to next screen:', error);
+      // Still try to continue even if contact association fails
+      try {
+        await completeScreen(currentScreen);
+        await nextScreen();
+      } catch (fallbackError) {
+        console.error('Error in fallback navigation:', fallbackError);
+      }
     }
   };
 
@@ -303,19 +334,42 @@ export default function ContactConfirmationScreen() {
     
     setIsSavingGoal(true);
     try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          primary_goal: editedGoalText.trim(),
-          goal_description: editedGoalDescription.trim() || null
-        })
-      });
+      // Update the existing goal record if we have a goal_id from state
+      if (state?.goal_id) {
+        const response = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            update_existing_goal: true,
+            goal_id: state.goal_id,
+            title: editedGoalText.trim(),
+            description: editedGoalDescription.trim() || null
+          })
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to update goal');
+        if (!response.ok) {
+          throw new Error('Failed to update goal');
+        }
+
+        console.log('Goal updated successfully');
+      } else {
+        // Fallback to updating profile if no goal_id (shouldn't happen in new flow)
+        const response = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            primary_goal: editedGoalText.trim(),
+            goal_description: editedGoalDescription.trim() || null
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update goal');
+        }
       }
 
       // Invalidate the query to force a refetch

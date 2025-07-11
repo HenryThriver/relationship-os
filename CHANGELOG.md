@@ -5,6 +5,51 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.2] - 2025-07-10
+
+### Fixed
+- **Relationship Session Meeting Display**: Corrected meeting date and time display in session action cards
+  - Fixed `AddMeetingNotesActionCard` to show actual meeting dates from metadata instead of artifact creation dates
+  - Enhanced meeting time display to show both start and end times with proper formatting (e.g., "Jan 15, 2024 at 2:30 PM - 3:30 PM")
+  - Added fallback handling for different metadata structures (`meeting_date` vs `startTime`/`endTime`)
+  - Improved user experience by displaying accurate meeting context for relationship session actions
+
+- **Contact Profile Pictures**: Enhanced profile picture display and sync across relationship sessions
+  - Added contact profile picture display in `AddMeetingNotesActionCard` for more personalized interface
+  - Updated `useRelationshipSessions` hook to include `profile_picture` field in contact queries
+  - Enhanced LinkedIn profile picture extraction and storage from API responses
+  - Improved profile picture sync logic in `parse-artifact` edge function for LinkedIn profiles
+
+### Enhanced
+- **LinkedIn Profile Picture Sync**: Improved automatic profile picture synchronization
+  - Enhanced `processLinkedInProfile` function to extract profile pictures from LinkedIn API responses
+  - Added profile picture preference logic (200x200 size preferred, fallback to first available)
+  - Implemented automatic profile picture sync in `parse-artifact` edge function for LinkedIn profiles
+  - Added profile picture storage in both artifact metadata and contact records for consistency
+
+### Technical Implementation
+- **Meeting Metadata Handling**: Enhanced meeting date extraction and formatting
+  - Updated `MeetingArtifactContent` type to support both `meeting_date` and `startTime`/`endTime` formats
+  - Added `formatDateTime` function with proper Google Calendar format support
+  - Enhanced meeting duration calculation using `duration_minutes` metadata field
+  - Improved type safety for meeting date handling across different artifact sources
+
+- **Profile Picture Architecture**: Streamlined profile picture management
+  - Enhanced LinkedIn service profile picture extraction with proper type handling
+  - Added profile picture sync in edge function for all LinkedIn profile processing
+  - Improved contact query patterns to include profile picture data
+  - Enhanced error handling for profile picture URL validation
+
+- **Component Props Enhancement**: Added profile picture support to relationship session components
+  - Updated `AddMeetingNotesActionCard` props to include `contactProfilePicture`
+  - Enhanced `RelationshipSessionInterface` to pass profile picture data to action cards
+  - Improved visual design with contact avatars in relationship session actions
+
+### Database Schema
+- Enhanced contact record profile picture sync for LinkedIn profile artifacts
+- Improved artifact metadata structure for profile picture storage
+- Added automatic profile picture population from LinkedIn artifact processing
+
 ## [0.11.1] - 2025-07-05
 
 ### Fixed

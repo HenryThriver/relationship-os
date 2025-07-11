@@ -206,11 +206,12 @@ export class GoogleCalendarService {
     events: GoogleCalendarEvent[], 
     userId: string
   ): Promise<Map<string, ContactEmailMatch[]>> {
-    // Get all user's contacts with their primary emails
+    // Get all user's contacts with their primary emails and email_addresses array, EXCLUDING self-contacts
     const { data: contacts, error } = await this.supabase
       .from('contacts')
-      .select('id, name, email')
-      .eq('user_id', userId);
+      .select('id, name, email, email_addresses')
+      .eq('user_id', userId)
+      .eq('is_self_contact', false); // Only include external contacts
 
     if (error || !contacts) {
       throw new Error(`Failed to fetch contacts: ${error?.message}`);
@@ -236,6 +237,19 @@ export class GoogleCalendarService {
           id: contact.id,
           name: contact.name || 'Unknown',
           email: contact.email
+        });
+      }
+      
+      // Add emails from email_addresses array
+      if (contact.email_addresses && Array.isArray(contact.email_addresses)) {
+        contact.email_addresses.forEach(email => {
+          if (email) {
+            emailToContactMap.set(email.toLowerCase(), {
+              id: contact.id,
+              name: contact.name || 'Unknown',
+              email: email
+            });
+          }
         });
       }
     });
@@ -345,15 +359,16 @@ export class GoogleCalendarService {
         };
 
         // Check if artifact already exists
-        const { data: existingArtifact } = await this.supabase
+        const { data: existingArtifacts } = await this.supabase
           .from('artifacts')
           .select('id')
           .eq('contact_id', primaryMatch.contactId)
           .eq('type', 'meeting')
           .eq('metadata->>google_calendar_id', event.id)
-          .single();
+          .limit(1);
 
-        if (existingArtifact) {
+        if (existingArtifacts && existingArtifacts.length > 0) {
+          const existingArtifact = existingArtifacts[0];
           // Update existing artifact
           await this.supabase
             .from('artifacts')
@@ -410,6 +425,9 @@ export class GoogleCalendarService {
             });
           } else {
             created++;
+            
+            // Create session action for meeting notes since imported meetings don't have notes by default
+            await this.createMeetingNotesSessionAction(userId, primaryMatch.contactId, event.id, event.summary);
           }
         }
       } catch (error) {
@@ -422,6 +440,74 @@ export class GoogleCalendarService {
     }
 
     return { created, errors };
+  }
+
+  /**
+   * Create session action for meeting notes when a new meeting is imported
+   */
+  private async createMeetingNotesSessionAction(
+    userId: string, 
+    contactId: string, 
+    googleCalendarId: string, 
+    meetingTitle?: string
+  ): Promise<void> {
+    try {
+      // Get the contact's goal (if they have one)
+      const { data: goalContact } = await this.supabase
+        .from('goal_contacts')
+        .select('goal_id')
+        .eq('contact_id', contactId)
+        .limit(1)
+        .single();
+
+      if (!goalContact) {
+        console.log(`No goal found for contact ${contactId}, skipping session action creation`);
+        return;
+      }
+
+      // Get the artifact ID for the meeting we just created
+      const { data: artifact } = await this.supabase
+        .from('artifacts')
+        .select('id')
+        .eq('contact_id', contactId)
+        .eq('type', 'meeting')
+        .eq('metadata->>google_calendar_id', googleCalendarId)
+        .limit(1)
+        .single();
+
+      if (!artifact) {
+        console.log(`Could not find artifact for meeting ${googleCalendarId}, skipping session action creation`);
+        return;
+      }
+
+      // Create a session action for adding meeting notes
+      // This will be picked up by future relationship building sessions
+      const { error: sessionActionError } = await this.supabase
+        .from('session_actions')
+        .insert({
+          user_id: userId,
+          session_id: null, // Orphaned action - will be assigned to a session later
+          action_type: 'add_meeting_notes',
+          contact_id: contactId,
+          goal_id: goalContact.goal_id,
+          meeting_artifact_id: artifact.id,
+          action_data: {
+            meeting_title: meetingTitle || 'Meeting',
+            google_calendar_id: googleCalendarId,
+            created_from: 'calendar_sync',
+            auto_created: true
+          },
+          status: 'pending'
+        });
+
+      if (sessionActionError) {
+        console.error(`Error creating session action for meeting ${googleCalendarId}:`, sessionActionError);
+      } else {
+        console.log(`Created session action for meeting notes: ${meetingTitle || 'Meeting'} with contact ${contactId}`);
+      }
+    } catch (error) {
+      console.error(`Error in createMeetingNotesSessionAction:`, error);
+    }
   }
 
   /**

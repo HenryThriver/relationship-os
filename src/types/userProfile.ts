@@ -39,6 +39,7 @@ export interface OnboardingState {
   last_activity_at: string | null;
   
   // Screen-specific Data
+  goal_id?: string | null;
   challenge_voice_memo_id?: string | null;
   goal_voice_memo_id?: string | null;
   profile_enhancement_voice_memo_id?: string | null;
@@ -138,6 +139,7 @@ export interface UserProfileUpdate {
 export interface OnboardingStateUpdate {
   current_screen?: number;
   completed_screens?: number[];
+  goal_id?: string; // Sequential goal creation - goal ID created at category selection
   challenge_voice_memo_id?: string;
   goal_voice_memo_id?: string;
   profile_enhancement_voice_memo_id?: string;
