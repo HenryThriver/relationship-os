@@ -27,6 +27,7 @@ import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { supabase } from '@/lib/supabase/client';
+import { PremiumCard, InsightCard, ExecutiveButton } from '@/components/ui/premium';
 
 interface ImportedContact {
   id: string;
@@ -427,7 +428,7 @@ export default function ContactConfirmationScreen() {
                 mb: 2
               }}
             >
-              🎯 Goal & Contacts Confirmed!
+              Strategic Intelligence Activated
             </Typography>
 
             <Typography 
@@ -439,7 +440,7 @@ export default function ContactConfirmationScreen() {
                 mb: 4
               }}
             >
-              We&apos;ve successfully imported your goal-related contacts.
+              Your relationship intelligence system is analyzing strategic connections.
             </Typography>
           </Box>
 
@@ -546,21 +547,13 @@ export default function ContactConfirmationScreen() {
 
           {/* Contact Card */}
           {importedContacts.length > 0 && (
-            <Card sx={{ 
-              mb: 4, 
-              borderRadius: 3, 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              border: '1px solid #e3f2fd',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fffe 100%)'
-            }}>
-              <CardContent sx={{ p: 4 }}>
-                {/* Header */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <People color="primary" />
-                  <Typography variant="h6" sx={{ fontWeight: 500 }}>
-                    Goal-Related Contact
-                  </Typography>
-                </Box>
+            <PremiumCard accent="sage">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <People sx={{ color: 'sage.main' }} />
+                <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                  Strategic Connection Dossier
+                </Typography>
+              </Box>
                 
                 {/* Single Contact Display */}
                 {importedContacts.map((contact) => (
@@ -575,8 +568,8 @@ export default function ContactConfirmationScreen() {
                             width: 80,
                             height: 80,
                             border: '3px solid',
-                            borderColor: 'primary.main',
-                            boxShadow: '0 6px 16px rgba(25,118,210,0.2)'
+                            borderColor: 'sage.main',
+                            boxShadow: '0 6px 16px rgba(5, 150, 105, 0.2)'
                           }}
                           onError={(e) => {
                             // Fallback to initials if image fails to load
@@ -615,14 +608,15 @@ export default function ContactConfirmationScreen() {
                           {contact.name}
                         </Typography>
                         <Chip 
-                          label="Goal Contact" 
+                          label="Strategic Value: High" 
                           color="success" 
                           variant="filled"
                           size="small"
                           sx={{ 
                             fontWeight: 500,
                             fontSize: '0.75rem',
-                            height: 24
+                            height: 24,
+                            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                           }}
                         />
                       </Box>
@@ -665,9 +659,29 @@ export default function ContactConfirmationScreen() {
                         <LinkedIn sx={{ fontSize: 20, color: '#0077b5' }} />
                         <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.secondary' }}>
                           {typeof contact.recent_posts_count === 'number' && contact.recent_posts_count > 0
-                            ? `${contact.recent_posts_count} posts in last 3 months • Profile imported`
-                            : 'Profile imported • Posts analysis pending'
+                            ? `Active thought leader with ${contact.recent_posts_count} recent insights on LinkedIn`
+                            : 'Profile analysis reveals key industry positioning'
                           }
+                        </Typography>
+                      </Box>
+                      
+                      {/* Strategic insight */}
+                      <Box sx={{ 
+                        p: 2, 
+                        bgcolor: 'sage.light', 
+                        borderRadius: 2,
+                        borderLeft: '3px solid',
+                        borderLeftColor: 'sage.main',
+                        mb: 2
+                      }}>
+                        <Typography variant="body2" sx={{ color: 'sage.dark', fontWeight: 500 }}>
+                          Strategic Opportunity Detected
+                        </Typography>
+                                                 <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                           {typeof contact.recent_posts_count === 'number' && contact.recent_posts_count > 0
+                             ? `Active thought leader with ${contact.recent_posts_count} recent insights on LinkedIn`
+                             : 'Profile analysis reveals key industry positioning'
+                           }
                         </Typography>
                       </Box>
                       
@@ -676,50 +690,39 @@ export default function ContactConfirmationScreen() {
                     </Box>
                   </Box>
                 ))}
-              </CardContent>
-            </Card>
+            </PremiumCard>
           )}
 
           {/* Next Steps Info */}
-          <Card sx={{ mb: 4, borderRadius: 3, backgroundColor: '#fafafa' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
-                What happens next?
+          <InsightCard>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
+              Your strategic intelligence gathering begins
+            </Typography>
+            
+            <Box component="ul" sx={{ pl: 3, mb: 0, '& li': { mb: 1.5 } }}>
+              <Typography component="li" variant="body1">
+                <strong>Context Architecture:</strong> We'll map your existing relationship patterns
               </Typography>
-              
-              <Box component="ul" sx={{ pl: 3, mb: 0, fontSize: '0.875rem' }}>
-                <Box component="li" sx={{lineHeight: 2.5 }}>
-                  📧 <strong>Context Discovery:</strong> Link your Gmail and Google Calendar for deeper connection insights
-                </Box>
-                <Box component="li" sx={{ lineHeight: 2.5 }}>
-                  🔍 <strong>Your Profile Analysis:</strong> We&apos;ll analyze your LinkedIn profile and posts
-                </Box>
-                <Box component="li" sx={{ lineHeight: 2.5 }}>
-                  🤩 <strong>Platform Walkthrough:</strong> Explore features and capabilities of your relationship intelligence system
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+              <Typography component="li" variant="body1">
+                <strong>Professional Analysis:</strong> Your LinkedIn presence reveals strategic positioning  
+              </Typography>
+              <Typography component="li" variant="body1">
+                <strong>Serendipity Design:</strong> Discover non-obvious connection opportunities
+              </Typography>
+            </Box>
+          </InsightCard>
 
           {/* Continue Button */}
           <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Button
+            <ExecutiveButton
               variant="contained"
               size="large"
               onClick={handleContinue}
               disabled={isNavigating}
               endIcon={<ArrowForward />}
-              sx={{ 
-                px: 6, 
-                py: 2,
-                borderRadius: 3,
-                fontSize: '1.1rem',
-                fontWeight: 500,
-                textTransform: 'none'
-              }}
             >
-              {isNavigating ? 'Processing...' : 'Continue to add contact context'}
-            </Button>
+              {isNavigating ? 'Analyzing strategic patterns...' : 'Continue intelligence gathering'}
+            </ExecutiveButton>
           </Box>
 
           {/* Inspirational Quote */}
