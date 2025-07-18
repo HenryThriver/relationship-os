@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppProviders from "@/components/providers/AppProviders";
+import { Footer } from "@/components/ui/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,12 +36,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
         suppressHydrationWarning={true} // Added to handle browser extension DOM modifications
       >
         <AppProviders>
-          {/* 
-            The DashboardLayout could be conditionally rendered here based on route 
-            or a higher-order component logic if not all pages use it.
-            For now, assuming it's global or handled by route groups.
-          */}
-          {children} 
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            {/* 
+              The DashboardLayout could be conditionally rendered here based on route 
+              or a higher-order component logic if not all pages use it.
+              For now, assuming it's global or handled by route groups.
+            */}
+            <div style={{ flex: 1 }}>
+              {children}
+            </div>
+            <Footer />
+          </div>
         </AppProviders>
       </body>
     </html>
