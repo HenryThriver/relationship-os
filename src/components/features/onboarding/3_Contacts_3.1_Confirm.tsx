@@ -703,7 +703,7 @@ export default function ContactConfirmationScreen() {
             
             <Box component="ul" sx={{ pl: 3, mb: 0, '& li': { mb: 1.5 } }}>
               <Typography component="li" variant="body1">
-                <strong>Context Architecture:</strong> We'll map your existing relationship patterns
+                <strong>Context Architecture:</strong> We&apos;ll map your existing relationship patterns
               </Typography>
               <Typography component="li" variant="body1">
                 <strong>Professional Analysis:</strong> Your LinkedIn presence reveals strategic positioning  

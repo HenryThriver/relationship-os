@@ -21,11 +21,11 @@ interface LocationData {
   };
 }
 
-interface ProfilePicture {
-  width: number;
-  height: number;
-  url: string;
-}
+// interface ProfilePicture {
+//   width: number;
+//   height: number;
+//   url: string;
+// }
 
 /**
  * Processes the raw API response from a LinkedIn profile scrape.

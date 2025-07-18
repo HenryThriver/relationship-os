@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useMemo } from 'react';
 
 // ===============================================
 // TYPES
@@ -16,40 +15,40 @@ interface CreateSessionAction {
   contact_id?: string;
 }
 
-interface SessionAction {
-  id: string;
-  session_id: string;
-  action_type: string;
-  status: string;
-  contact_id?: string;
-  goal_id?: string;
-  meeting_artifact_id?: string;
-  action_data: Record<string, unknown>;
-  completed_at?: string;
-  created_at: string;
-  // Relations
-  contact?: {
-    id: string;
-    name: string;
-    goal_id?: string;
-  };
-  meeting_artifact?: {
-    id: string;
-    metadata: Record<string, unknown>;
-    created_at: string;
-  };
-}
+// interface SessionAction {
+//   id: string;
+//   session_id: string;
+//   action_type: string;
+//   status: string;
+//   contact_id?: string;
+//   goal_id?: string;
+//   meeting_artifact_id?: string;
+//   action_data: Record<string, unknown>;
+//   completed_at?: string;
+//   created_at: string;
+//   // Relations
+//   contact?: {
+//     id: string;
+//     name: string;
+//     goal_id?: string;
+//   };
+//   meeting_artifact?: {
+//     id: string;
+//     metadata: Record<string, unknown>;
+//     created_at: string;
+//   };
+// }
 
-interface RelationshipSession {
-  id: string;
-  user_id: string;
-  session_type: string;
-  status: string;
-  started_at: string;
-  completed_at?: string;
-  created_at: string;
-  actions: SessionAction[];
-}
+// interface RelationshipSession {
+//   id: string;
+//   user_id: string;
+//   session_type: string;
+//   status: string;
+//   started_at: string;
+//   completed_at?: string;
+//   created_at: string;
+//   actions: SessionAction[];
+// }
 
 // ===============================================
 // GOALS FOR RELATIONSHIP BUILDING
@@ -532,7 +531,7 @@ export function useCompleteSessionAction() {
       
       if (error) throw error;
     },
-    onSuccess: (_, { actionId }) => {
+    onSuccess: () => {
       // Invalidate session queries
       queryClient.invalidateQueries({ 
         queryKey: ['relationship-session'],

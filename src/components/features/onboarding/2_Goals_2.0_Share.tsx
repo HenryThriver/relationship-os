@@ -16,7 +16,7 @@ import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import OnboardingVoiceRecorder from './OnboardingVoiceRecorder';
-import { PremiumCard, ExecutiveButton } from '@/components/ui/premium';
+import { PremiumCard } from '@/components/ui/premium';
 
 const GOAL_CATEGORIES = [
   'Land a specific role or make a career transition',

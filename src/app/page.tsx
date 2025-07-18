@@ -16,7 +16,6 @@ import {
   Toolbar,
   alpha,
   CircularProgress,
-  useTheme
 } from '@mui/material';
 import { 
   TrendingUp, 
@@ -34,7 +33,6 @@ import Link from 'next/link';
 export default function HomePage(): React.JSX.Element {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const theme = useTheme();
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -718,7 +716,7 @@ export default function HomePage(): React.JSX.Element {
                     opacity: 0.9
                   }}
                 >
-                  The best relationships aren't built at networking events—they're cultivated through genuine value exchange. Join executives who've stopped networking and started relationship building.
+                  The best relationships aren&apos;t built at networking events—they&apos;re cultivated through genuine value exchange. Join executives who&apos;ve stopped networking and started relationship building.
                 </Typography>
                 <Button
                   component={Link}

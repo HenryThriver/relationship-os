@@ -8,8 +8,6 @@ import {
   CardContent,
   Paper,
   Button,
-  Chip,
-  Alert,
 } from '@mui/material';
 import {
   People as PeopleIcon,

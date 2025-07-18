@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardProps, Box, BoxProps, Typography, Button, ButtonProps, Skeleton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -50,7 +49,7 @@ export const InsightCard = styled(PremiumCard)(({ theme }) => ({
 }));
 
 // Executive Button with confident hover
-export const ExecutiveButton = styled(Button)<ButtonProps>(({ theme }) => ({
+export const ExecutiveButton = styled(Button)<ButtonProps>(() => ({
   minHeight: 52,
   padding: '14px 32px',
   fontSize: '1.0625rem',
@@ -75,7 +74,7 @@ export const ExecutiveButton = styled(Button)<ButtonProps>(({ theme }) => ({
 }));
 
 // Loading State Components
-export const ExecutiveSkeleton = styled(Skeleton)(({ theme }) => ({
+export const ExecutiveSkeleton = styled(Skeleton)(() => ({
   '&::after': {
     background: 'linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.05), transparent)',
   },

@@ -20,14 +20,12 @@ import {
   ListItemIcon,
   ListItemText,
   Switch,
-  FormControlLabel,
   Paper,
   Alert,
   useTheme
 } from '@mui/material';
 import { 
   Check,
-  Star,
   TrendingUp,
   Speed,
   Psychology,
@@ -459,7 +457,7 @@ export default function PricingPage() {
                           fontStyle: 'italic'
                         }}
                       >
-                        "The ROI of systematic relationship building far exceeds the cost of this investment. One strategic connection can transform your entire trajectory."
+                        &quot;The ROI of systematic relationship building far exceeds the cost of this investment. One strategic connection can transform your entire trajectory.&quot;
                       </Typography>
                     </Paper>
                   </Stack>
@@ -606,7 +604,7 @@ export default function PricingPage() {
                     maxWidth: '500px'
                   }}
                 >
-                  Join executives who've made systematic relationship building their competitive advantage.
+                  Join executives who&apos;ve made systematic relationship building their competitive advantage.
                 </Typography>
                 <Button
                   onClick={handleGetStarted}

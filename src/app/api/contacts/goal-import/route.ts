@@ -58,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GoalConta
 
     // Parse request body
     const body: GoalContactRequest = await request.json();
-    const { linkedin_urls, goal_id, voice_memo_id, include_email_sync, email_address, additional_emails } = body;
+    const { linkedin_urls, goal_id, voice_memo_id, email_address, additional_emails } = body;
 
     if (!linkedin_urls || !Array.isArray(linkedin_urls) || linkedin_urls.length === 0) {
       return NextResponse.json(

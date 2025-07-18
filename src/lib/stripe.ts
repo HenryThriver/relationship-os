@@ -1,8 +1,8 @@
-import { loadStripe } from '@stripe/stripe-js';
-import Stripe from 'stripe';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import StripeServer from 'stripe';
 
 // Initialize Stripe client-side
-let stripePromise: Promise<any> | null = null;
+let stripePromise: Promise<Stripe | null> | null = null;
 
 export const getStripe = () => {
   if (!stripePromise) {
@@ -12,7 +12,7 @@ export const getStripe = () => {
 };
 
 // Initialize Stripe server-side
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+export const stripe = new StripeServer(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-11-20.acacia',
 });
 

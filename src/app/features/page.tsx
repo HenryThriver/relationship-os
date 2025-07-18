@@ -9,7 +9,6 @@ import {
   Button, 
   Stack, 
   Grid, 
-  Paper,
   Card,
   CardContent,
   AppBar,
@@ -322,7 +321,7 @@ export default function FeaturesPage() {
         <Box sx={{ py: { xs: 10, md: 16 } }}>
           <Container maxWidth="lg">
             <Stack spacing={16}>
-              {Object.entries(featuresByCategory).map(([category, features], categoryIndex) => {
+              {Object.entries(featuresByCategory).map(([category, features]) => {
                 const CategoryIcon = categoryIcons[category as keyof typeof categoryIcons];
                 const categoryColor = categoryColors[category as keyof typeof categoryColors];
                 
@@ -393,7 +392,7 @@ export default function FeaturesPage() {
                     
                     {/* Features Grid */}
                     <Grid container spacing={4}>
-                      {features.map((feature, index) => {
+                      {features.map((feature) => {
                         const FeatureIcon = featureIcons[feature.key as keyof typeof featureIcons] || ConnectWithoutContact;
                         
                         return (

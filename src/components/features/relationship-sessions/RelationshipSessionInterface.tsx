@@ -22,7 +22,6 @@ import {
 import {
   PlayArrow as PlayArrowIcon,
   Pause as PauseIcon,
-  CheckCircle as CheckCircleIcon,
   AccessTime as AccessTimeIcon,
   Close as CloseIcon,
   Celebration as CelebrationIcon,
@@ -33,11 +32,10 @@ import {
   EmojiEvents as TrophyIcon,
   Rocket as RocketIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession, useCompleteSessionAction } from '@/lib/hooks/useRelationshipSessions';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from '@/lib/hooks/useRelationshipSessions';
 import { AddContactActionCard } from './AddContactActionCard';
 import { AddMeetingNotesActionCard } from './AddMeetingNotesActionCard';
-import { format } from 'date-fns';
 
 interface RelationshipSessionInterfaceProps {
   sessionId: string;
@@ -59,7 +57,7 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
   const queryClient = useQueryClient();
   
   const { data: session, isLoading, error } = useSession(sessionId);
-  const completeAction = useCompleteSessionAction();
+  // const completeAction = useCompleteSessionAction();
   
   // Hide initial celebration after 5 seconds
   useEffect(() => {
@@ -174,97 +172,6 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
     // User can continue working in the session
   };
   
-  const renderActionCard = (action: any, index: number) => {
-    const isCompleted = completedActions.has(action.id);
-    const isRecentlyCompleted = recentlyCompleted === action.id;
-    
-    if (isCompleted && !isRecentlyCompleted) {
-      return null; // Hide completed actions (except recently completed)
-    }
-    
-    return (
-      <Fade in={true} timeout={500} key={action.id}>
-        <Box sx={{ mb: 3 }}>
-          {/* Action Number Indicator */}
-          <Box display="flex" alignItems="center" gap={2} mb={2}>
-            <Chip
-              label={`Action ${index + 1} of ${session?.actions.length}`}
-              size="medium"
-              color="primary"
-              variant="filled"
-              sx={{ 
-                fontWeight: 'bold',
-                fontSize: '0.9rem',
-                px: 2,
-                py: 1
-              }}
-            />
-            {isRecentlyCompleted && showCelebration && (
-              <Grow in={true} timeout={300}>
-                <Chip
-                  label="✓ Completed!"
-                  size="medium"
-                  color="success"
-                  sx={{ 
-                    bgcolor: 'success.main',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    animation: 'pulse 1s ease-in-out infinite',
-                    '& .MuiChip-label': {
-                      fontSize: '0.9rem'
-                    }
-                  }}
-                />
-              </Grow>
-            )}
-          </Box>
-          
-          {/* Enhanced Action Card */}
-          <Paper
-            elevation={12}
-            sx={{
-              borderRadius: 3,
-              overflow: 'hidden',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '2px solid',
-              borderColor: 'primary.200',
-              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(33, 150, 243, 0.2)',
-              transition: 'all 0.3s ease-in-out',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 16px 48px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(33, 150, 243, 0.3)',
-              }
-            }}
-          >
-            {action.action_type === 'add_contact' ? (
-              <AddContactActionCard
-                actionId={action.id}
-                goalId={action.goal_id}
-                goalTitle={goal?.title || 'Unknown Goal'}
-                currentCount={currentCount}
-                targetCount={targetCount}
-                onComplete={handleActionComplete}
-                onSkip={handleActionSkip}
-              />
-            ) : (
-              <AddMeetingNotesActionCard
-                actionId={action.id}
-                meetingArtifactId={action.meeting_artifact_id}
-                contactId={action.contact_id}
-                contactName={action.contact?.name || 'Unknown Contact'}
-                contactProfilePicture={action.contact?.profile_picture || null}
-                meetingTitle={action.meeting_artifact?.metadata?.title || 'Meeting'}
-                meetingMetadata={action.meeting_artifact?.metadata || {}}
-                onComplete={handleActionComplete}
-                onSkip={handleActionSkip}
-              />
-            )}
-          </Paper>
-        </Box>
-      </Fade>
-    );
-  };
-  
   if (isLoading) {
     return (
       <Box sx={{ 
@@ -360,7 +267,7 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
               </Typography>
               <Typography variant="h6" sx={{ opacity: 0.9, maxWidth: 500, mx: 'auto' }}>
                 Time to strengthen your professional network and advance your goal. 
-                Let's build meaningful connections that matter!
+                Let&apos;s build meaningful connections that matter!
               </Typography>
             </Box>
           </Fade>
@@ -503,8 +410,8 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
                   </Typography>
                   <Typography variant="body1">
                     {remainingActions.length > 0 
-                      ? `${remainingActions.length} more action${remainingActions.length > 1 ? 's' : ''} to go. You're building momentum!`
-                      : 'All actions completed! You\'re crushing it!'
+                      ? `${remainingActions.length} more action${remainingActions.length > 1 ? 's' : ''} to go. You&apos;re building momentum!`
+                      : 'All actions completed! You&apos;re crushing it!'
                     }
                   </Typography>
                 </Alert>
@@ -618,7 +525,7 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
                     🎉 Incredible Work!
                   </Typography>
                   <Typography variant="h6" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
-                    You've successfully completed all relationship building actions in this session. 
+                    You&apos;ve successfully completed all relationship building actions in this session. 
                     This is how meaningful connections are built!
                   </Typography>
                   <Box display="flex" justifyContent="center" gap={2}>
@@ -629,7 +536,7 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
                       startIcon={<ArrowForwardIcon />}
                       sx={{ px: 4, py: 1.5 }}
                     >
-                      What's Next?
+                      What&apos;s Next?
                     </Button>
                   </Box>
                 </CardContent>
@@ -665,7 +572,7 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
             {allActionsCompleted ? (
               <>
                 <Typography variant="h6" gutterBottom>
-                  🎉 Congratulations! You've completed all {totalActions} relationship building actions.
+                  🎉 Congratulations! You&apos;ve completed all {totalActions} relationship building actions.
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
                   You can continue working in this session or end it now.
@@ -674,7 +581,7 @@ export const RelationshipSessionInterface: React.FC<RelationshipSessionInterface
             ) : (
               <>
                 <Typography variant="h6" gutterBottom>
-                  You've completed {completedCount} of {totalActions} actions.
+                  You&apos;ve completed {completedCount} of {totalActions} actions.
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
                   Would you like to continue working or end the session?

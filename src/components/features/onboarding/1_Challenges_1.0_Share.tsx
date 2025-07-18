@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Alert, Card, CardContent, LinearProgress } from '@mui/material';
+import { Box, Typography, Button, Alert } from '@mui/material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import OnboardingVoiceRecorder from './OnboardingVoiceRecorder';
-import { PremiumCard, PatternBreakingText } from '@/components/ui/premium';
+import { PremiumCard } from '@/components/ui/premium';
 import { ExecutiveLoading } from '@/components/ui/premium/LoadingStates';
 
 import { sleep } from './0_Welcome_Components/utils/animationSequence';
@@ -213,22 +213,22 @@ export default function ChallengesScreen() {
   const isLoading = isNavigating || isProcessing;
 
   // Shared styling patterns from welcome screen
-  const sharedStyles = {
-    gradientText: {
-      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 50%, #1976D2 100%)',
-      backgroundClip: 'text',
-      WebkitBackgroundClip: 'text',
-      color: 'transparent'
-    },
-    
-    smoothTransition: 'all 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-    
-    glassmorphism: {
-      background: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.2)'
-    }
-  };
+  // const sharedStyles = {
+  //   gradientText: {
+  //     background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 50%, #1976D2 100%)',
+  //     backgroundClip: 'text',
+  //     WebkitBackgroundClip: 'text',
+  //     color: 'transparent'
+  //   },
+  //   
+  //   smoothTransition: 'all 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  //   
+  //   glassmorphism: {
+  //     background: 'rgba(255, 255, 255, 0.95)',
+  //     backdropFilter: 'blur(20px)',
+  //     border: '1px solid rgba(255, 255, 255, 0.2)'
+  //   }
+  // };
 
   return (
     <>

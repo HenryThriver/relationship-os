@@ -15,31 +15,18 @@ import {
   Alert,
   Chip,
   IconButton,
-  Checkbox,
-  FormControlLabel,
-  Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  ListItemSecondaryAction,
   Avatar,
   TextField,
   InputAdornment,
 } from '@mui/material';
 import {
-  PersonAdd as PersonAddIcon,
-  NoteAdd as NoteAddIcon,
   Close as CloseIcon,
   PlayArrow as PlayArrowIcon,
   FlagOutlined as GoalIcon,
-  Event as EventIcon,
-  Person as PersonIcon,
   CheckCircle as CheckCircleIcon,
   Timer as TimerIcon,
 } from '@mui/icons-material';
 import { useGoalsForRelationshipBuilding, useGoalSessionActions, useCreateSession } from '@/lib/hooks/useRelationshipSessions';
-import { format } from 'date-fns';
 
 interface SessionStartModalProps {
   open: boolean;

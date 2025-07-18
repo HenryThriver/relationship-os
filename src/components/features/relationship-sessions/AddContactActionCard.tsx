@@ -42,7 +42,7 @@ interface AddContactActionCardProps {
 export const AddContactActionCard: React.FC<AddContactActionCardProps> = ({
   actionId,
   goalId,
-  goalTitle,
+  // goalTitle,
   currentCount,
   targetCount,
   onComplete,
@@ -52,7 +52,7 @@ export const AddContactActionCard: React.FC<AddContactActionCardProps> = ({
   const [email, setEmail] = useState('');
   const [additionalEmails, setAdditionalEmails] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState('');
-  const [voiceMemo, setVoiceMemo] = useState<File | null>(null);
+  // const [voiceMemo, setVoiceMemo] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submissionMethod, setSubmissionMethod] = useState<'linkedin' | 'voice' | null>(null);
@@ -412,7 +412,7 @@ export const AddContactActionCard: React.FC<AddContactActionCardProps> = ({
         {/* Voice Memo Section */}
         <VoiceMemo
           title="Voice Description (Optional)"
-          description="Tell us about this contact - their role, how you know them, what you'd like to achieve together."
+          description="Tell us about this contact - their role, how you know them, what you&apos;d like to achieve together."
           placeholder="Describe your contact and relationship goals..."
           onRecordingComplete={handleVoiceRecordingComplete}
           onProcessingStatusChange={setIsVoiceProcessing}
