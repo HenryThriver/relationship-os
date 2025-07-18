@@ -177,7 +177,7 @@ export default function TermsOfServicePage(): React.JSX.Element {
           12. Changes to Terms
         </Typography>
         <Typography variant="body1" paragraph>
-          We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the new Terms on this page and updating the "last updated" date.
+          We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the new Terms on this page and updating the &quot;last updated&quot; date.
         </Typography>
 
         <Divider sx={{ my: 4 }} />

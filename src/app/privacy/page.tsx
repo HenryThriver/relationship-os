@@ -285,7 +285,7 @@ export default function PrivacyPolicyPage(): React.JSX.Element {
           13. Changes to This Privacy Policy
         </Typography>
         <Typography variant="body1" paragraph>
-          We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the "last updated" date.
+          We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the &quot;last updated&quot; date.
         </Typography>
 
         <Divider sx={{ my: 4 }} />
