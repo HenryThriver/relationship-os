@@ -13,7 +13,8 @@ import {
   IconButton,
   InputAdornment,
   Stack,
-  Tooltip
+  Tooltip,
+  useTheme
 } from '@mui/material';
 import { 
   LinkedIn, 
@@ -26,6 +27,7 @@ import {
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import OnboardingVoiceRecorder from './OnboardingVoiceRecorder';
+import { PremiumCard, ExecutiveButton } from '@/components/ui/premium';
 
 interface ContactInput {
   id: string;
@@ -37,6 +39,7 @@ interface ContactInput {
 export default function ContactImportScreen() {
   const { nextScreen, completeScreen, currentScreen, isNavigating, updateState } = useOnboardingState();
   const { profile } = useUserProfile();
+  const theme = useTheme();
   
   const [animationStep, setAnimationStep] = useState(0);
   const [contact, setContact] = useState<ContactInput>({
@@ -333,7 +336,7 @@ export default function ContactImportScreen() {
                   mb: 4
                 }}
               >
-                Now let&apos;s identify one person related to this goal.
+                Now let&apos;s identify key stakeholders in your success trajectory
               </Typography>
 
               <Typography 
@@ -346,9 +349,8 @@ export default function ContactImportScreen() {
                   fontSize: '1.1rem'
                 }}
               >
-                Think about anyone who could help, inspire, or guide you toward this goal - 
-                whether you&apos;ve never interacted with them, occasionally stay in touch, 
-                or they&apos;re your absolute closest friend.
+                Think strategically—who could accelerate your path, open doors, 
+                or provide critical insights? We&apos;ll uncover non-obvious connections.
               </Typography>
             </Box>
           </Fade>
@@ -366,43 +368,50 @@ export default function ContactImportScreen() {
               )}
 
               {/* Contact Input Field */}
-              <Card sx={{ mb: 4, borderRadius: 3 }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 500 }}>
-                      LinkedIn Profile URL
-                    </Typography>
-                    <Tooltip title={suggestionTooltip} arrow placement="top">
-                      <IconButton size="small" sx={{ color: 'text.secondary' }}>
-                        <Help />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
+              <PremiumCard>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                    Strategic Connection Profile
+                  </Typography>
+                  <Tooltip title={suggestionTooltip} arrow placement="top">
+                    <IconButton size="small" sx={{ color: theme.palette.sage.main }}>
+                      <Help />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
                   
                   <TextField
                     fullWidth
-                    label="LinkedIn Profile"
-                    placeholder="https://linkedin.com/in/username"
+                    label="LinkedIn Profile URL"
+                    placeholder="linkedin.com/in/strategic-connection"
                     value={contact.url}
                     onChange={(e) => updateContact(e.target.value)}
                     error={!!contact.error}
-                    helperText={contact.error}
+                    helperText={contact.error || "We'll analyze their professional presence and identify collaboration opportunities"}
                     disabled={isLoading}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <LinkedIn color="primary" />
+                          <LinkedIn sx={{ color: 'primary.main' }} />
                         </InputAdornment>
                       ),
                       endAdornment: contact.isValid ? (
                         <InputAdornment position="end">
-                          <CheckCircle color="success" />
+                          <CheckCircle sx={{ color: theme.palette.sage.main }} />
                         </InputAdornment>
                       ) : null
                     }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused': {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: theme.palette.sage.main,
+                          }
+                        }
+                      }
+                    }}
                   />
-                </CardContent>
-              </Card>
+                </PremiumCard>
 
               {/* Voice Memo Section */}
               {showVoiceRecorder && (
@@ -425,22 +434,14 @@ export default function ContactImportScreen() {
 
               {/* Action Button */}
               <Box sx={{ textAlign: 'center', mb: 6 }}>
-                <Button
+                <ExecutiveButton
                   variant="contained"
                   size="large"
                   onClick={handleAnalyzeContact}
                   disabled={!canProceed || isLoading}
-                  sx={{ 
-                    px: 6, 
-                    py: 2,
-                    borderRadius: 3,
-                    fontSize: '1.1rem',
-                    fontWeight: 500,
-                    textTransform: 'none'
-                  }}
                 >
-                  {isLoading ? 'Fetching LinkedIn profile & posts...' : 'Analyze this contact'}
-                </Button>
+                  {isLoading ? 'Discovering strategic intelligence...' : 'Analyze strategic value'}
+                </ExecutiveButton>
                 
                 {contact.isValid && !contactVoiceMemoId && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>

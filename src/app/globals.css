@@ -27,3 +27,92 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Premium utility classes */
+.spacing-golden {
+  padding: var(--spacing-golden-mobile);
+}
+
+@media (min-width: 768px) {
+  .spacing-golden {
+    padding: var(--spacing-golden);
+  }
+}
+
+/* Sophisticated animations */
+.pulse-sophisticated {
+  animation: sophisticated-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sophisticated-pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.7; }
+}
+
+.sage-hint {
+  background-color: rgba(5, 150, 105, 0.1);
+}
+
+/* Pattern breaking text */
+.pattern-breaking {
+  font-style: italic;
+  color: var(--mui-palette-text-secondary);
+  font-weight: 500;
+}
+
+/* Executive loading states */
+.executive-skeleton {
+  background: linear-gradient(
+    90deg,
+    #f5f5f5 0%,
+    #fafafa 20%,
+    #f5f5f5 40%
+  );
+  background-size: 200% 100%;
+  animation: executive-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes executive-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Premium focus states */
+.premium-focus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+/* Confidence animations */
+@keyframes confident-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Premium scrollbar for executive feel */
+.premium-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 6px;
+  transition: background 200ms ease;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #bdbdbd;
+}

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Alert, Card, CardContent, LinearProgress } from '@mui/material';
 import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import OnboardingVoiceRecorder from './OnboardingVoiceRecorder';
+import { PremiumCard, PatternBreakingText } from '@/components/ui/premium';
+import { ExecutiveLoading } from '@/components/ui/premium/LoadingStates';
 
 import { sleep } from './0_Welcome_Components/utils/animationSequence';
 
@@ -284,27 +286,7 @@ export default function ChallengesScreen() {
                 }
               }}
             >
-              <span>Let&apos;s be honest about networking -</span>
-              {/* "most people hate it" fades in on same line */}
-              {showHateLine && (
-                <span
-                  style={{
-                    opacity: 0,
-                    animation: 'reality-fade-in 1s ease-out forwards',
-                  }}
-                  className="reality-text"
-                > most people hate it.</span>
-              )}
-              {/* "Or suck at it" fades in on same line */}
-              {showSuckLine && (
-                <span
-                  style={{
-                    opacity: 0,
-                    animation: 'examples-fade-in 1s ease-out forwards',
-                  }}
-                  className="examples-text"
-                > Or suck at it.</span>
-              )}
+              <span>Most relationship building feels like speed dating in business casual.</span>
             </Typography>
           )}
 
@@ -326,7 +308,7 @@ export default function ChallengesScreen() {
                 }
               }}
             >
-              Or both.
+              You deserve better.
             </Typography>
           )}
           </Box>
@@ -358,7 +340,7 @@ export default function ChallengesScreen() {
                   color: 'text.secondary'
                 }}
               >
-                Where do you struggle building meaningful (and valuable) relationships at scale?
+                What strategic challenges create friction in your relationship building?
               </Typography>
             </Box>
           )}
@@ -384,34 +366,16 @@ export default function ChallengesScreen() {
               <Box sx={{ 
                 mb: 4
               }}>
-              <Card sx={{ 
-                borderRadius: 4,
-                ...sharedStyles.glassmorphism,
-                boxShadow: '0 12px 48px rgba(0, 0, 0, 0.15)'
-              }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ textAlign: 'center', mb: 3 }}>
-                    <Typography 
-                      variant="h6" 
-                      sx={{ 
-                        fontWeight: 500,
-                        color: '#1a1a1a',
-                        mb: 2
-                      }}
-                    >
-                      Share your networking struggles
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: '#666',
-                        lineHeight: 1.6
-                      }}
-                    >
-                      Tell us about situations where connecting feels difficult, awkward, or overwhelming. 
-                      <br></br>The more specific you are, the better your Cultivate HQ can help you with these challenges.
-                    </Typography>
-                  </Box>
+              <PremiumCard accent="sage">
+                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 500, color: '#1a1a1a', mb: 2 }}>
+                    Share your strategic challenges
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: '#666', lineHeight: 1.6 }}>
+                    Tell us where relationship building creates friction in your professional trajectory. 
+                    The more specific, the more value we can deliver.
+                  </Typography>
+                </Box>
 
                   {/* Error Alert */}
                   {error && (
@@ -452,12 +416,11 @@ export default function ChallengesScreen() {
                           }
                         }}
                       >
-                        I&apos;d rather not share
+                        I prefer to proceed without sharing
                       </Button>
                     </Box>
                   )}
-                </CardContent>
-              </Card>
+                </PremiumCard>
             </Box>
 
               {/* Examples section */}
@@ -527,45 +490,23 @@ export default function ChallengesScreen() {
 
       {/* Enhanced loading and processing states */}
       {isProcessing && (
-        <Box 
-          sx={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}
-        >
-          <Card sx={{ 
-            p: 4, 
-            borderRadius: 4,
-            textAlign: 'center',
-            maxWidth: 400,
-            ...sharedStyles.glassmorphism
-          }}>
-            <Box sx={{ mb: 3 }}>
-              <Typography sx={{ fontSize: '3rem', mb: 2 }}>🎧</Typography>
-              <Typography variant="h6" gutterBottom>
-                Processing your story...
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                We&apos;re analyzing your networking challenges to create personalized insights
-              </Typography>
-            </Box>
-            <LinearProgress 
-              sx={{ 
-                borderRadius: 2,
-                height: 6,
-                backgroundColor: 'rgba(0, 0, 0, 0.1)'
-              }} 
-            />
-          </Card>
+        <Box sx={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 'var(--z-modal)',
+        }}>
+          <PremiumCard sx={{ maxWidth: 400, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: '3rem', mb: 2 }}>🎧</Typography>
+            <ExecutiveLoading type="relationshipIntelligence" />
+          </PremiumCard>
         </Box>
       )}
     </>

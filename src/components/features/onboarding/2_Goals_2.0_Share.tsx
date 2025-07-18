@@ -16,6 +16,7 @@ import { useOnboardingState } from '@/lib/hooks/useOnboardingState';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import OnboardingVoiceRecorder from './OnboardingVoiceRecorder';
+import { PremiumCard, ExecutiveButton } from '@/components/ui/premium';
 
 const GOAL_CATEGORIES = [
   'Land a specific role or make a career transition',
@@ -451,7 +452,7 @@ What does your life look and feel like? How will you know you've succeeded?"
                     mb: 2
                   }}
                 >
-                  What is currently your #1 professional goal?
+                  What ambitious outcome would make this year legendary?
                 </Typography>
                 <Typography 
                   variant="body1" 
@@ -461,8 +462,7 @@ What does your life look and feel like? How will you know you've succeeded?"
                     fontSize: { xs: '0.95rem', md: '1rem' }
                   }}
                 >
-                  Pick the item below that would most move the needle for you in
-                  the next 6-12 months
+                  Be specific. Vague goals get vague results.
                 </Typography>
               </Box>
             </Fade>
@@ -481,33 +481,34 @@ What does your life look and feel like? How will you know you've succeeded?"
             )}
 
             {/* Goal Categories Card */}
-            <Card sx={{ mb: 4, borderRadius: 3, border: '1px solid #e3f2fd' }}>
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Stack spacing={2}>
-                  {GOAL_CATEGORIES.map((category, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedCategory === category ? 'contained' : 'outlined'}
-                      onClick={() => handleCategorySelect(category)}
-                      disabled={isLoading}
-                      sx={{
-                        p: 2,
-                        textAlign: 'left',
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        fontSize: { xs: '0.9rem', md: '1rem' },
-                        borderRadius: 2,
-                        '&:hover': {
-                          backgroundColor: 'primary.50'
-                        }
-                      }}
-                    >
-                      {category}
-                    </Button>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
+            <PremiumCard>
+              <Stack spacing={2}>
+                {GOAL_CATEGORIES.map((category, index) => (
+                  <Button
+                    key={index}
+                    variant={selectedCategory === category ? 'contained' : 'outlined'}
+                    onClick={() => handleCategorySelect(category)}
+                    disabled={isLoading}
+                    sx={{
+                      p: 2.5,
+                      textAlign: 'left',
+                      justifyContent: 'flex-start',
+                      textTransform: 'none',
+                      fontSize: { xs: '0.95rem', md: '1.0625rem' },
+                      borderRadius: 2,
+                      borderWidth: selectedCategory === category ? 0 : 1.5,
+                      transition: 'all 200ms var(--ease-confident)',
+                      '&:hover': {
+                        backgroundColor: selectedCategory === category ? 'primary.dark' : 'primary.50',
+                        transform: 'translateX(4px)',
+                      }
+                    }}
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </Stack>
+            </PremiumCard>
 
             {/* Unsure Option - Simple Link */}
             <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -529,7 +530,7 @@ What does your life look and feel like? How will you know you've succeeded?"
                   }
                 }}
               >
-                I&apos;m not sure what I&apos;m trying to accomplish
+                I prefer to explore organically
               </Button>
             </Box>
 
