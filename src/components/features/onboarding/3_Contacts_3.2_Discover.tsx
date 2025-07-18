@@ -452,7 +452,7 @@ export default function ContextDiscoveryScreen() {
                     mb: 2
                   }}
                 >
-                  Look for context with your contacts
+                  Find your existing conversations and meetings
                 </Typography>
                 <Typography 
                   variant="body1" 
@@ -464,8 +464,8 @@ export default function ContextDiscoveryScreen() {
                     fontSize: '1.1rem'
                   }}
                 >
-                  Connect your Gmail and Google Calendar to find existing emails and meetings 
-                  with these contacts. We&apos;ll show you your relationship history.
+                  Connect Gmail and Calendar to surface your existing email threads and meeting history. 
+                  See exactly how your relationships have developed over time.
                 </Typography>
               </Box>
             </Fade>

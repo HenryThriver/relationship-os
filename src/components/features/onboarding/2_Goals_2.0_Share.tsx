@@ -428,11 +428,10 @@ What does your life look and feel like? How will you know you've succeeded?"
                   fontWeight: 400,
                   lineHeight: 1.3,
                   color: '#1a1a1a',
-                  fontSize: { xs: '1.75rem', md: '2.125rem' }
+                  fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
                 }}
               >
-                Let&apos;s personalize your dashboard to what you&apos;re actually
-                aspiring to achieve.
+                Your time is valuable. Your relationships are invaluable.
               </Typography>
             </Fade>
           )}
@@ -448,7 +447,7 @@ What does your life look and feel like? How will you know you've succeeded?"
                     fontWeight: 400,
                     lineHeight: 1.3,
                     color: '#1a1a1a',
-                    fontSize: { xs: '1.75rem', md: '2.125rem' },
+                    fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
                     mb: 2
                   }}
                 >
