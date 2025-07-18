@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Connection OS",
-  description: "Manage your professional network like never before.",
+  title: "Cultivate HQ",
+  description: "Where strategic minds cultivate extraordinary outcomes through systematic relationship intelligence.",
 };
 
 interface RootLayoutProps {

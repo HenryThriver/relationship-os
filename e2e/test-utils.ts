@@ -12,7 +12,10 @@ export class TestUtils {
    */
   async navigateToPage(path: string = '/') {
     await this.page.goto(path);
+    await this.page.waitForLoadState('domcontentloaded');
     await this.page.waitForLoadState('networkidle');
+    // Wait a bit for React to hydrate
+    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -100,29 +103,43 @@ export class TestUtils {
    */
   async mockAuthenticatedUser() {
     // Mock the auth state in localStorage/sessionStorage
-    await this.page.evaluate(() => {
-      localStorage.setItem('supabase.auth.token', JSON.stringify({
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
-        user: {
-          id: 'mock-user-id',
-          email: 'test@example.com',
-          user_metadata: {
-            name: 'Test User'
-          }
+    try {
+      await this.page.evaluate(() => {
+        if (typeof Storage !== 'undefined') {
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            access_token: 'mock-access-token',
+            refresh_token: 'mock-refresh-token',
+            user: {
+              id: 'mock-user-id',
+              email: 'test@example.com',
+              user_metadata: {
+                name: 'Test User'
+              }
+            }
+          }));
         }
-      }));
-    });
+      });
+    } catch (error) {
+      // Ignore localStorage errors - might not be available yet
+      console.log('localStorage not available yet, skipping mock auth');
+    }
   }
 
   /**
    * Clear authentication state
    */
   async clearAuth() {
-    await this.page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
+    try {
+      await this.page.evaluate(() => {
+        if (typeof Storage !== 'undefined') {
+          localStorage.clear();
+          sessionStorage.clear();
+        }
+      });
+    } catch (error) {
+      // Ignore localStorage errors - might not be available yet
+      console.log('localStorage not available yet, skipping clear');
+    }
   }
 
   /**

@@ -15,7 +15,7 @@ test.describe('Authentication Flow', () => {
     // Check page title and heading
     await expect(page).toHaveTitle(/Cultivate HQ/);
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Cultivate HQ' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cultivate HQ' }).nth(1)).toBeVisible();
     
     // Check subtitle
     await expect(page.getByText('Continue your journey toward systematic relationship mastery')).toBeVisible();
@@ -25,7 +25,7 @@ test.describe('Authentication Flow', () => {
     
     // Check "New to Cultivate HQ?" section
     await expect(page.getByText('New to Cultivate HQ?')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Get started' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Get started' })).toBeVisible();
     
     // Check legal text
     await expect(page.getByText('By continuing, you agree to our Terms of Service and Privacy Policy')).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('Authentication Flow', () => {
   test('should navigate to pricing page', async ({ page }) => {
     await utils.navigateToPage('/auth/login');
     
-    await page.getByRole('button', { name: 'Get started' }).click();
+    await page.getByRole('link', { name: 'Get started' }).click();
     await utils.waitForNavigation();
     
     await expect(page).toHaveURL('/pricing');

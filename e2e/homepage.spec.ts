@@ -15,8 +15,10 @@ test.describe('Homepage', () => {
     // Check page title
     await expect(page).toHaveTitle(/Cultivate HQ/);
     
-    // Check main navigation
-    await expect(page.getByRole('navigation')).toBeVisible();
+    // Check main navigation elements
+    await expect(page.getByRole('link', { name: 'Cultivate HQ' })).toBeVisible();
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Features' })).toBeVisible();
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Pricing' })).toBeVisible();
     
     // Check hero section
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
