@@ -12,7 +12,8 @@ import {
   Avatar,
   IconButton,
   TextField,
-  Stack
+  Stack,
+  useTheme
 } from '@mui/material';
 import { 
   People, 
@@ -193,6 +194,7 @@ export default function ContactConfirmationScreen() {
   const { profile } = useUserProfile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const theme = useTheme();
   
   const [showContent, setShowContent] = useState(false);
   const [importedContacts, setImportedContacts] = useState<ImportedContact[]>([]);
@@ -549,7 +551,7 @@ export default function ContactConfirmationScreen() {
           {importedContacts.length > 0 && (
             <PremiumCard accent="sage">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <People sx={{ color: 'sage.main' }} />
+                <People sx={{ color: theme.palette.sage.main }} />
                 <Typography variant="h6" sx={{ fontWeight: 500 }}>
                   Strategic Connection Dossier
                 </Typography>
@@ -568,7 +570,7 @@ export default function ContactConfirmationScreen() {
                             width: 80,
                             height: 80,
                             border: '3px solid',
-                            borderColor: 'sage.main',
+                            borderColor: theme.palette.sage.main,
                             boxShadow: '0 6px 16px rgba(5, 150, 105, 0.2)'
                           }}
                           onError={(e) => {
@@ -668,13 +670,13 @@ export default function ContactConfirmationScreen() {
                       {/* Strategic insight */}
                       <Box sx={{ 
                         p: 2, 
-                        bgcolor: 'sage.light', 
+                        bgcolor: theme.palette.sage.light, 
                         borderRadius: 2,
                         borderLeft: '3px solid',
-                        borderLeftColor: 'sage.main',
+                        borderLeftColor: theme.palette.sage.main,
                         mb: 2
                       }}>
-                        <Typography variant="body2" sx={{ color: 'sage.dark', fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: theme.palette.sage.dark, fontWeight: 500 }}>
                           Strategic Opportunity Detected
                         </Typography>
                                                  <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>

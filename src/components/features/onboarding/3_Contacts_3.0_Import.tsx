@@ -13,7 +13,8 @@ import {
   IconButton,
   InputAdornment,
   Stack,
-  Tooltip
+  Tooltip,
+  useTheme
 } from '@mui/material';
 import { 
   LinkedIn, 
@@ -38,6 +39,7 @@ interface ContactInput {
 export default function ContactImportScreen() {
   const { nextScreen, completeScreen, currentScreen, isNavigating, updateState } = useOnboardingState();
   const { profile } = useUserProfile();
+  const theme = useTheme();
   
   const [animationStep, setAnimationStep] = useState(0);
   const [contact, setContact] = useState<ContactInput>({
@@ -372,7 +374,7 @@ export default function ContactImportScreen() {
                     Strategic Connection Profile
                   </Typography>
                   <Tooltip title={suggestionTooltip} arrow placement="top">
-                    <IconButton size="small" sx={{ color: 'sage.main' }}>
+                    <IconButton size="small" sx={{ color: theme.palette.sage.main }}>
                       <Help />
                     </IconButton>
                   </Tooltip>
@@ -395,7 +397,7 @@ export default function ContactImportScreen() {
                       ),
                       endAdornment: contact.isValid ? (
                         <InputAdornment position="end">
-                          <CheckCircle sx={{ color: 'sage.main' }} />
+                          <CheckCircle sx={{ color: theme.palette.sage.main }} />
                         </InputAdornment>
                       ) : null
                     }}
@@ -403,7 +405,7 @@ export default function ContactImportScreen() {
                       '& .MuiOutlinedInput-root': {
                         '&.Mui-focused': {
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'sage.main',
+                            borderColor: theme.palette.sage.main,
                           }
                         }
                       }
