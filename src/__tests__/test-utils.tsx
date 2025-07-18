@@ -19,6 +19,22 @@ const testTheme = createTheme({
   },
 });
 
+// Add custom palette colors as a second createTheme call
+const testThemeExtended = createTheme(testTheme, {
+  palette: {
+    ...testTheme.palette,
+    sage: {
+      main: '#059669',
+    },
+    amber: {
+      main: '#F59E0B',
+    },
+    plum: {
+      main: '#7C3AED',
+    },
+  },
+});
+
 // Create a wrapper component with all necessary providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -31,7 +47,7 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={testTheme}>
+      <ThemeProvider theme={testThemeExtended}>
         <CssBaseline />
         {children}
       </ThemeProvider>
