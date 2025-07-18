@@ -205,30 +205,67 @@ export default function FeaturesPage() {
         {/* Hero Section */}
         <Box 
           sx={{ 
-            py: { xs: 8, md: 12 },
-            background: `linear-gradient(135deg, ${alpha('#2196F3', 0.02)} 0%, ${alpha('#7C3AED', 0.02)} 100%)`,
-            borderBottom: '1px solid',
-            borderColor: 'grey.200'
+            py: { xs: 10, md: 16 },
+            background: `
+              linear-gradient(135deg, 
+                ${alpha('#2196F3', 0.06)} 0%, 
+                ${alpha('#7C3AED', 0.04)} 35%, 
+                ${alpha('#059669', 0.03)} 65%, 
+                ${alpha('#F59E0B', 0.02)} 100%
+              ),
+              radial-gradient(circle at 20% 50%, ${alpha('#2196F3', 0.08)} 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, ${alpha('#7C3AED', 0.06)} 0%, transparent 50%)
+            `,
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.8) 100%)',
+              pointerEvents: 'none'
+            }
           }}
         >
-          <Container maxWidth="lg">
-            <Stack spacing={6} alignItems="center" textAlign="center">
-              <Stack spacing={3} alignItems="center" maxWidth="800px">
+          <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+            <Stack spacing={8} alignItems="center" textAlign="center">
+              <Stack spacing={4} alignItems="center" maxWidth="900px">
                 <Typography
                   variant="h1"
                   sx={{
-                    fontSize: { xs: '2.5rem', md: '3rem' },
-                    fontWeight: 600,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.1,
-                    color: 'text.primary'
+                    fontSize: { xs: '3rem', md: '4rem', lg: '4.5rem' },
+                    fontWeight: 700,
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1.05,
+                    color: 'text.primary',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.02)'
                   }}
                 >
                   Sophisticated capabilities for{' '}
                   <Typography
                     component="span"
                     variant="inherit"
-                    sx={{ color: 'primary.main' }}
+                    sx={{ 
+                      background: `linear-gradient(135deg, #2196F3 0%, #7C3AED 100%)`,
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      color: 'transparent',
+                      position: 'relative',
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: '-8px',
+                        left: 0,
+                        right: 0,
+                        height: '4px',
+                        background: `linear-gradient(90deg, #2196F3 0%, #7C3AED 100%)`,
+                        borderRadius: '2px',
+                        opacity: 0.3
+                      }
+                    }}
                   >
                     relationship mastery
                   </Typography>
@@ -237,11 +274,13 @@ export default function FeaturesPage() {
                 <Typography
                   variant="h5"
                   sx={{
-                    fontSize: { xs: '1.125rem', md: '1.25rem' },
+                    fontSize: { xs: '1.25rem', md: '1.375rem' },
                     fontWeight: 400,
                     color: 'text.secondary',
-                    lineHeight: 1.4,
-                    maxWidth: '600px'
+                    lineHeight: 1.5,
+                    maxWidth: '700px',
+                    fontStyle: 'italic',
+                    opacity: 0.9
                   }}
                 >
                   Designed for executives who understand that relationships are the ultimate competitive advantage. Each feature is crafted to enhance your natural strategic instincts.
@@ -254,12 +293,23 @@ export default function FeaturesPage() {
                 variant="contained"
                 size="large"
                 sx={{
-                  px: 4,
-                  py: 1.5,
+                  px: 5,
+                  py: 2,
                   fontSize: '1.125rem',
-                  fontWeight: 500,
+                  fontWeight: 600,
                   textTransform: 'none',
-                  minWidth: 200
+                  minWidth: 240,
+                  height: 56,
+                  borderRadius: 2,
+                  background: `linear-gradient(135deg, #2196F3 0%, #1976D2 100%)`,
+                  boxShadow: `0 4px 20px ${alpha('#2196F3', 0.3)}`,
+                  transform: 'scale(1)',
+                  transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&:hover': {
+                    transform: 'scale(1.02) translateY(-1px)',
+                    boxShadow: `0 8px 32px ${alpha('#2196F3', 0.4)}`,
+                    background: `linear-gradient(135deg, #1976D2 0%, #0D47A1 100%)`,
+                  }
                 }}
               >
                 Start strategic analysis
@@ -269,39 +319,56 @@ export default function FeaturesPage() {
         </Box>
 
         {/* Features by Category */}
-        <Box sx={{ py: { xs: 8, md: 12 } }}>
+        <Box sx={{ py: { xs: 10, md: 16 } }}>
           <Container maxWidth="lg">
-            <Stack spacing={12}>
+            <Stack spacing={16}>
               {Object.entries(featuresByCategory).map(([category, features], categoryIndex) => {
                 const CategoryIcon = categoryIcons[category as keyof typeof categoryIcons];
                 const categoryColor = categoryColors[category as keyof typeof categoryColors];
                 
                 return (
-                  <Box key={category}>
+                  <Box 
+                    key={category} 
+                    sx={{ 
+                      position: 'relative',
+                      '&:nth-of-type(even)': {
+                        background: `linear-gradient(135deg, ${alpha(categoryColor, 0.02)} 0%, ${alpha(categoryColor, 0.01)} 100%)`,
+                        borderRadius: 4,
+                        p: { xs: 4, md: 6 },
+                        mx: { xs: -2, md: -4 }
+                      }
+                    }}
+                  >
                     {/* Category Header */}
-                    <Stack spacing={4} alignItems="center" textAlign="center" sx={{ mb: 8 }}>
+                    <Stack spacing={6} alignItems="center" textAlign="center" sx={{ mb: 10 }}>
                       <Box
                         sx={{
-                          width: 64,
-                          height: 64,
-                          borderRadius: 3,
-                          backgroundColor: alpha(categoryColor, 0.1),
+                          width: 96,
+                          height: 96,
+                          borderRadius: 4,
+                          background: `linear-gradient(135deg, ${alpha(categoryColor, 0.1)} 0%, ${alpha(categoryColor, 0.05)} 100%)`,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: categoryColor
+                          color: categoryColor,
+                          border: `3px solid ${alpha(categoryColor, 0.2)}`,
+                          boxShadow: `0 8px 32px ${alpha(categoryColor, 0.1)}`
                         }}
                       >
-                        <CategoryIcon sx={{ fontSize: 32 }} />
+                        <CategoryIcon sx={{ fontSize: 48 }} />
                       </Box>
                       
                       <Typography
                         variant="h2"
                         sx={{
-                          fontSize: { xs: '1.75rem', md: '2.25rem' },
-                          fontWeight: 600,
-                          letterSpacing: '-0.02em',
-                          textTransform: 'capitalize'
+                          fontSize: { xs: '2.25rem', md: '3rem' },
+                          fontWeight: 700,
+                          letterSpacing: '-0.03em',
+                          textTransform: 'capitalize',
+                          background: `linear-gradient(135deg, ${categoryColor} 0%, ${alpha(categoryColor, 0.7)} 100%)`,
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          color: 'transparent'
                         }}
                       >
                         {category} Features
@@ -310,9 +377,11 @@ export default function FeaturesPage() {
                       <Typography
                         variant="body1"
                         sx={{
-                          fontSize: '1.125rem',
+                          fontSize: '1.25rem',
                           color: 'text.secondary',
-                          maxWidth: '600px'
+                          maxWidth: '700px',
+                          fontStyle: 'italic',
+                          opacity: 0.9
                         }}
                       >
                         {category === 'intelligence' && 'AI-powered insights that reveal hidden patterns and opportunities in your relationship network.'}
@@ -328,7 +397,7 @@ export default function FeaturesPage() {
                         const FeatureIcon = featureIcons[feature.key as keyof typeof featureIcons] || ConnectWithoutContact;
                         
                         return (
-                          <Grid item xs={12} md={6} key={feature.key}>
+                          <Grid size={{ xs: 12, md: 6 }} key={feature.key}>
                             <Card
                               sx={{
                                 height: '100%',
@@ -336,31 +405,51 @@ export default function FeaturesPage() {
                                 border: '1px solid',
                                 borderColor: 'grey.200',
                                 borderRadius: 3,
-                                transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                backgroundColor: 'white',
+                                transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&::before': {
+                                  content: '""',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 4,
+                                  background: `linear-gradient(90deg, ${categoryColor} 0%, ${alpha(categoryColor, 0.6)} 100%)`,
+                                  transform: 'scaleX(0)',
+                                  transformOrigin: 'left',
+                                  transition: 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)'
+                                },
                                 '&:hover': {
                                   borderColor: categoryColor,
-                                  transform: 'translateY(-2px)',
-                                  boxShadow: `0 8px 24px ${alpha(categoryColor, 0.1)}`
+                                  transform: 'translateY(-4px)',
+                                  boxShadow: `0 12px 32px ${alpha(categoryColor, 0.15)}`,
+                                  '&::before': {
+                                    transform: 'scaleX(1)'
+                                  }
                                 }
                               }}
                             >
                               <CardContent sx={{ p: 0 }}>
                                 <Stack spacing={3}>
-                                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                                  <Stack direction="row" spacing={3} alignItems="flex-start">
                                     <Box
                                       sx={{
-                                        width: 48,
-                                        height: 48,
-                                        borderRadius: 2,
-                                        backgroundColor: alpha(categoryColor, 0.1),
+                                        width: 64,
+                                        height: 64,
+                                        borderRadius: 3,
+                                        background: `linear-gradient(135deg, ${alpha(categoryColor, 0.1)} 0%, ${alpha(categoryColor, 0.05)} 100%)`,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         color: categoryColor,
-                                        flexShrink: 0
+                                        flexShrink: 0,
+                                        border: `2px solid ${alpha(categoryColor, 0.2)}`,
+                                        transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)'
                                       }}
                                     >
-                                      <FeatureIcon />
+                                      <FeatureIcon sx={{ fontSize: 28 }} />
                                     </Box>
                                     
                                     <Box sx={{ flexGrow: 1 }}>
@@ -368,8 +457,10 @@ export default function FeaturesPage() {
                                         variant="h6"
                                         sx={{ 
                                           fontWeight: 600, 
-                                          fontSize: '1.25rem',
-                                          mb: 1
+                                          fontSize: '1.375rem',
+                                          mb: 1,
+                                          lineHeight: 1.3,
+                                          letterSpacing: '-0.01em'
                                         }}
                                       >
                                         {feature.title}
@@ -382,7 +473,9 @@ export default function FeaturesPage() {
                                           textTransform: 'capitalize',
                                           backgroundColor: alpha(categoryColor, 0.1),
                                           color: categoryColor,
-                                          fontWeight: 500
+                                          fontWeight: 600,
+                                          fontSize: '0.75rem',
+                                          height: 24
                                         }}
                                       />
                                     </Box>
@@ -392,7 +485,7 @@ export default function FeaturesPage() {
                                     variant="body2"
                                     sx={{ 
                                       color: 'text.secondary', 
-                                      lineHeight: 1.6,
+                                      lineHeight: 1.65,
                                       fontSize: '1rem'
                                     }}
                                   >
@@ -405,9 +498,12 @@ export default function FeaturesPage() {
                                       variant="caption"
                                       sx={{ 
                                         color: 'text.secondary',
-                                        fontWeight: 500,
-                                        mb: 1,
-                                        display: 'block'
+                                        fontWeight: 600,
+                                        mb: 1.5,
+                                        display: 'block',
+                                        fontSize: '0.8rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.1em'
                                       }}
                                     >
                                       Relevant for:
@@ -421,9 +517,14 @@ export default function FeaturesPage() {
                                           variant="outlined"
                                           sx={{
                                             fontSize: '0.75rem',
-                                            height: 24,
-                                            borderColor: 'grey.300',
-                                            color: 'text.secondary'
+                                            height: 28,
+                                            borderColor: alpha(categoryColor, 0.3),
+                                            color: categoryColor,
+                                            fontWeight: 500,
+                                            '&:hover': {
+                                              backgroundColor: alpha(categoryColor, 0.05),
+                                              borderColor: categoryColor
+                                            }
                                           }}
                                         />
                                       ))}
