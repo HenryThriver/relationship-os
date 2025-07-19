@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed':
         const session = event.data.object as Stripe.Checkout.Session;
         
+        if (!session.metadata?.userId) {
+          console.error('No userId in session metadata');
+          break;
+        }
+        
         // Update user's subscription status
         const { error: updateError } = await supabase
           .from('profiles')
@@ -35,7 +40,7 @@ export async function POST(request: NextRequest) {
             stripe_subscription_id: session.subscription as string,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', session.metadata?.userId);
+          .eq('id', session.metadata.userId);
 
         if (updateError) {
           console.error('Error updating user subscription:', updateError);
@@ -125,6 +130,17 @@ export async function POST(request: NextRequest) {
       case 'invoice.payment_succeeded':
         const invoice = event.data.object as Stripe.Invoice;
         
+        // Invoices have a subscription field that can be a string ID or expanded object
+        const subscriptionId = (invoice as { subscription?: string | { id: string } }).subscription;
+        const finalSubscriptionId = typeof subscriptionId === 'string' 
+          ? subscriptionId 
+          : subscriptionId?.id;
+          
+        if (!finalSubscriptionId) {
+          console.error('No subscription ID in invoice');
+          break;
+        }
+        
         // Update payment status
         const { error: paymentError } = await supabase
           .from('subscriptions')
@@ -132,7 +148,7 @@ export async function POST(request: NextRequest) {
             last_payment_date: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .eq('stripe_subscription_id', invoice.subscription as string);
+          .eq('stripe_subscription_id', finalSubscriptionId);
 
         if (paymentError) {
           console.error('Error updating payment status:', paymentError);
@@ -143,6 +159,16 @@ export async function POST(request: NextRequest) {
       case 'invoice.payment_failed':
         const failedInvoice = event.data.object as Stripe.Invoice;
         
+        const failedSubscriptionId = (failedInvoice as { subscription?: string | { id: string } }).subscription;
+        const finalFailedSubscriptionId = typeof failedSubscriptionId === 'string' 
+          ? failedSubscriptionId 
+          : failedSubscriptionId?.id;
+          
+        if (!finalFailedSubscriptionId) {
+          console.error('No subscription ID in failed invoice');
+          break;
+        }
+        
         // Handle failed payment
         const { error: failedPaymentError } = await supabase
           .from('profiles')
@@ -150,7 +176,7 @@ export async function POST(request: NextRequest) {
             subscription_status: 'past_due',
             updated_at: new Date().toISOString(),
           })
-          .eq('stripe_subscription_id', failedInvoice.subscription as string);
+          .eq('stripe_subscription_id', finalFailedSubscriptionId);
 
         if (failedPaymentError) {
           console.error('Error updating failed payment status:', failedPaymentError);

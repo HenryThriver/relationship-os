@@ -92,7 +92,7 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
   const handleStartSession = async () => {
     if (!selectedGoalId || !actions || actions.length === 0) return;
     
-    const actionsToCreate = actions.map((action: any) => ({
+    const actionsToCreate = (actions as { type: string; goal_id: string; meeting_artifact_id?: string; contact_id: string }[]).map((action: { type: string; goal_id: string; meeting_artifact_id?: string; contact_id: string }) => ({
       type: action.type as 'add_contact' | 'add_meeting_notes',
       goal_id: action.goal_id,
       meeting_artifact_id: action.meeting_artifact_id,
@@ -105,28 +105,29 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
         durationMinutes: getEffectiveDuration(),
         actions: actionsToCreate
       });
-      onSessionCreated((session as any).id || '');
+      onSessionCreated((session as { id: string }).id || '');
       onClose();
     } catch (error) {
       console.error('Failed to create session:', error);
     }
   };
   
-  const renderGoalOption = (goal: any) => {
+  const renderGoalOption = (goal: unknown) => {
+    const typedGoal = goal as { id: string; title: string; description?: string | null };
     return (
       <Card
-        key={goal.id}
-        variant={selectedGoalId === goal.id ? "outlined" : "elevation"}
+        key={typedGoal.id}
+        variant={selectedGoalId === typedGoal.id ? "outlined" : "elevation"}
         sx={{
           cursor: 'pointer',
-          border: selectedGoalId === goal.id ? 2 : 1,
-          borderColor: selectedGoalId === goal.id ? 'primary.main' : 'divider',
-          backgroundColor: selectedGoalId === goal.id ? 'primary.50' : 'background.paper',
+          border: selectedGoalId === typedGoal.id ? 2 : 1,
+          borderColor: selectedGoalId === typedGoal.id ? 'primary.main' : 'divider',
+          backgroundColor: selectedGoalId === typedGoal.id ? 'primary.50' : 'background.paper',
           '&:hover': {
-            backgroundColor: selectedGoalId === goal.id ? 'primary.100' : 'grey.50'
+            backgroundColor: selectedGoalId === typedGoal.id ? 'primary.100' : 'grey.50'
           }
         }}
-        onClick={() => handleGoalChange(goal.id)}
+        onClick={() => handleGoalChange(typedGoal.id)}
       >
         <CardContent sx={{ p: 2 }}>
           <Box display="flex" alignItems="center" gap={2}>
@@ -135,17 +136,17 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
             </Avatar>
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1" gutterBottom>
-                {goal.title}
+                {typedGoal.title}
               </Typography>
               <Box display="flex" alignItems="center" gap={2}>
                 <Chip 
-                  label={`${goal.current_contact_count}/${goal.target_contact_count} contacts`}
+                  label={`${(typedGoal as { current_contact_count?: number }).current_contact_count || 0}/${(typedGoal as { target_contact_count?: number }).target_contact_count || 50} contacts`}
                   size="small"
                   color="primary"
                   variant="outlined"
                 />
                 <Chip 
-                  label={`${goal.total_opportunities} action${goal.total_opportunities > 1 ? 's' : ''}`}
+                  label={`${(typedGoal as { total_opportunities?: number }).total_opportunities || 0} action${((typedGoal as { total_opportunities?: number }).total_opportunities || 0) > 1 ? 's' : ''}`}
                   size="small"
                   color="secondary"
                   variant="outlined"

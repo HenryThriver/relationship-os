@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import { LoopAnalytic, LoopStatusTransition } from '@/types/artifact';
 import { Database } from '@/lib/supabase/types_db';
+import type { Json } from '@/lib/supabase/database.types';
 import { useToast } from '@/lib/contexts/ToastContext';
 
 type LoopAnalyticRow = Database['public']['Tables']['loop_analytics']['Row'];
@@ -161,7 +162,7 @@ export const useLoopAnalytics = (loopArtifactId?: string, contactId?: string) =>
       // 2. Update the record
       const { data, error } = await supabase
         .from('loop_analytics')
-        .update({ status_transitions: updatedTransitions as unknown as Database["public"]["Tables"]["loop_analytics"]["Row"]["status_transitions"] })
+        .update({ status_transitions: updatedTransitions as unknown as Json })
         .eq('id', analyticId)
         .select()
         .single();

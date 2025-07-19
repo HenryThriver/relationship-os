@@ -55,7 +55,7 @@ export const processLinkedInProfile = (apiResponse: Record<string, unknown>, con
     const profilePictures = obj.profilePictures;
     if (Array.isArray(profilePictures) && profilePictures.length > 0) {
       // Prefer 200x200 size, fall back to first available
-      const preferred = profilePictures.find((pic: any) => pic.width === 200 && pic.height === 200);
+      const preferred = profilePictures.find((pic: { width: number; height: number }) => pic.width === 200 && pic.height === 200);
       const selected = preferred || profilePictures[0];
       return typeof selected?.url === 'string' ? selected.url : undefined;
     }

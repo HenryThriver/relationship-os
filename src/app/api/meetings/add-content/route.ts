@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Parse existing content
-    let meetingContent: any = {};
+    let meetingContent: Record<string, unknown> = {};
     try {
       meetingContent = typeof artifact.content === 'string' 
         ? JSON.parse(artifact.content) 

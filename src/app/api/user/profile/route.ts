@@ -191,7 +191,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       }
 
       // Associate imported contacts with the goal
-      const goalContactInserts = imported_contacts.map((contact: any) => ({
+      const goalContactInserts = imported_contacts.map((contact: { id: string }) => ({
         user_id: user.id,
         goal_id: goal_id,
         contact_id: contact.id,
@@ -248,7 +248,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
       // Associate imported contacts with the goal
       if (imported_contacts && imported_contacts.length > 0) {
-        const goalContactInserts = imported_contacts.map((contact: any) => ({
+        const goalContactInserts = imported_contacts.map((contact: { id: string }) => ({
           user_id: user.id,
           goal_id: newGoal.id,
           contact_id: contact.id,
@@ -274,7 +274,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     }
 
     // Existing profile update logic
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
 
     // Handle profile updates
     if (body.primary_goal !== undefined) {

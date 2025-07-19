@@ -77,7 +77,7 @@ export const useArtifactModalData = (): UseArtifactModalDataReturn => {
       if (error) throw error;
       return (data || []).map((suggestion: Record<string, unknown>) => ({
         ...suggestion,
-        suggested_updates: suggestion.suggested_updates as unknown as { suggestions: ContactUpdateSuggestion[] },
+        suggested_updates: suggestion.suggested_updates as { suggestions: ContactUpdateSuggestion[] },
       })) as UpdateSuggestionRecord[];
     },
     enabled: !!artifactId,

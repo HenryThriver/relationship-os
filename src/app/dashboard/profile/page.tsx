@@ -199,7 +199,7 @@ export default function UserProfilePage() {
   const personalContext = (profile?.personal_context as PersonalContextData) || {};
 
   // Extract LinkedIn data for profile image
-  const linkedInData = profile?.linkedin_data as unknown as { profilePicture?: string; profile_picture?: string };
+  const linkedInData = profile?.linkedin_data as { profilePicture?: string; profile_picture?: string };
   const profileImage = linkedInData?.profilePicture || linkedInData?.profile_picture;
 
   const handleRestartOnboarding = async () => {

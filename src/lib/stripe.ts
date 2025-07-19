@@ -11,10 +11,40 @@ export const getStripe = () => {
   return stripePromise;
 };
 
-// Initialize Stripe server-side
-export const stripe = new StripeServer(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20.acacia',
-});
+// Initialize Stripe server-side lazily
+let _stripe: StripeServer | null = null;
+
+export const getStripeServer = () => {
+  if (!_stripe) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+    }
+    _stripe = new StripeServer(secretKey, {
+      apiVersion: '2025-06-30.basil',
+    });
+  }
+  return _stripe;
+};
+
+// Legacy export for backward compatibility
+export const stripe = {
+  get webhooks() {
+    return getStripeServer().webhooks;
+  },
+  get customers() {
+    return getStripeServer().customers;
+  },
+  get subscriptions() {
+    return getStripeServer().subscriptions;
+  },
+  get checkout() {
+    return getStripeServer().checkout;
+  },
+  get invoices() {
+    return getStripeServer().invoices;
+  }
+};
 
 // Price configurations
 export const PRICE_CONFIG = {

@@ -53,9 +53,9 @@ const ARTIFACT_CONFIG: Record<ArtifactType | 'default', ArtifactTimelineConfig> 
       // For new format, metadata should be accessible through content
       if (isObjectContent(content)) {
         const title = (content.title as string) || (content.summary as string) || 'Meeting';
-        const attendees = content.attendees as unknown[];
-        const attendeeEmails = content.attendee_emails as unknown[];
-        const attendeeCount = (attendees?.length || attendeeEmails?.length || 0) as number;
+        const attendees = Array.isArray(content.attendees) ? content.attendees : [];
+        const attendeeEmails = Array.isArray(content.attendee_emails) ? content.attendee_emails : [];
+        const attendeeCount = attendees.length || attendeeEmails.length || 0;
         const duration = content.duration_minutes ? ` • ${content.duration_minutes}m` : '';
         const source = content.calendar_source === 'google' ? ' 📅' : '';
         

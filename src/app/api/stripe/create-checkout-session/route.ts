@@ -22,16 +22,32 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
     
-    // Get user data
-    const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('email, full_name')
-      .eq('id', userId)
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    // Get user contact data
+    const { data: contactData } = await supabase
+      .from('contacts')
+      .select('email, name')
+      .eq('user_id', user.id)
+      .eq('is_self', true)
       .single();
 
-    if (userError || !userData) {
+    // Use contact data if available, otherwise fallback to auth user data
+    const userData = contactData || {
+      email: user.email || '',
+      name: user.user_metadata?.full_name || 'User'
+    };
+
+    if (!userData.email) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User email not found' },
         { status: 404 }
       );
     }
@@ -65,13 +81,13 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing`,
       customer_email: userData.email,
       metadata: {
-        userId: userId,
+        userId: user.id,
         priceType: priceType,
         planName: `${PRODUCT_CONFIG.name} - ${priceType}`,
       },
       subscription_data: {
         metadata: {
-          userId: userId,
+          userId: user.id,
           priceType: priceType,
         },
       },

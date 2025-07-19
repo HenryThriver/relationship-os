@@ -42,7 +42,7 @@ export const useUpdateSuggestions = ({ contactId }: UseUpdateSuggestionsProps) =
       // Also, ensure nested JSON fields are correctly typed.
       return data ? data.map((s: Record<string, unknown>) => ({
         ...s,
-        suggested_updates: s.suggested_updates as unknown as { suggestions: ContactUpdateSuggestion[] },
+        suggested_updates: s.suggested_updates as { suggestions: ContactUpdateSuggestion[] },
         // Ensure artifacts is handled, it can be null from the query
         artifacts: s.artifacts ? { 
             transcription: (s.artifacts as Record<string, unknown>).transcription, 

@@ -14,7 +14,12 @@ vi.mock('@/lib/hooks/useUserProfile', () => ({
 }));
 
 vi.mock('../OnboardingVoiceRecorder', () => ({
-  default: ({ onRecordingComplete, disabled, title, description }: any) => (
+  default: ({ onRecordingComplete, disabled, title, description }: { 
+    onRecordingComplete: (blob: Blob) => void; 
+    disabled: boolean; 
+    title: string; 
+    description: string; 
+  }) => (
     <div data-testid="voice-recorder">
       <h3>{title}</h3>
       <p>{description}</p>

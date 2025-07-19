@@ -211,7 +211,7 @@ export default function ContactTimelinePage() {
         connectCadence={connectCadenceText}
         connectDate={contact.last_interaction_date ? new Date(contact.last_interaction_date) : undefined}
         personalContext={personalContextForHeader}
-        profilePhotoUrl={(contact.linkedin_data as unknown as LinkedInArtifactContent)?.profilePicture || undefined}
+        profilePhotoUrl={(contact.linkedin_data as LinkedInArtifactContent)?.profilePicture || undefined}
         location={contact.location}
         relationshipScore={contact.relationship_score}
       />

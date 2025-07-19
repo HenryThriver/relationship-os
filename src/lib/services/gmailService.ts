@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { decodeBase64ToUtf8, cleanEmailText } from '@/lib/utils/textDecoding';
 import type { 
   GmailMessage, 
+  GmailMessagePayload,
   GmailThread, 
   GmailLabel,
   GmailProfile,
@@ -454,7 +455,7 @@ export class GmailService {
           html += cleanEmailText(decodedHtml);
         }
       } else if (part && typeof part === 'object' && 'parts' in part && Array.isArray((part as Record<string, unknown>).parts)) {
-        (part as { parts: unknown[] }).parts.forEach(extractFromPart);
+        (part as { parts: GmailMessagePayload[] }).parts.forEach(extractFromPart);
       }
     };
 
@@ -492,7 +493,7 @@ export class GmailService {
         });
       }
       if (part && typeof part === 'object' && 'parts' in part && Array.isArray((part as Record<string, unknown>).parts)) {
-        (part as { parts: unknown[] }).parts.forEach(extractFromPart);
+        (part as { parts: GmailMessagePayload[] }).parts.forEach(extractFromPart);
       }
     };
 
