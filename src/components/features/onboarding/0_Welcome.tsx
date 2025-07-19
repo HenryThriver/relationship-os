@@ -293,11 +293,11 @@ export const EnhancedWelcomeScreen: React.FC = () => {
               boxShadow: '0 8px 32px rgba(33, 150, 243, 0.3)',
               textTransform: 'none',
               letterSpacing: '0.5px',
-              transition: 'all 0.3s ease',
+              transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
                 background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 50%, #21CBF3 100%)',
                 boxShadow: '0 12px 40px rgba(33, 150, 243, 0.4)',
-                transform: 'translateY(-2px)',
+                transform: 'scale(1.02)', // Confident, not eager
               }
             }}
           >

@@ -80,7 +80,7 @@ export default function CompleteScreen() {
             <Celebration 
               sx={{ 
                 fontSize: 80, 
-                color: 'primary.main',
+                color: '#F59E0B', // Warm amber for genuine celebration
                 mb: 3,
                 animation: 'bounce 2s ease-in-out infinite',
                 '@keyframes bounce': {
@@ -102,7 +102,7 @@ export default function CompleteScreen() {
                 mb: 2
               }}
             >
-              Welcome to Connection OS!
+              Welcome to Cultivate HQ!
             </Typography>
             
             <Typography 
@@ -113,7 +113,7 @@ export default function CompleteScreen() {
                 lineHeight: 1.4
               }}
             >
-              Get ready to see your relationship intelligence in action
+              Your relationship intelligence advantage begins now
             </Typography>
           </Box>
 
@@ -162,7 +162,7 @@ export default function CompleteScreen() {
           </Card>
 
           <Typography variant="body2" color="text.secondary">
-            You&apos;re about to see how Connection OS transforms your networking approach
+            Time to see how strategic relationship cultivation accelerates everything that matters
           </Typography>
         </Box>
       </Fade>

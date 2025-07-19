@@ -340,7 +340,7 @@ export default function ChallengesScreen() {
                   color: 'text.secondary'
                 }}
               >
-                What strategic challenges create friction in your relationship building?
+                What creates friction in your relationship building? (Be specific—vague challenges get vague solutions.)
               </Typography>
             </Box>
           )}
@@ -369,11 +369,11 @@ export default function ChallengesScreen() {
               <PremiumCard accent="sage">
                 <Box sx={{ textAlign: 'center', mb: 3 }}>
                   <Typography variant="h5" sx={{ fontWeight: 500, color: '#1a1a1a', mb: 2 }}>
-                    Share your strategic challenges
+                    Share your relationship friction points
                   </Typography>
                   <Typography variant="body1" sx={{ color: '#666', lineHeight: 1.6 }}>
-                    Tell us where relationship building creates friction in your professional trajectory. 
-                    The more specific, the more value we can deliver.
+                    Where does relationship building create friction in your success trajectory? 
+                    Specificity unlocks strategic value.
                   </Typography>
                 </Box>
 
