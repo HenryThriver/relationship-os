@@ -5,6 +5,36 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-07-19
+
+### Added
+- **Production Deployment Infrastructure**: Complete Vercel deployment setup
+  - **Environment Variables Documentation**: Comprehensive guide for production configuration (`ENV_VARIABLES.md`)
+  - **Vercel Configuration**: Optimized build settings and deployment configuration (`vercel.json`)
+  - **Automated Environment Setup**: Vercel CLI script for streamlined variable configuration
+
+### Fixed
+- **Critical Module Resolution Issues**: Resolved Vercel build failures
+  - **Webpack Alias Configuration**: Added explicit `@/*` path mapping for production builds
+  - **TypeScript Build Dependencies**: Moved TypeScript and ESLint to production dependencies
+  - **Build Configuration Cleanup**: Excluded test configs from production compilation
+  - **TailwindCSS Production Support**: Moved PostCSS dependencies to production scope
+
+- **TypeScript Type System Overhaul**: Comprehensive type safety improvements
+  - **Type Assertion Fixes**: Resolved all `any` to `unknown` conversion issues across codebase
+  - **Database Type Compatibility**: Fixed JSON type conversions for Supabase integration
+  - **Build Error Resolution**: Eliminated all TypeScript compilation errors
+
+- **Stripe Integration Stability**: Production-ready payment processing
+  - **Lazy Initialization**: Fixed Stripe client initialization for build environments
+  - **Environment Safety**: Prevented build-time API key requirements
+
+### Changed
+- **Build Process Optimization**: Enhanced development and production workflows
+  - **Dependency Management**: Restructured dev vs production dependencies
+  - **Build Performance**: Improved compilation times and reliability
+  - **Error Handling**: Better build error reporting and resolution
+
 ## [0.14.0] - 2025-07-18
 
 ### Added
