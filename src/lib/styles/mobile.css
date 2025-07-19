@@ -1,0 +1,107 @@
+/* Mobile-first responsive styles */
+
+/* Remove hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .MuiButton-root:hover {
+    background-color: inherit !important;
+    box-shadow: inherit !important;
+    transform: none !important;
+  }
+  
+  .MuiListItemButton-root:hover {
+    background-color: inherit !important;
+  }
+  
+  .MuiIconButton-root:hover {
+    background-color: inherit !important;
+  }
+}
+
+/* Enhanced touch targets for mobile */
+@media (max-width: 899px) {
+  .MuiButton-root {
+    min-height: 44px !important;
+  }
+  
+  .MuiIconButton-root {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .MuiListItemButton-root {
+    min-height: 44px !important;
+  }
+  
+  /* Improve text readability on mobile */
+  .MuiTypography-body2 {
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+  }
+  
+  .MuiTypography-body1 {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+  }
+  
+  /* Mobile-optimized form fields */
+  .MuiTextField-root {
+    margin-bottom: 16px !important;
+  }
+  
+  .MuiTextField-root .MuiInputBase-root {
+    min-height: 44px !important;
+  }
+  
+  /* Improved modal spacing on mobile */
+  .MuiDialog-paper {
+    margin: 8px !important;
+  }
+  
+  /* Better card spacing on mobile */
+  .MuiCard-root {
+    margin-bottom: 16px !important;
+  }
+}
+
+/* Prevent text selection on interactive elements */
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiListItemButton-root {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling for better mobile experience */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove focus outline for touch interactions, keep for keyboard */
+.MuiButton-root:focus-visible,
+.MuiIconButton-root:focus-visible,
+.MuiListItemButton-root:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Improve tap highlighting */
+* {
+  -webkit-tap-highlight-color: rgba(25, 118, 210, 0.1);
+}
+
+/* Better horizontal scrolling on mobile */
+@media (max-width: 899px) {
+  .horizontal-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  .horizontal-scroll::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}

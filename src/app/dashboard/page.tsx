@@ -21,12 +21,16 @@ import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { useGoalsForRelationshipBuilding } from '@/lib/hooks/useRelationshipSessions';
 import { SessionStartModal } from '@/components/features/relationship-sessions';
 import { useRouter } from 'next/navigation';
+import { useTouchFriendlySize, useResponsivePadding } from '@/lib/hooks/useMobile';
+import { responsive } from '@/lib/utils/mobileDesign';
 
 export default function DashboardPage(): React.JSX.Element {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const [showStartModal, setShowStartModal] = useState(false);
   const router = useRouter();
+  const touchFriendly = useTouchFriendlySize();
+  const padding = useResponsivePadding();
   
   const { data: goals, isLoading: loadingGoals } = useGoalsForRelationshipBuilding();
 
@@ -74,18 +78,23 @@ export default function DashboardPage(): React.JSX.Element {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: padding.page }}>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{mb: 4}} gutterBottom>
+        <Typography 
+          variant={touchFriendly.headerVariant as 'h4' | 'h5'} 
+          component="h1" 
+          sx={{ mb: responsive(2, 4) }} 
+          gutterBottom
+        >
           Welcome back{firstName ? `, ${firstName}` : ''}!
         </Typography>
         
         {/* Enhanced Relationship Sessions Box */}
         <Paper sx={{ 
-          p: 4, 
+          p: responsive(3, 4), 
           flex: '1 1 300px', 
-          minWidth: 250,
-          borderRadius: 3,
+          minWidth: responsive(280, 250),
+          borderRadius: responsive(2, 3),
           boxShadow: '0 8px 32px rgba(33, 150, 243, 0.15)',
           border: '1px solid rgba(33, 150, 243, 0.08)',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8fffe 100%)',
@@ -101,20 +110,28 @@ export default function DashboardPage(): React.JSX.Element {
             background: 'linear-gradient(90deg, #2196F3 0%, #21CBF3 100%)',
           }
         }}>
-          <Typography variant="h5" gutterBottom sx={{ 
-            fontWeight: 600,
-            color: 'primary.main',
-            mb: 1
-          }}>
+          <Typography 
+            variant={touchFriendly.subheaderVariant as 'h5' | 'h6'} 
+            gutterBottom 
+            sx={{ 
+              fontWeight: 600,
+              color: 'primary.main',
+              mb: 1
+            }}
+          >
             Start Connection Session
           </Typography>
           
           <Box sx={{ mb: 4 }}>
-            <Typography variant="body1" color="text.secondary" sx={{ 
-              mb: 3,
-              lineHeight: 1.6,
-              fontSize: '1rem'
-            }}>
+            <Typography 
+              variant="body1"
+              color="text.secondary" 
+              sx={{ 
+                mb: responsive(2, 3),
+                lineHeight: 1.6,
+                fontSize: responsive('0.875rem', '1rem')
+              }}
+            >
               Time-box sessions to make progress on your relationship building
             </Typography>
             
@@ -125,17 +142,19 @@ export default function DashboardPage(): React.JSX.Element {
               onClick={handleStartSession}
               disabled={loadingGoals}
               fullWidth
+              size={touchFriendly.buttonSize as 'medium' | 'large'}
               sx={{ 
-                px: { xs: 4, md: 6 }, 
-                py: 2.5,
-                fontSize: '1.2rem',
+                px: responsive(3, 6), 
+                py: responsive(1.5, 2.5),
+                fontSize: responsive('1rem', '1.2rem'),
                 fontWeight: 600,
-                borderRadius: '50px',
+                borderRadius: responsive('25px', '50px'),
                 background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 50%, #1976D2 100%)',
                 boxShadow: '0 8px 32px rgba(33, 150, 243, 0.3)',
                 textTransform: 'none',
                 letterSpacing: '0.5px',
                 transition: 'all 0.3s ease',
+                minHeight: touchFriendly.minTouchTarget,
                 '&:hover': {
                   background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 50%, #21CBF3 100%)',
                   boxShadow: '0 12px 40px rgba(33, 150, 243, 0.4)',
@@ -175,18 +194,23 @@ export default function DashboardPage(): React.JSX.Element {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 3,
-          mb: 4,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${touchFriendly.gridMinWidth}, 1fr))`,
+          gap: responsive(2, 3),
+          mb: responsive(3, 4),
         }}
       >
         {stats.map((stat) => (
           <Card key={stat.title}>
-            <CardContent sx={{ textAlign: 'center' }}>
+            <CardContent sx={{ textAlign: 'center', p: responsive(2, 3) }}>
               <Box sx={{ color: stat.color, mb: 2 }}>
                 {stat.icon}
               </Box>
-              <Typography variant="h4" component="div" gutterBottom>
+              <Typography 
+                variant="h4"
+                component="div" 
+                sx={{ fontSize: responsive('1.5rem', '2.125rem') }}
+                gutterBottom
+              >
                 {stat.value}
               </Typography>
               <Typography color="text.secondary" variant="body2">
@@ -200,11 +224,11 @@ export default function DashboardPage(): React.JSX.Element {
       <Box
         sx={{
           display: 'flex',
-          gap: 3,
+          gap: responsive(2, 3),
           flexWrap: 'wrap',
         }}
       >
-        <Paper sx={{ p: 3, flex: '2 1 400px', minWidth: 300 }}>
+        <Paper sx={{ p: responsive(2, 3), flex: '2 1 400px', minWidth: responsive(280, 300) }}>
           <Typography variant="h6" gutterBottom>
             Recent Activity
           </Typography>

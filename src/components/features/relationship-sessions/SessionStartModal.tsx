@@ -18,6 +18,7 @@ import {
   Avatar,
   TextField,
   InputAdornment,
+  Stack,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -27,6 +28,8 @@ import {
   Timer as TimerIcon,
 } from '@mui/icons-material';
 import { useGoalsForRelationshipBuilding, useGoalSessionActions, useCreateSession } from '@/lib/hooks/useRelationshipSessions';
+import { useTouchFriendlySize, useIsMobile } from '@/lib/hooks/useMobile';
+import { responsive } from '@/lib/utils/mobileDesign';
 
 interface SessionStartModalProps {
   open: boolean;
@@ -47,6 +50,8 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
   const { data: goals, isLoading: loadingGoals, error: goalsError } = useGoalsForRelationshipBuilding();
   const { data: actions, isLoading: loadingActions } = useGoalSessionActions(selectedGoalId);
   const createSession = useCreateSession();
+  const touchFriendly = useTouchFriendlySize();
+  const isMobile = useIsMobile();
   
   const durationOptions = [
     { value: 5, label: '5 minutes' },
@@ -129,8 +134,8 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
         }}
         onClick={() => handleGoalChange(typedGoal.id)}
       >
-        <CardContent sx={{ p: 2 }}>
-          <Box display="flex" alignItems="center" gap={2}>
+        <CardContent sx={{ p: responsive(1.5, 2) }}>
+          <Box display="flex" alignItems="center" gap={responsive(1, 2)}>
             <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
               <GoalIcon />
             </Avatar>
@@ -138,7 +143,11 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
               <Typography variant="subtitle1" gutterBottom>
                 {typedGoal.title}
               </Typography>
-              <Box display="flex" alignItems="center" gap={2}>
+              <Stack 
+                direction={isMobile ? 'column' : 'row'} 
+                spacing={1} 
+                alignItems={isMobile ? 'flex-start' : 'center'}
+              >
                 <Chip 
                   label={`${(typedGoal as { current_contact_count?: number }).current_contact_count || 0}/${(typedGoal as { target_contact_count?: number }).target_contact_count || 50} contacts`}
                   size="small"
@@ -151,7 +160,7 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
                   color="secondary"
                   variant="outlined"
                 />
-              </Box>
+              </Stack>
             </Box>
           </Box>
         </CardContent>
@@ -166,24 +175,37 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
     <Dialog 
       open={open} 
       onClose={onClose} 
-      maxWidth="sm" 
+      maxWidth={isMobile ? false : 'sm'}
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
-        sx: { borderRadius: 2 }
+        sx: { 
+          borderRadius: isMobile ? 0 : 2,
+          maxWidth: isMobile ? '100vw' : undefined,
+          maxHeight: isMobile ? '100vh' : undefined,
+          margin: isMobile ? 0 : undefined
+        }
       }}
     >
-      <DialogTitle>
+      <DialogTitle sx={{ p: responsive(2, 3) }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">
+          <Typography 
+            variant="h6"
+            sx={{ fontSize: responsive('1.125rem', '1.25rem') }}
+          >
             Start Relationship Building Session
           </Typography>
-          <IconButton onClick={onClose} size="small">
+          <IconButton 
+            onClick={onClose} 
+            size={isMobile ? 'medium' : 'small'}
+            sx={{ minHeight: touchFriendly.minTouchTarget }}
+          >
             <CloseIcon />
           </IconButton>
         </Box>
       </DialogTitle>
       
-      <DialogContent>
+      <DialogContent sx={{ p: responsive(2, 3) }}>
         {loadingGoals && (
           <Box sx={{ py: 4 }}>
             <LinearProgress />
@@ -202,11 +224,15 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
         {hasGoals && (
           <>
             {/* Duration Selection */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: responsive(2, 3) }}>
               <Typography variant="subtitle1" gutterBottom>
                 Session Duration
               </Typography>
-              <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
+              <Box 
+                display="grid" 
+                gridTemplateColumns={isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(120px, 1fr))'}
+                gap={1}
+              >
                 {durationOptions.map(option => (
                   <Button
                     key={option.value}
@@ -216,9 +242,10 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
                         ? "contained" 
                         : "outlined"
                     }
-                    size="small"
+                    size={touchFriendly.buttonSize as 'small' | 'medium'}
                     onClick={() => handleDurationChange(option.value)}
                     startIcon={option.value === 'custom' ? <TimerIcon /> : undefined}
+                    sx={{ minHeight: touchFriendly.minTouchTarget }}
                   >
                     {option.label}
                   </Button>
@@ -233,7 +260,8 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
                     value={customDuration}
                     onChange={handleCustomDurationChange}
                     type="number"
-                    size="small"
+                    size={isMobile ? 'medium' : 'small'}
+                    fullWidth={isMobile}
                     InputProps={{
                       endAdornment: <InputAdornment position="end">minutes</InputAdornment>,
                     }}
@@ -243,20 +271,23 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
                     }}
                     helperText="How long would you like?"
                     error={customDuration !== '' && (isNaN(parseInt(customDuration, 10)) || parseInt(customDuration, 10) <= 0)}
-                    sx={{ width: 200 }}
+                    sx={{ 
+                      width: isMobile ? '100%' : 200,
+                      maxWidth: isMobile ? undefined : 200
+                    }}
                   />
                 </Box>
               )}
             </Box>
             
             {/* Goal Selection */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: responsive(2, 3) }}>
               <Typography variant="subtitle1" gutterBottom>
                 Choose Goal ({goals?.length || 0} available)
               </Typography>
-              <Box display="flex" flexDirection="column" gap={2}>
+              <Stack spacing={responsive(1, 2)}>
                 {goals?.map(renderGoalOption)}
-              </Box>
+              </Stack>
             </Box>
             
             {loadingActions && selectedGoalId && (
@@ -292,8 +323,21 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
         )}
       </DialogContent>
       
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onClose} variant="outlined">
+      <DialogActions sx={{ 
+        p: responsive(2, 3),
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 1 : 0
+      }}>
+        <Button 
+          onClick={onClose} 
+          variant="outlined"
+          size={touchFriendly.buttonSize as 'medium' | 'large'}
+          fullWidth={isMobile}
+          sx={{ 
+            minHeight: touchFriendly.minTouchTarget,
+            order: isMobile ? 2 : 1
+          }}
+        >
           Cancel
         </Button>
         <Button
@@ -301,6 +345,12 @@ export const SessionStartModal: React.FC<SessionStartModalProps> = ({
           variant="contained"
           disabled={!canStartSession}
           startIcon={<PlayArrowIcon />}
+          size={touchFriendly.buttonSize as 'medium' | 'large'}
+          fullWidth={isMobile}
+          sx={{ 
+            minHeight: touchFriendly.minTouchTarget,
+            order: isMobile ? 1 : 2
+          }}
         >
           Start {getEffectiveDuration()}min Session
         </Button>

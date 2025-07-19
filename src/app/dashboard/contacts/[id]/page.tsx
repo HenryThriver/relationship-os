@@ -4,6 +4,8 @@ export const dynamic = 'force-dynamic'; // Ensures the page is always dynamicall
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Container, Box, Typography, CircularProgress, Alert, Button, Card, Stack } from '@mui/material';
+import { useIsMobile, useTouchFriendlySize, useResponsivePadding } from '@/lib/hooks/useMobile';
+import { responsive } from '@/lib/utils/mobileDesign';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { Dashboard } from '@mui/icons-material';
 import { supabase } from '@/lib/supabase/client';
@@ -112,6 +114,9 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isMobile = useIsMobile();
+  const touchFriendly = useTouchFriendlySize();
+  const padding = useResponsivePadding();
 
   const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
@@ -525,7 +530,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
       
       // Use demo contact for walkthrough
       return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Container maxWidth="lg" sx={{ mt: responsive(2, 4), mb: responsive(2, 4), px: padding.page }}>
           <Box>
             <ContactHeader 
               name={demoContact.name}
@@ -543,13 +548,13 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             />
 
             {/* Demo content for walkthrough */}
-            <Stack spacing={3} sx={{ mt: 3, mb: 3 }}>
+            <Stack spacing={responsive(2, 3)} sx={{ mt: responsive(2, 3), mb: responsive(2, 3) }}>
               {/* Professional Context Section */}
               <Box id="professional-context">
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
                   Professional Context
                 </Typography>
-                <Card sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+                <Card sx={{ p: responsive(2, 3), backgroundColor: '#f8f9fa' }}>
                   <Typography variant="body1">
                     Senior Product Manager at TechCorp with 8 years of experience in B2B SaaS platforms. 
                     Expertise in product strategy, user research, and cross-functional team leadership.
@@ -562,7 +567,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
                   Communication History
                 </Typography>
-                <Card sx={{ p: 3 }}>
+                <Card sx={{ p: responsive(2, 3) }}>
                   <Typography variant="body1" gutterBottom>
                     📧 Last email: 3 weeks ago about Q4 product roadmap
                   </Typography>
@@ -578,7 +583,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                   Suggested Generosity
                 </Typography>
                 <Stack spacing={2}>
-                  <Card sx={{ p: 3, border: '1px solid', borderColor: 'success.light' }}>
+                  <Card sx={{ p: responsive(2, 3), border: '1px solid', borderColor: 'success.light' }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                       🎯 Share your Product-Market Fit framework
                     </Typography>
@@ -594,7 +599,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
                   Goal Alignment
                 </Typography>
-                <Card sx={{ p: 3, backgroundColor: '#e8f5e8' }}>
+                <Card sx={{ p: responsive(2, 3), backgroundColor: '#e8f5e8' }}>
                   <Typography variant="body1">
                     🎯 <strong>Matches your goal:</strong> &quot;Find a senior product role at a growth-stage startup&quot;
                   </Typography>
@@ -609,7 +614,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
                   Timing Intelligence
                 </Typography>
-                <Card sx={{ p: 3, border: '2px solid', borderColor: 'warning.main', backgroundColor: 'warning.50' }}>
+                <Card sx={{ p: responsive(2, 3), border: '2px solid', borderColor: 'warning.main', backgroundColor: 'warning.50' }}>
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
                     ⏰ <strong>Perfect timing to reach out NOW</strong>
                   </Typography>
@@ -634,7 +639,7 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: responsive(2, 4), mb: responsive(2, 4), px: padding.page }}>
       {/* Walkthrough completion banner */}
       {!showWalkthrough && searchParams.get('walkthrough') === 'true' && (
         <Alert 
@@ -643,7 +648,11 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             <Button 
               onClick={() => router.push('/dashboard')}
               startIcon={<Dashboard />}
-              sx={{ textTransform: 'none' }}
+              size={touchFriendly.buttonSize as 'medium' | 'large'}
+              sx={{ 
+                textTransform: 'none',
+                minHeight: touchFriendly.minTouchTarget
+              }}
             >
               Go to Dashboard
             </Button>
@@ -755,8 +764,20 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
           contactName={contact.name || undefined} 
         />
 
-        <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ 
+          mt: responsive(2, 3), 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: responsive(1, 2), 
+          alignItems: 'flex-start' 
+        }}>
+          <Box sx={{ 
+            flexGrow: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: responsive(1, 2),
+            minWidth: 0 // Prevent flex item overflow
+          }}>
             <NextConnection 
               contactId={contactId} 
             />
@@ -823,9 +844,20 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
             />
           </Box>
           
-          <Box sx={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: '70px' }}>
+          <Box sx={{ 
+            width: isMobile ? '100%' : '300px', 
+            flexShrink: 0, 
+            display: 'flex', 
+            flexDirection: isMobile ? 'row' : 'column',
+            gap: responsive(1, 2), 
+            position: isMobile ? 'static' : 'sticky', 
+            top: isMobile ? 'auto' : '70px',
+            order: isMobile ? -1 : 0,
+            overflowX: isMobile ? 'auto' : 'visible',
+            pb: isMobile ? 2 : 0
+          }}>
             {isClient && <VoiceRecorder 
-              contactId={contactId} 
+              contactId={contactId}
             />}
             <QuickAdd 
               onAddNote={handleQuickAddNote}
@@ -844,7 +876,13 @@ const ContactProfilePage: React.FC<ContactProfilePageProps> = () => {
 
 
 
-      <Box sx={{ textAlign: 'center', py: 3, mt: 4, borderTop: 1, borderColor: 'divider'}}>
+      <Box sx={{ 
+        textAlign: 'center', 
+        py: responsive(2, 3), 
+        mt: responsive(3, 4), 
+        borderTop: 1, 
+        borderColor: 'divider'
+      }}>
         <Typography variant="caption" color="text.secondary">
           Data for {contact.name || 'this contact'}. Last updated: {contact.updated_at ? new Date(contact.updated_at).toLocaleDateString() : 'N/A'}
         </Typography>

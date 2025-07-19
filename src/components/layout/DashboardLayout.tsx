@@ -28,6 +28,8 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useTouchFriendlySize, useIsMobile } from '@/lib/hooks/useMobile';
+import { responsive } from '@/lib/utils/mobileDesign';
 
 const DRAWER_WIDTH = 240;
 
@@ -40,6 +42,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const touchFriendly = useTouchFriendlySize();
+  const isMobile = useIsMobile();
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen);
@@ -100,8 +104,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <ListItemButton
               onClick={() => router.push(item.path)}
               sx={{
-                minHeight: 48,
-                px: 2.5,
+                minHeight: touchFriendly.minTouchTarget,
+                px: responsive(2, 2.5),
               }}
             >
               <ListItemIcon
@@ -136,7 +140,12 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ 
+              mr: 2, 
+              display: { md: 'none' },
+              minHeight: touchFriendly.minTouchTarget,
+              minWidth: touchFriendly.minTouchTarget
+            }}
           >
             <MenuIcon />
           </IconButton>
@@ -150,12 +159,16 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               {user?.user_metadata?.full_name || user?.email}
             </Typography>
             <IconButton
-              size="large"
+              size={isMobile ? 'medium' : 'large'}
               aria-label="account of current user"
               aria-controls="profile-menu"
               aria-haspopup="true"
               onClick={handleProfileMenuOpen}
               color="inherit"
+              sx={{
+                minHeight: touchFriendly.minTouchTarget,
+                minWidth: touchFriendly.minTouchTarget
+              }}
             >
               <Avatar
                 src={user?.user_metadata?.avatar_url}
@@ -248,7 +261,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: responsive(2, 3),
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
         }}
       >
