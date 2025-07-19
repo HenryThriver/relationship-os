@@ -5,6 +5,124 @@ All notable changes to Relationship OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-07-18
+
+### Added
+- **Comprehensive E2E Testing Framework**: Production-ready testing infrastructure
+  - **Playwright Setup**: Multi-browser testing with 100+ test cases covering user journeys, pricing, and accessibility
+  - **Authentication Testing**: Complete login flow, OAuth, and protected route validation
+  - **Performance & Accessibility**: Responsive design and accessibility compliance testing
+  - **Test Organization**: Professional test utilities and comprehensive documentation
+
+- **Legal & Compliance Pages**: Essential business documentation
+  - Terms of Service page with comprehensive legal framework
+  - Privacy Policy page with data protection guidelines
+  - Professional legal compliance for production deployment
+
+### Changed
+- **Brand Voice Alignment**: Final onboarding experience refinements
+  - Enhanced challenges screen with pattern-breaking strategic language
+  - Improved goals screen with executive-appropriate messaging
+  - Standardized typography scale across all onboarding screens
+  - Implemented confident interaction patterns over eager behaviors
+
+### Fixed
+- **Critical Login System**: Resolved production-blocking authentication issues
+  - Fixed 500 Internal Server Error on /login route
+  - Created proper /login page with redirect to /auth/login
+  - Query parameter preservation for authentication flow
+  - Enhanced branding consistency from "Connection OS" to "Cultivate HQ"
+
+- **Code Quality**: Comprehensive codebase cleanup for production readiness
+  - Resolved majority of global lint errors across entire application
+  - Fixed Terms and Privacy Policy page lint issues
+  - Enhanced error handling patterns and type safety
+  - Improved test configuration for custom theme colors
+
+### Technical Implementation
+- **Testing Infrastructure**: Professional-grade quality assurance
+  - 125+ test files covering authentication, homepage, pricing, and user journeys
+  - MSW API mocking for reliable test environments
+  - Comprehensive test utilities and helper functions
+  - Multi-environment testing configuration
+
+- **Branch Management**: Clean feature integration
+  - Merged feature/marketing-homepage branch
+  - Consolidated marketing and testing improvements
+  - Enhanced CI/CD pipeline integration
+
+## [0.13.0] - 2025-07-17
+
+### Added
+- **Complete Marketing Platform**: Executive-positioned product showcase
+  - **Stripe Subscription System**: Full payment processing with pricing tiers and checkout flow
+  - **Features Showcase**: 601-line comprehensive capability demonstration page
+  - **Executive Design**: Sophisticated homepage transformation with strategic positioning
+  - **Relationship Sessions**: Advanced session lifecycle management hooks
+
+- **Professional Documentation**: Development team standardization
+  - **BrandVoice.md**: 269-line sophisticated brand personality guidelines
+  - **CLAUDE.md**: 170-line architecture patterns and development conventions
+  - **DesignSystem.md**: 387-line typography, color system, and component standards
+  - **commit.md**: 164-line conventional commit workflow documentation
+
+- **Testing Foundation**: Quality assurance infrastructure
+  - **Vitest Setup**: React testing environment with 24+ homepage tests
+  - **MSW Integration**: API mocking for Supabase and Stripe endpoints
+  - **Test Utilities**: Comprehensive testing helpers and configuration
+
+### Changed
+- **UI Design System**: Enhanced visual consistency
+  - Premium component styling with sophisticated animations
+  - Improved homepage with executive-level messaging
+  - Enhanced UI components with design system implementation
+
+### Technical Implementation
+- **GitHub Actions**: Professional CI/CD workflow
+  - Claude PR Assistant workflow for automated code review
+  - Claude Code Review workflow for pull request analysis
+  - Automated testing and quality assurance processes
+
+- **Infrastructure**: Enhanced development environment
+  - Updated Supabase CLI version for latest features
+  - Added Stripe and UI dependencies for premium functionality
+  - Improved test setup and lint configuration
+
+- **Database Schema**: Subscription management
+  - Stripe subscription tables with proper RLS policies
+  - User billing and payment tracking infrastructure
+  - Migration system for subscription lifecycle management
+
+## [0.12.0] - 2025-07-11
+
+### Added
+- **Brand Transformation to Cultivate HQ**: Complete executive repositioning
+  - Premium design system with Inter font and sage/plum/amber color palette
+  - Pattern-breaking messaging: "Where strategic minds cultivate extraordinary outcomes"
+  - Executive-level component library with PremiumCard and ExecutiveButton
+  - Golden ratio spacing and sophisticated animation timing
+
+### Changed
+- **Executive Onboarding Experience**: Sophisticated messaging transformation
+  - **Welcome Screen**: Strategic minds positioning with extraordinary outcomes focus
+  - **Challenges Screen**: Pattern-breaking language about relationship building friction
+  - **Goals Screen**: "What ambitious outcome would make this year legendary?" messaging
+  - **Contact Import**: "Key stakeholders in success trajectory" strategic framing
+  - **Contact Confirmation**: "Strategic Intelligence Activated" with Connection Dossier
+
+- **Design System Implementation**: Systematic premium experience upgrade
+  - Typography scale with responsive sizing and executive messaging
+  - Color psychology with warm amber celebrations and sage strategic elements
+  - Premium component styling with confident animations
+  - Context-specific executive loading states
+
+### Technical Implementation
+- **Phase 3-4 Design System**: Complete implementation
+  - Strategic messaging across all onboarding screens
+  - Premium InsightCard components for strategic intelligence
+  - Executive button patterns with sophisticated loading states
+  - Enhanced professional analysis and opportunity detection
+
 ## [0.11.2] - 2025-07-10
 
 ### Fixed
